@@ -7,6 +7,7 @@ runs:
       with:
         days-before-issue-stale: -1 # don't mark issues stale
         # stale-issue-message: 'Message to comment on stale issues. If none provided, will not mark issues stale'
+        stale-pr-label: ''
         days-before-pr-stale: 4
         stale-pr-message: 'Message to comment on stale PRs. If none provided, will not mark PRs stale'
         days-before-close: -1 # don't close issues or PRs
