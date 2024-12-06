@@ -11,3 +11,4 @@ runs:
         days-before-pr-stale: 2
         stale-pr-message: 'Message to comment on stale PRs. If none provided, will not mark PRs stale'
         days-before-close: -1 # don't close issues or PRs
+        debug-only: true
