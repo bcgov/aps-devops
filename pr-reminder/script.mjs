@@ -52,7 +52,7 @@ async function remindReviewers() {
 
     // Add a comment if there are pending reviewers
     if (pendingReviewers.length > 0) {
-      const commentBody = `Friendly reminder: The following reviewers still need to review this PR: ${pendingReviewers.join(
+      const commentBody = `🔔 Friendly reminder: The following reviewers still need to review this PR: ${pendingReviewers.join(
         ", "
       )}\n\nPS: ${alwaysTagUsers.join(", ")}`;
 
