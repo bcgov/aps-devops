@@ -1,7 +1,9 @@
-name: 'Send PR review reminders'
+name: "Remind Pending PR Reviewers"
 description: "Reminds pending reviewers on GitHub pull requests by tagging them in comments."
-author: "API Program Services Team"
 inputs:
+  token:
+    description: "GitHub token for authentication"
+    required: true
   dry_run:
     description: "Enable dry-run mode (no comments will be posted)"
     required: false
@@ -15,6 +17,7 @@ runs:
     - name: Run reminder script
       shell: bash
       env:
+        GITHUB_TOKEN: ${{ inputs.token }}
         DRY_RUN: ${{ inputs.dry_run }}
       run: |
         node "${{ github.action_path }}/script.mjs"
