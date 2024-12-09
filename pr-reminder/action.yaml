@@ -17,4 +17,4 @@ runs:
       env:
         DRY_RUN: ${{ inputs.dry_run }}
       run: |
-        node "${{ github.action_path }}/script.js"
+        node "${{ github.action_path }}/script.mjs"
