@@ -15,7 +15,6 @@ runs:
     - name: Run reminder script
       shell: node
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DRY_RUN: ${{ inputs.dry_run }}
       run: |
         node script.js
