@@ -13,8 +13,8 @@ runs:
   using: "composite"
   steps:
     - name: Run reminder script
-      shell: node
+      shell: bash
       env:
         DRY_RUN: ${{ inputs.dry_run }}
       run: |
-        node script.js
+        node $(dirname "$0")/script.js
