@@ -54,7 +54,7 @@ async function remindReviewers() {
     if (pendingReviewers.length > 0) {
       const commentBody = `🔔 Friendly reminder: The following reviewers still need to review this PR: ${pendingReviewers.join(
         ", "
-      )}\n\nPS: ${alwaysTagUsers.join(", ")}`;
+      )}\n\nPS: ${alwaysTagUsers.map(user => `@${user}`).join(", ")}`;
 
       if (!dryRun) {
         await octokit.rest.issues.createComment({
