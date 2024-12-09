@@ -14,6 +14,14 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Debug token input
+    shell: bash
+    run: |
+      if [ -z "${{ inputs.token }}" ]; then
+        echo "Token input: NOT FOUND"
+      else
+        echo "Token input: REDACTED (starts with ${${{ inputs.token }}:0:4})"
+      fi
     - name: Run reminder script
       shell: bash
       env:
