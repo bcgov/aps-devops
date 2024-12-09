@@ -1,14 +1,21 @@
-name: 'Send review reminders'
-description: 'Sends reminders for pull requests that need review'
+name: 'Send PR review reminders'
+description: "Reminds pending reviewers on GitHub pull requests by tagging them in comments."
+author: "API Program Services Team"
+inputs:
+  dry_run:
+    description: "Enable dry-run mode (no comments will be posted)"
+    required: false
+    default: "false"
+outputs:
+  result:
+    description: "Summary of actions taken"
 runs:
   using: "composite"
   steps:
-    - uses: actions/stale@v9
-      with:
-        days-before-issue-stale: -1 # don't mark issues stale
-        # stale-issue-message: 'Message to comment on stale issues. If none provided, will not mark issues stale'
-        stale-pr-label: 'waiting-for-review'
-        days-before-pr-stale: 2
-        stale-pr-message: 'Message to comment on stale PRs. If none provided, will not mark PRs stale'
-        days-before-close: -1 # don't close issues or PRs
-        debug-only: true
+    - name: Run reminder script
+      shell: node
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        node script.js
