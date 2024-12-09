@@ -11,6 +11,7 @@ async function remindReviewers() {
 
   console.log(`Starting PR reviewer reminder for ${owner}/${repo}`);
   console.log(`Dry run mode: ${dryRun ? "Enabled" : "Disabled"}`);
+  console.log(`Token passed: ${process.env.GITHUB_TOKEN ? 'REDACTED' : 'NOT FOUND'}`);
 
   // Read user config from file
   const usersFile = path.join(process.env.GITHUB_ACTION_PATH, "users-config.json");
