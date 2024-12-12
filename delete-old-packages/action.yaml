@@ -1,0 +1,27 @@
+name: "Delete Old Package Versions"
+description: "This action deletes old package versions from the specified package."
+
+inputs:
+  package-name:
+    description: "The name of the package to delete old versions from."
+    required: true
+  package-type:
+    description: "The type of the package (e.g., npm)."
+    required: true
+  min-versions-to-keep:
+    description: "The minimum number of versions to keep."
+    required: true
+  ignore-versions:
+    description: "The regular expression pattern to ignore specific versions."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Delete package version(s)
+      uses: actions/delete-package-versions@v5
+      with:
+        package-name: ${{ inputs.package-name }}
+        package-type: ${{ inputs.package-type }}
+        min-versions-to-keep: ${{ inputs.min-versions-to-keep }}
+        ignore-versions: ${{ inputs.ignore-versions }}
