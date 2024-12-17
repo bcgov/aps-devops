@@ -34,6 +34,28 @@ async function remindReviewers() {
   for (const pr of pulls.data) {
     console.log(`Processing PR #${pr.number}: ${pr.title}`);
 
+    // Skip PRs that already have the 'reminded' label
+    const labels = await octokit.rest.issues.listLabelsOnIssue({
+      owner,
+      repo,
+      issue_number: pr.number,
+    });
+
+    if (labels.data.some((label) => label.name === "reminded")) {
+      console.log(`PR #${pr.number} already has 'reminded' label. Skipping.`);
+      continue;
+    }
+
+    // Check PR age
+    const prCreatedAt = new Date(pr.created_at);
+    const now = new Date();
+    const hoursSinceOpened = Math.abs(now - prCreatedAt) / 36e5;
+
+    if (hoursSinceOpened < 48) {
+      console.log(`PR #${pr.number} is ${hoursSinceOpened.toFixed(1)} hours old. Skipping reminder.`);
+      continue;
+    }
+
     // Fetch pending reviewers
     const reviewRequests = await octokit.rest.pulls.listRequestedReviewers({
       owner,
@@ -58,6 +80,7 @@ async function remindReviewers() {
       )}\n\nPS: ${alwaysTagUsers.map(user => `@${user}`).join(", ")}`;
 
       if (!dryRun) {
+        // Add the comment
         await octokit.rest.issues.createComment({
           owner,
           repo,
@@ -65,8 +88,18 @@ async function remindReviewers() {
           body: commentBody,
         });
         console.log(`Added comment to PR #${pr.number}: "${commentBody}"`);
+
+        // Add the 'reminded' label
+        await octokit.rest.issues.addLabels({
+          owner,
+          repo,
+          issue_number: pr.number,
+          labels: ["reminded"],
+        });
+        console.log(`Added 'reminded' label to PR #${pr.number}`);
       } else {
         console.log(`[DRY RUN] Would add comment to PR #${pr.number}: "${commentBody}"`);
+        console.log(`[DRY RUN] Would add 'reminded' label to PR #${pr.number}`);
       }
     } else {
       console.log(`No pending reviewers for PR #${pr.number}. Skipping comment.`);
