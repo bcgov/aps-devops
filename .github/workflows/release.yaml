@@ -14,7 +14,25 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
-      - uses: rymndhng/release-on-push-action@v0.28.0
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create release
+        id: create_release
+        uses: rymndhng/release-on-push-action@v0.28.0
         with:
           bump_version_scheme: patch
+
+      - name: Update major version tag
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+          SANITIZED_COMMIT_MESSAGE=$(echo "$COMMIT_MESSAGE" | tr -d '\n' | sed 's/[&|;`$(){}<>^"]/\\&/g')
+          echo "New release version ${{ steps.create_release.outputs.version }}"
+          VERSION=${{ steps.create_release.outputs.version }}
+          MAJOR=${VERSION%%.*}
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git tag -fa "${MAJOR}" -m "${COMMIT_MESSAGE}"
+          git push origin "${MAJOR}" --force
