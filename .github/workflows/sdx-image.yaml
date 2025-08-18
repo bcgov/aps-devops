@@ -45,7 +45,7 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
         context: .
-        file: dockerfiles/Dockerfile.${{env.DOCKER_ITEM}}
+        file: sdx/image/Dockerfile
         load: true
         tags: ${{ env.REGISTRY }}/bcgov/aps-devops/${{env.DOCKER_ITEM}}:${{env.PREFIX}}${{
           steps.slug.outputs.sha8 }}
