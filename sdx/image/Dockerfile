@@ -11,6 +11,7 @@ RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && (cd plugins/mtls-auth && luarocks make) \
   && (cd plugins/mtls-acl && luarocks make) \
   && (cd plugins/openid-authzen && luarocks make) \
+  && (cd plugins/response-signer && luarocks make) \
   && (cd plugins/oidc && luarocks make kong-plugin-oidc-1.5.0-2.rockspec) \
   && (cd plugins/oidc && \
      case "${KONG_VERSION}" in \
@@ -37,4 +38,4 @@ RUN (cd priority-updater/template/plugin && KONG_PRIORITY=201 KONG_PRIORITY_NAME
 
 USER kong
 
-ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, kong-upstream-jwt, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, openid-authzen"
+ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, kong-upstream-jwt, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, openid-authzen, response-signer"
