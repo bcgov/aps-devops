@@ -54,7 +54,7 @@ ENV KONG_ROUTER_FLAVOR="traditional"
 # Cluster Configuration (Hybrid Mode)
 # ============================================
 # Control plane endpoint that this data plane connects to
-ENV KONG_CLUSTER_CONTROL_PLANE="gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443"
+# ENV KONG_CLUSTER_CONTROL_PLANE="gwcluster.api.gov.bc.ca:443"
 
 # Disables cluster listener - data planes don't accept cluster connections
 ENV KONG_CLUSTER_LISTEN="off"
@@ -72,7 +72,7 @@ ENV KONG_CLUSTER_CERT="/etc/secrets/kongh-cluster-cert/tls.crt"
 ENV KONG_CLUSTER_CERT_KEY="/etc/secrets/kongh-cluster-cert/tls.key"
 
 # Labels to identify this data plane instance (ministry, endpoint, role)
-ENV KONG_CLUSTER_DP_LABELS="sdx-member:MIN.PUKI,data-plane:dp-sdx-ap-min-puki-01-kong-proxy,endpoint:ministryofpuppiesandkittens.xyz,role:sdx-access-point"
+# ENV KONG_CLUSTER_DP_LABELS="role:sdx-access-point"
 
 # ============================================
 # TLS/SSL Configuration
