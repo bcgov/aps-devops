@@ -208,3 +208,10 @@ ENV KONG_STATUS_ACCESS_LOG="off"
 # Status endpoint errors to stderr
 ENV KONG_STATUS_ERROR_LOG="/dev/stderr"
 
+# Proxy Log off
+ENV KONG_PROXY_ACCESS_LOG="off"
+
+# Proxy endpoint errors to stderr
+ENV KONG_PROXY_ERROR_LOG="/dev/stderr"
+
+
