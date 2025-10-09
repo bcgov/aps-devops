@@ -50,6 +50,8 @@ ENV KONG_DATABASE="off"
 # Uses traditional router for request matching (vs expressions router)
 ENV KONG_ROUTER_FLAVOR="traditional"
 
+ENV KONG_PREFIX="/kong_prefix/"
+
 # ============================================
 # Cluster Configuration (Hybrid Mode)
 # ============================================
@@ -91,6 +93,9 @@ ENV KONG_CLIENT_SSL_CERT="/etc/secrets/sdx-edge-client-cert/tls.crt"
 
 # Private key for upstream client certificate
 ENV KONG_CLIENT_SSL_CERT_KEY="/etc/secrets/sdx-edge-client-cert/tls.key"
+
+# Make the env var available for using in custom plugins
+ENV KONG_NGINX_MAIN_ENV="KONG_CLIENT_SSL_CERT; env KONG_CLIENT_SSL_CERT_KEY"
 
 # Client certificate to present when proxying to upstream services
 ENV KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE="/etc/secrets/sdx-edge-client-cert/tls.crt"
@@ -156,7 +161,7 @@ ENV KONG_UNTRUSTED_LUA_SANDBOX_REQUIRES="cjson.safe,resty.http,io,os,ffi,ngx.ssl
 # Nginx Performance Tuning
 # ============================================
 # Single worker process (adjust based on CPU cores)
-ENV KONG_NGINX_WORKER_PROCESSES="1"
+ENV KONG_NGINX_WORKER_PROCESSES="2"
 
 # Maximum open file descriptors per worker (supports high connection counts)
 ENV KONG_NGINX_WORKER_RLIMIT_NOFILE="200000"
@@ -180,7 +185,7 @@ ENV KONG_NGINX_PROXY_PROXY_MAX_TEMP_FILE_SIZE="8192m"
 ENV KONG_NGINX_DAEMON="off"
 
 # Includes custom nginx configuration snippets
-ENV KONG_NGINX_PROXY_INCLUDE="/etc/secrets/nginx-include"
+ENV KONG_NGINX_PROXY_INCLUDE="/etc/secrets/kong-nginx-proxy-include/config"
 
 # ============================================
 # Logging Configuration
