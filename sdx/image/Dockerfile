@@ -63,13 +63,13 @@ ENV KONG_CLUSTER_LISTEN="off"
 ENV KONG_CLUSTER_MTLS="pki"
 
 # CA certificate to verify control plane identity
-ENV KONG_CLUSTER_CA_CERT="/etc/secrets/kongh-cluster-ca/sdx-ca.crt"
+ENV KONG_CLUSTER_CA_CERT="/etc/secrets/sdx-edge-ca/ca.crt"
 
 # Client certificate for authenticating to control plane
-ENV KONG_CLUSTER_CERT="/etc/secrets/kongh-cluster-cert/tls.crt"
+ENV KONG_CLUSTER_CERT="/etc/secrets/sdx-edge-cluster-cert/tls.crt"
 
 # Private key for cluster client certificate
-ENV KONG_CLUSTER_CERT_KEY="/etc/secrets/kongh-cluster-cert/tls.key"
+ENV KONG_CLUSTER_CERT_KEY="/etc/secrets/sdx-edge-cluster-cert/tls.key"
 
 # Labels to identify this data plane instance (ministry, endpoint, role)
 # ENV KONG_CLUSTER_DP_LABELS="role:sdx-access-point"
@@ -78,34 +78,43 @@ ENV KONG_CLUSTER_CERT_KEY="/etc/secrets/kongh-cluster-cert/tls.key"
 # TLS/SSL Configuration
 # ============================================
 # Server certificate for incoming HTTPS connections
-ENV KONG_SSL_CERT="/etc/secrets/kongh-mtls/tls.crt"
+ENV KONG_SSL_CERT="/etc/secrets/sdx-edge-server-cert/tls.crt"
 
 # Private key for server certificate
-ENV KONG_SSL_CERT_KEY="/etc/secrets/kongh-mtls/tls.key"
+ENV KONG_SSL_CERT_KEY="/etc/secrets/sdx-edge-server-cert/tls.key"
 
 # Enables client certificate authentication for incoming requests
 ENV KONG_CLIENT_SSL=on
 
 # Client certificate to present when proxying to upstream services
-ENV KONG_CLIENT_SSL_CERT="/etc/secrets/kongh-mtls/tls.crt"
+ENV KONG_CLIENT_SSL_CERT="/etc/secrets/sdx-edge-client-cert/tls.crt"
 
 # Private key for upstream client certificate
-ENV KONG_CLIENT_SSL_CERT_KEY="/etc/secrets/kongh-mtls/tls.key"
+ENV KONG_CLIENT_SSL_CERT_KEY="/etc/secrets/sdx-edge-client-cert/tls.key"
 
-# Trusted CA for Lua SSL operations
-ENV KONG_LUA_SSL_TRUSTED_CERTIFICATE="/etc/secrets/kongh-cluster-ca/sdx-ca.crt"
+# Client certificate to present when proxying to upstream services
+ENV KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE="/etc/secrets/sdx-edge-client-cert/tls.crt"
+
+# Private key for upstream client certificate
+ENV KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE_KEY="/etc/secrets/sdx-edge-client-cert/tls.key"
 
 # Trusted CA for verifying upstream SSL certificates
-ENV KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE="/etc/secrets/kongh-cluster-ca/sdx-ca.crt"
+ENV KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE="/etc/secrets/sdx-edge-ca/ca.crt"
+
+# Trusted CA for Lua SSL operations
+ENV KONG_LUA_SSL_TRUSTED_CERTIFICATE="/etc/secrets/sdx-edge-ca/ca.crt"
 
 # Client certificate for nginx proxy SSL operations
-ENV KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE="/etc/secrets/kongh-cluster-ca/sdx-ca.crt"
+ENV KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE="/etc/secrets/sdx-edge-ca/ca.crt"
 
 # Enables verification of upstream SSL certificates
 ENV KONG_NGINX_PROXY_PROXY_SSL_VERIFY=on
 
 # Makes client certificate optional for incoming connections
 ENV KONG_NGINX_PROXY_SSL_VERIFY_CLIENT=optional
+
+# Set verify depth for certificate chain
+ENV KONG_NGINX_PROXY_PROXY_SSL_VERIFY_DEPTH="2"
 
 # ============================================
 # Network Listeners
