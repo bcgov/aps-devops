@@ -85,6 +85,12 @@ ENV KONG_SSL_CERT="/etc/secrets/sdx-edge-server-cert/tls.crt"
 # Private key for server certificate
 ENV KONG_SSL_CERT_KEY="/etc/secrets/sdx-edge-server-cert/tls.key"
 
+# Signing cert
+ENV KONG_SIGNING_CERT="/etc/secrets/sdx-edge-signing-cert/tls.crt"
+
+# Signing cert key
+ENV KONG_SIGNING_CERT_KEY="/etc/secrets/sdx-edge-signing-cert/tls.key"
+
 # Enables client certificate authentication for incoming requests
 ENV KONG_CLIENT_SSL=on
 
