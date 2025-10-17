@@ -8,7 +8,7 @@ hpa:
   maxReplicas: 1
 
 route:
-  host: ministryofpuppiesandkittens.xyz
+  host: example.com
 
 sdx_control_url: gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443
 
@@ -21,6 +21,7 @@ tls:
   client:
     bootstrap:
       token: ""
+    cn: "example.com"
 
   server:
     crt: |-

@@ -42,7 +42,7 @@ spec:
 
                 step certificate create \
                   --no-password --insecure \
-                  --csr ministryofpuppiesandkittens.xyz tls.csr tls.key
+                  --csr ${CN} tls.csr tls.key
 
                 TOKEN=$(cat /etc/secrets/sdx-edge-bootstrap-token/token)
 
@@ -63,6 +63,8 @@ spec:
                 kubectl rollout restart deployment $EDGE_NAME
 
           env:
+            - name: CN
+              value: "{{ .Values.tls.client.cn }}"
             - name: EDGE_NAME
               value: "{{ include "sdx-edge.fullname" . }}"
             - name: CLIENT_CA_URL

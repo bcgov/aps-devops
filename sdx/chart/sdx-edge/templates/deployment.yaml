@@ -75,7 +75,7 @@ spec:
             type: RuntimeDefault
         env:
         - name: KONG_CLUSTER_DP_LABELS
-          value: "sdx-member:MIN.PUKI,data-plane:dp-sdx-ap-min-puki-01-kong-proxy,endpoint:ministryofpuppiesandkittens.xyz,role:sdx-edge"
+          value: "data-plane:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
         - name: KONG_CLUSTER_CONTROL_PLANE
           value: {{ .Values.sdx_control_url | quote }}
         - name: KONG_NGINX_PROXY_SSL_VERIFY_CLIENT

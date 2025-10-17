@@ -141,17 +141,17 @@ data:
       metrics_path: /metrics
       relabel_configs:
       - action: keep
-        regex: (3001)
+        regex: (8100)
         source_labels:
         - __meta_kubernetes_pod_container_port_number
       - action: replace
         source_labels:
         - __meta_kubernetes_pod_name
         target_label: instance
-      - replacement: emerald
+      - action: replace
         source_labels:
-        - __address__
-        target_label: datacenter
+        - __meta_kubernetes_pod_label_data_plane
+        target_label: dataplane
 
     - job_name: kubernetes-fluentd
       kubernetes_sd_configs:
@@ -160,25 +160,45 @@ data:
         role: pod
         selectors:
         - field: status.phase=Running
-          label: app.kubernetes.io/name=log-aggregator
+          label: app.kubernetes.io/name=fluentbit
           role: pod
       metrics_path: /metrics
       relabel_configs:
       - action: keep
-        regex: (3001)
+        regex: (2021)
         source_labels:
         - __meta_kubernetes_pod_container_port_number
       - action: replace
         source_labels:
         - __meta_kubernetes_pod_name
         target_label: instance
-      sample_limit: 0
-      scrape_interval: 60s
-      scrape_timeout: 50s
   recording_rules.yml: |
     {}
   rules: |
     {}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: sdx-prometheus-server
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: prometheus
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 9090
+    - name: grpc
+      protocol: TCP
+      port: 10901
+      targetPort: 10901
+  type: ClusterIP
+  sessionAffinity: None
+  selector:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: server
 ---
 kind: ServiceAccount
 apiVersion: v1
