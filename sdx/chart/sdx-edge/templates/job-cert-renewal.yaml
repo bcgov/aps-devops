@@ -1,0 +1,146 @@
+# Cert Renewal Job
+# - This job is used to renew the TLS certificates for Kong
+# - It runs a container that executes the certificate renewal script
+# - The job is scheduled to run periodically using a CronJob in the Helm chart values
+# - The job will do a rolling restart of the Kong pods to pick up the new certificates
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: "{{ include "sdx-edge.fullname" . }}-cert-renewal"
+  labels:
+    app.kubernetes.io/name: job-cert-renewal
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    data-plane: "{{ include "sdx-edge.fullname" . }}"
+spec:
+  schedule: 0 */1 * * *
+  startingDeadlineSeconds: 10
+  concurrencyPolicy: Replace
+  suspend: false
+  jobTemplate:
+    metadata:
+      creationTimestamp: null
+    spec:
+      parallelism: 1
+      completions: 1
+      backoffLimit: 0
+      manualSelector: false
+      ttlSecondsAfterFinished: 604800 # 7 days
+      template:
+        metadata:
+          creationTimestamp: null
+        spec:
+          restartPolicy: Never
+          serviceAccountName: sdx-job-cert-renewal
+          schedulerName: default-scheduler
+          enableServiceLinks: true
+          terminationGracePeriodSeconds: 30
+          shareProcessNamespace: false
+          securityContext: {}
+          containers:
+            - resources: {}
+              terminationMessagePath: /dev/termination-log
+              name: cert-renewal
+              command:
+                - /bin/bash
+                - +x
+                - -e
+                - -c
+                - |-
+                    cd /tmp
+                    export PATH=$PATH:/tmp
+
+                    cp /etc/secrets/sdx-edge-client-cert/* /tmp/.
+
+                    step ca renew tls.crt tls.key --force \
+                      --ca-url $CLIENT_CA_URL \
+                      --root /etc/secrets/sdx-edge-ca/ca.crt
+
+                    curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                    chmod +x kubectl
+
+                    kubectl create secret \
+                      --save-config --dry-run=client -o yaml \
+                      tls ${EDGE_NAME}-client \
+                      --cert=./tls.crt \
+                      --key=./tls.key | kubectl apply -f -
+
+                    kubectl rollout restart deployment $EDGE_NAME
+
+              env:
+                - name: EDGE_NAME
+                  value: "{{ include "sdx-edge.fullname" . }}"
+                - name: CLIENT_CA_URL
+                  value: "{{ .Values.client_ca_url }}"
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: working-dir
+                  mountPath: /tmp
+                  mountPropagation: None
+                - name: kube-cache
+                  mountPath: .kube
+                  mountPropagation: None
+                - name: sdx-edge-client-cert
+                  mountPath: /etc/secrets/sdx-edge-client-cert
+                - name: sdx-edge-ca
+                  mountPath: /etc/secrets/sdx-edge-ca
+              image: 'docker.io/smallstep/step-cli:0.23.0'
+          automountServiceAccountToken: true
+          volumes:
+            - name: working-dir
+              emptyDir: {}
+            - name: kube-cache
+              emptyDir: {}
+            - name: sdx-edge-client-cert
+              secret:
+                secretName: {{ include "sdx-edge.fullname" . }}-client
+            - name: sdx-edge-ca
+              secret:
+                secretName: sdx-edge-ca
+          dnsPolicy: ClusterFirst
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+---
+{{ if .Values.shared.rbac }}
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: sdx-job-cert-renewal
+  labels:
+    app.kubernetes.io/name: job-cert-renewal
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sdx-job-cert-renewal
+  labels:
+    app.kubernetes.io/name: job-cert-renewal
+rules:
+  - verbs:
+      - get
+      - patch
+    apiGroups:
+      - ''
+    resources:
+      - secrets
+  - verbs:
+      - get
+      - patch
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: sdx-job-cert-renewal
+  labels:
+    app.kubernetes.io/name: job-cert-renewal
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sdx-job-cert-renewal
+subjects:
+  - kind: ServiceAccount
+    name: sdx-job-cert-renewal
+{{ end }}

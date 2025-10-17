@@ -1,0 +1,156 @@
+{{ if .Values.shared.fluentbit.enabled }}
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sdx-fluentbit
+  labels:
+    app.kubernetes.io/name: fluentbit
+    app.kubernetes.io/component: app
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fluentbit
+      app.kubernetes.io/component: app
+      app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: fluentbit
+        app.kubernetes.io/component: app
+        app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    spec:
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      securityContext: {}
+      containers:
+        - resources:
+            limits:
+              memory: 700Mi
+            requests:
+              cpu: 150m
+              memory: 100Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: fluentbit
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          securityContext: {}
+          ports:
+            - name: http
+              containerPort: 2020
+              protocol: TCP
+            - name: input
+              containerPort: 24224
+              protocol: TCP
+            - name: metrics
+              containerPort: 2021
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config-vol
+              readOnly: true
+              mountPath: /fb/fluentbit.yaml
+              subPath: fluentbit.yaml
+            - name: config-vol
+              readOnly: true
+              mountPath: /fb/parsers.conf
+              subPath: parsers.conf
+          terminationMessagePolicy: File
+          image: 'cr.fluentbit.io/fluent/fluent-bit:3.2.1'
+          args:
+            - '--config=/fb/fluentbit.yaml'
+      volumes:
+        - name: config-vol
+          configMap:
+            name: sdx-fluentbit-config
+            defaultMode: 420
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 33%
+      maxSurge: 33%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: sdx-fluentbit-config
+  labels: {}
+data:
+  fluentbit.yaml: |-
+    service:
+      flush: 3
+      daemon: off
+      log_level: info
+      http_server: On
+      http_listen: 0.0.0.0
+      http_port: 2020
+
+    pipeline:
+      inputs:
+        - name: http
+          listen: 0.0.0.0
+          port: 24224
+          buffer_chunk_size: 1M
+          buffer_max_size: 20M
+          mem_buf_limit: 100MB
+
+      outputs:
+        - name: stdout
+          match: "*"
+          format: json_lines
+
+        - name: prometheus_exporter
+          match: "*"
+          host: 0.0.0.0
+          port: 2021
+
+
+  parsers.conf: |-
+    [MULTILINE_PARSER]
+      name        json_array
+      type        regex
+      flush_timeout 1000
+      # Regex to capture the opening and closing brackets of a JSON array
+      rule        "start_state"      /^\s*\[\s*$/   "cont"
+      rule        "cont"             /^\s*\]\s*$/   "end_state"
+      rule        "end_state"        /^.*$/         "cont"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fluentd-aggregator
+  labels: {}
+spec:
+  type: ClusterIP
+  ports:
+  - name: forwarder-port
+    port: 24224
+    targetPort: 24224
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: fluentbit
+    app.kubernetes.io/component: app
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+{{ end }}

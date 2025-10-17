@@ -1,0 +1,33 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-ingress-to-{{ include "sdx-edge.fullname" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+  policyTypes:
+    - Ingress
+---
+{{ if .Values.shared.fluentbit.enabled }}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-edge-to-aggregator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: log-aggregator
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: sdx-edge
+  policyTypes:
+    - Ingress
+{{ end }}

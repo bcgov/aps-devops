@@ -1,0 +1,19 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: "{{ include "sdx-edge.fullname" . }}"
+  labels:
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    app.kubernetes.io/name: kong
+    data-plane: "{{ include "sdx-edge.fullname" . }}"
+spec:
+  host: "{{ .Values.route.host }}"
+  to:
+    kind: Service
+    name: "{{ include "sdx-edge.fullname" . }}"
+    weight: 100
+  port:
+    targetPort: kong-proxy-tls
+  tls:
+    termination: passthrough
+  wildcardPolicy: None

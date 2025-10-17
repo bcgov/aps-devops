@@ -1,0 +1,52 @@
+name: pupkit
+
+image:
+  tag: 3.9-668c74f2
+
+hpa:
+  minReplicas: 1
+  maxReplicas: 1
+
+route:
+  host: ministryofpuppiesandkittens.xyz
+
+sdx_control_url: gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443
+
+client_ca_url: https://ca-1d4461-prod.apps.silver.devops.gov.bc.ca
+
+
+mtls_required: true
+
+tls:
+  client:
+    bootstrap:
+      token: ""
+
+  server:
+    crt: |-
+      -----BEGIN CERTIFICATE-----
+      MIIDdzCCAl+gAwIBAgIURm6r7r5
+      -----END CERTIFICATE-----
+    key: |-
+      -----BEGIN PRIVATE KEY-----
+      MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDC
+      -----END PRIVATE KEY-----
+  ca: |-
+    -----BEGIN CERTIFICATE-----
+    MIIDdzCCAl+gAwIBAgIURm6r7r5
+    -----END CERTIFICATE-----
+
+nginx_conf: |-
+  set $session_storage             shm;
+  set $session_secret              1234123412341234;
+
+shared:
+  rbac: true
+
+  ca_secret: true
+
+  fluentbit:
+    enabled: true
+
+  prometheus:
+    enabled: true

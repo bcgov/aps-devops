@@ -1,0 +1,172 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sdx-edge.fullname" . }}
+  labels:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: app
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    data-plane: "{{ include "sdx-edge.fullname" . }}"
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sdx-edge
+      app.kubernetes.io/component: app
+      app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
+    type: RollingUpdate
+
+  template:
+    metadata:
+      annotations:
+        kuma.io/gateway: "enabled"
+        traffic.sidecar.istio.io/includeInboundPorts: ""
+      labels:
+        app.kubernetes.io/name: sdx-edge
+        app.kubernetes.io/component: app
+        app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+        data-plane: "{{ include "sdx-edge.fullname" . }}"
+    spec:
+      automountServiceAccountToken: false
+      
+      initContainers:
+      - name: clear-stale-pid
+        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Values.image.tag }}
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        command:
+        - "rm"
+        - "-vrf"
+        - "$KONG_PREFIX/pids"
+        
+        volumeMounts:
+        - name: prefix-dir
+          mountPath: /kong_prefix/
+        - name: tmp-dir
+          mountPath: /tmp
+      containers:
+      - name: "proxy"
+        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Values.image.tag }}
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        env:
+        - name: KONG_CLUSTER_DP_LABELS
+          value: "sdx-member:MIN.PUKI,data-plane:dp-sdx-ap-min-puki-01-kong-proxy,endpoint:ministryofpuppiesandkittens.xyz,role:sdx-edge"
+        - name: KONG_CLUSTER_CONTROL_PLANE
+          value: {{ .Values.sdx_control_url | quote }}
+        - name: KONG_NGINX_PROXY_SSL_VERIFY_CLIENT
+          value: "{{- if .Values.mtls_required }}on{{- else }}optional{{- end }}"
+        - name: KONG_NGINX_PROXY_SSL_VERIFY_DEPTH
+          value: "{{- if .Values.mtls_required }}3{{- else }}1{{- end }}"
+        - name: KONG_PROXY_ACCESS_LOG
+          value: "off"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - kong
+              - quit
+              - --wait=15
+        ports:
+        - name: proxy
+          containerPort: 8000
+          protocol: TCP
+        - name: proxy-tls
+          containerPort: 8443
+          protocol: TCP
+        - name: status
+          containerPort: 8100
+          protocol: TCP
+        volumeMounts:
+          - name: prefix-dir
+            mountPath: /kong_prefix/
+          - name: tmp-dir
+            mountPath: /tmp
+          - name: sdx-edge-server-cert
+            mountPath: /etc/secrets/sdx-edge-server-cert
+          - name: sdx-edge-client-cert
+            mountPath: /etc/secrets/sdx-edge-signing-cert
+          - name: sdx-edge-client-cert
+            mountPath: /etc/secrets/sdx-edge-client-cert
+          - name: sdx-edge-client-cert
+            mountPath: /etc/secrets/sdx-edge-cluster-cert
+          - name: sdx-edge-client-cert
+            mountPath: /etc/secrets/kong-upstream-jwt
+          - name: sdx-edge-ca
+            mountPath: /etc/secrets/sdx-edge-ca
+          - name:  kong-nginx-proxy-include
+            mountPath: /etc/secrets/kong-nginx-proxy-include
+          - mountPath: /.luarocks
+            name: dotluarocks
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status/ready
+            port: status
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status
+            port: status
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi 
+      securityContext:
+        {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: prefix-dir
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: tmp-dir
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: sdx-edge-client-cert
+          secret:
+            secretName: {{ include "sdx-edge.fullname" . }}-client
+        - name: sdx-edge-server-cert
+          secret:
+            secretName: {{ include "sdx-edge.fullname" . }}-server
+        - name: sdx-edge-ca
+          secret:
+            secretName: sdx-edge-ca
+        - name: kong-nginx-proxy-include
+          secret:
+            secretName: kong-nginx-proxy-include
+        - emptyDir: {}
+          name: dotluarocks
