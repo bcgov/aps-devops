@@ -117,12 +117,12 @@ ENV KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE="/etc/secrets/sdx-edge-client-cert/tl
 ENV KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE_KEY="/etc/secrets/sdx-edge-client-cert/tls.key"
 
 # Trusted CA for verifying upstream SSL certificates
-ENV KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE="/etc/secrets/sdx-edge-ca/ca.crt"
+ENV KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE="/etc/secrets/sdx-public-ca/ca.crt"
 
 # Trusted CA for Lua SSL operations
-ENV KONG_LUA_SSL_TRUSTED_CERTIFICATE="/etc/secrets/sdx-edge-ca/ca.crt"
+ENV KONG_LUA_SSL_TRUSTED_CERTIFICATE="/etc/secrets/sdx-public-ca/ca.crt"
 
-# Client certificate for nginx proxy SSL operations
+# CA for validating Client certificate for nginx proxy SSL operations
 ENV KONG_NGINX_PROXY_SSL_CLIENT_CERTIFICATE="/etc/secrets/sdx-edge-ca/ca.crt"
 
 # Enables verification of upstream SSL certificates
@@ -226,5 +226,3 @@ ENV KONG_PROXY_ACCESS_LOG="off"
 
 # Proxy endpoint errors to stderr
 ENV KONG_PROXY_ERROR_LOG="/dev/stderr"
-
-
