@@ -5,6 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
+# Plugin updates
 RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
