@@ -5,7 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo plugin updates - fix timestamp
+RUN echo plugin updates - fix timestamp - add content-digest
 RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
