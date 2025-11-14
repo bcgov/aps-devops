@@ -5,7 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd verify sign
+RUN echo upd verify sign plus registry
 RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
@@ -23,6 +23,7 @@ RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && (cd plugins/response-signer && luarocks make) \
   && (cd plugins/token-exchange && luarocks make) \
   && (cd plugins/trust-ledger && luarocks make) \
+  && (cd plugins/trust-registry && luarocks make) \
   && (cd plugins/trust-sign && luarocks make) \
   && (cd plugins/trust-timestamp && luarocks make) \
   && (cd plugins/trust-verify-digest && luarocks make) \
