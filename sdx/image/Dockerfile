@@ -5,7 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd verify sign plus registry v6 upd signer
+RUN echo upd verify sign plus registry v6 upd signer udp verify sign response
 RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
