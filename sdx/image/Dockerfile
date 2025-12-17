@@ -5,7 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd verify sign plus registry v6 upd signer udp verify sign response fix
+RUN echo add trust-jwks
 RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
@@ -22,6 +22,7 @@ RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && (cd plugins/openid-authzen && luarocks make) \
   && (cd plugins/response-signer && luarocks make) \
   && (cd plugins/token-exchange && luarocks make) \
+  && (cd plugins/trust-jwks && luarocks make) \
   && (cd plugins/trust-ledger && luarocks make) \
   && (cd plugins/trust-registry && luarocks make) \
   && (cd plugins/trust-sign && luarocks make) \
@@ -161,7 +162,7 @@ ENV KONG_REAL_IP_HEADER="X-Forwarded-For"
 # Plugins Configuration
 # ============================================
 # Enables bundled plugins plus custom authentication, rate limiting, and security plugins
-ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, openid-authzen, response-signer, dpop, token-exchange, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"
+ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, openid-authzen, response-signer, dpop, token-exchange, trust-jwks, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"
 
 # Custom Lua module search path for plugin code
 ENV KONG_LUA_PACKAGE_PATH="/opt/?.lua;/opt/?/init.lua;;"
