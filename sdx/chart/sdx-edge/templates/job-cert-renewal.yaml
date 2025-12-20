@@ -17,8 +17,6 @@ spec:
   concurrencyPolicy: Replace
   suspend: false
   jobTemplate:
-    metadata:
-      creationTimestamp: null
     spec:
       parallelism: 1
       completions: 1
@@ -27,7 +25,11 @@ spec:
       ttlSecondsAfterFinished: 604800 # 7 days
       template:
         metadata:
-          creationTimestamp: null
+          labels:
+            DataClass: Low
+            app.kubernetes.io/name: job-cert-renewal
+            app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+            data-plane: "{{ include "sdx-edge.fullname" . }}"
         spec:
           restartPolicy: Never
           serviceAccountName: sdx-job-cert-renewal
@@ -58,9 +60,18 @@ spec:
                     curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     chmod +x kubectl
 
+                    kubectl delete secret ${EDGE_NAME}-client || true
+                    kubectl delete secret ${EDGE_NAME}-server || true
+
                     kubectl create secret \
                       --save-config --dry-run=client -o yaml \
                       tls ${EDGE_NAME}-client \
+                      --cert=./tls.crt \
+                      --key=./tls.key | kubectl apply -f -
+
+                    kubectl create secret \
+                      --save-config --dry-run=client -o yaml \
+                      tls ${EDGE_NAME}-server \
                       --cert=./tls.crt \
                       --key=./tls.key | kubectl apply -f -
 
@@ -71,6 +82,10 @@ spec:
                   value: "{{ include "sdx-edge.fullname" . }}"
                 - name: CLIENT_CA_URL
                   value: "{{ .Values.client_ca_url }}"
+                - name: HTTPS_PROXY
+                  value: "{{ .Values.https_proxy }}"
+                - name: NO_PROXY
+                  value: ".cluster.local,.svc,10.91.0.0/16,10.93.0.0/16,172.30.0.0/16,127.0.0.1,localhost,.gov.bc.ca"
               imagePullPolicy: IfNotPresent
               volumeMounts:
                 - name: working-dir

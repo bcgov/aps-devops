@@ -1,13 +1,14 @@
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: "{{ include "sdx-edge.fullname" . }}"
+  name: "{{- .Values.route.host }}"
   labels:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: app
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-    app.kubernetes.io/name: kong
     data-plane: "{{ include "sdx-edge.fullname" . }}"
 spec:
-  host: "{{ .Values.route.host }}"
+  host: "{{- .Values.route.host }}"
   to:
     kind: Service
     name: "{{ include "sdx-edge.fullname" . }}"

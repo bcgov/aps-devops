@@ -18,6 +18,7 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
+        DataClass: Low
         app.kubernetes.io/name: fluentbit
         app.kubernetes.io/component: app
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
@@ -74,8 +75,14 @@ spec:
               readOnly: true
               mountPath: /fb/parsers.conf
               subPath: parsers.conf
+            - name: sdx-edge-client-cert
+              mountPath: /etc/secrets/sdx-edge-client-cert
+            - name: sdx-ca
+              mountPath: /etc/secrets/sdx-ca
+
+
           terminationMessagePolicy: File
-          image: 'cr.fluentbit.io/fluent/fluent-bit:3.2.1'
+          image: 'docker.io/fluent/fluent-bit:4.1.1'
           args:
             - '--config=/fb/fluentbit.yaml'
       volumes:
@@ -83,6 +90,13 @@ spec:
           configMap:
             name: sdx-fluentbit-config
             defaultMode: 420
+        - name: sdx-edge-client-cert
+          secret:
+            secretName: {{ include "sdx-edge.fullname" . }}-client
+        - name: sdx-ca
+          secret:
+            secretName: sdx-edge-ca
+
       dnsPolicy: ClusterFirst
   strategy:
     type: RollingUpdate
@@ -116,20 +130,31 @@ data:
           buffer_max_size: 20M
           mem_buf_limit: 100MB
 
-        - name: fluentbit_metrics
-          tag: internal_metrics
-          scrape_interval: 2
+        # - name: fluentbit_metrics
+        #   tag: internal_metrics
+        #   scrape_interval: 2
 
       outputs:
-        - name: stdout
+        # - name: stdout
+        #   match: "*"
+        #   format: json_lines
+
+        # - name: prometheus_exporter
+        #   match: internal_metrics
+        #   host: 0.0.0.0
+        #   port: 2021
+
+        - name: http
           match: "*"
-          format: json_lines
-
-        - name: prometheus_exporter
-          match: internal_metrics
-          host: 0.0.0.0
-          port: 2021
-
+          host: gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca
+          port: 443
+          tls.vhost: gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca
+          format: json
+          tls: on
+          tls.verify: off
+          tls.ca_file: /etc/secrets/sdx-ca/ca.crt
+          tls.crt_file: /etc/secrets/sdx-edge-client-cert/tls.crt
+          tls.key_file: /etc/secrets/sdx-edge-client-cert/tls.key
 
   parsers.conf: |-
     [MULTILINE_PARSER]

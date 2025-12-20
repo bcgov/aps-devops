@@ -26,6 +26,7 @@ spec:
         kuma.io/gateway: "enabled"
         traffic.sidecar.istio.io/includeInboundPorts: ""
       labels:
+        DataClass: Medium
         app.kubernetes.io/name: sdx-edge
         app.kubernetes.io/component: app
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
@@ -84,6 +85,8 @@ spec:
           value: "{{- if .Values.mtls_required }}3{{- else }}1{{- end }}"
         - name: KONG_PROXY_ACCESS_LOG
           value: "off"
+        - name: KONG_PROXY_LISTEN
+          value: 0.0.0.0:8000, [::]:8000, 0.0.0.0:8443 http2 ssl, [::]:8443 http2 ssl, 0.0.0.0:3443 http2 ssl
         lifecycle:
           preStop:
             exec:
@@ -116,6 +119,8 @@ spec:
             mountPath: /etc/secrets/sdx-edge-cluster-cert
           - name: sdx-edge-client-cert
             mountPath: /etc/secrets/kong-upstream-jwt
+          - name: sdx-public-ca
+            mountPath: /etc/secrets/sdx-public-ca
           - name: sdx-edge-ca
             mountPath: /etc/secrets/sdx-edge-ca
           - name:  kong-nginx-proxy-include
@@ -162,6 +167,9 @@ spec:
         - name: sdx-edge-server-cert
           secret:
             secretName: {{ include "sdx-edge.fullname" . }}-server
+        - name: sdx-public-ca
+          secret:
+            secretName: sdx-public-ca
         - name: sdx-edge-ca
           secret:
             secretName: sdx-edge-ca

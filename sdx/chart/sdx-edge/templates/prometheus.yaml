@@ -15,6 +15,7 @@ spec:
   template:
     metadata:
       labels:
+        DataClass: Low
         app.kubernetes.io/name: prometheus
         app.kubernetes.io/component: server
     spec:
