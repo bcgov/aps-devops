@@ -18,7 +18,7 @@ A Client Authentication and Signing certificate is issued and used for connectin
 
 ## Development
 
-```
+```sh
 helm package sdx-edge
 helm push sdx-edge-0.1.0.tgz oci://ghcr.io/bcgov/aps-devops
 ```
