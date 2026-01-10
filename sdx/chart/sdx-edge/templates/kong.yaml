@@ -4,7 +4,7 @@ metadata:
   name: {{ include "sdx-edge.fullname" . }}
   labels:
     app.kubernetes.io/name: sdx-edge
-    app.kubernetes.io/component: app
+    app.kubernetes.io/component: kong
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
 spec:
@@ -12,7 +12,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: sdx-edge
-      app.kubernetes.io/component: app
+      app.kubernetes.io/component: kong
       app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
   strategy:
     rollingUpdate:
@@ -28,7 +28,7 @@ spec:
       labels:
         DataClass: Medium
         app.kubernetes.io/name: sdx-edge
-        app.kubernetes.io/component: app
+        app.kubernetes.io/component: kong
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
         data-plane: "{{ include "sdx-edge.fullname" . }}"
     spec:
@@ -175,6 +175,54 @@ spec:
             secretName: sdx-edge-ca
         - name: kong-nginx-proxy-include
           secret:
-            secretName: kong-nginx-proxy-include
+            secretName: {{ include "sdx-edge.fullname" . }}-proxy-include
         - emptyDir: {}
           name: dotluarocks
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: "{{ include "sdx-edge.fullname" . }}"
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    data-plane: "{{ include "sdx-edge.fullname" . }}"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: "{{ include "sdx-edge.fullname" . }}"
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 60
+          type: Utilization
+      type: Resource
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sdx-edge.fullname" . }}
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    data-plane: "{{ include "sdx-edge.fullname" . }}"
+    enable-metrics: "true"
+spec:
+  type: ClusterIP
+  ports:
+  - name: kong-proxy
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  - name: kong-proxy-tls
+    port: 443
+    targetPort: 8443
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: kong
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"

@@ -4,7 +4,7 @@ metadata:
   name: "{{- .Values.route.host }}"
   labels:
     app.kubernetes.io/name: sdx-edge
-    app.kubernetes.io/component: app
+    app.kubernetes.io/component: ocp-route
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
 spec:

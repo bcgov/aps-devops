@@ -4,23 +4,23 @@ apiVersion: apps/v1
 metadata:
   name: sdx-fluentbit
   labels:
-    app.kubernetes.io/name: fluentbit
-    app.kubernetes.io/component: app
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: fluentbit
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: fluentbit
-      app.kubernetes.io/component: app
+      app.kubernetes.io/name: sdx-edge
+      app.kubernetes.io/component: fluentbit
       app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
   template:
     metadata:
       creationTimestamp: null
       labels:
         DataClass: Low
-        app.kubernetes.io/name: fluentbit
-        app.kubernetes.io/component: app
+        app.kubernetes.io/name: sdx-edge
+        app.kubernetes.io/component: fluentbit
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     spec:
       restartPolicy: Always
@@ -179,7 +179,7 @@ spec:
     targetPort: 24224
     protocol: TCP
   selector:
-    app.kubernetes.io/name: fluentbit
-    app.kubernetes.io/component: app
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: fluentbit
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
 {{ end }}

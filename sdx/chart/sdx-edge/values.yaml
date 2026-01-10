@@ -7,8 +7,9 @@ hpa:
   minReplicas: 1
   maxReplicas: 1
 
+# Edge server host used for routing to the edge service
 route:
-  host: example.com
+  host: example.servers.sdx
 
 sdx_control_url: gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443
 
@@ -24,6 +25,10 @@ tls:
     bootstrap:
       token: ""
     cn: "example.com"
+
+  # Added as a SAN to the edge certificate
+  server:
+    ip: ""
 
   public_ca: |-
     -----BEGIN CERTIFICATE-----
@@ -134,6 +139,76 @@ tls:
     L6KCq9NjRHDEjf8tM7qtj3u1cIiuPhnPQCjY/MiQu12ZIvVS5ljFH4gxQ+6IHdfG
     jjxDah2nGN59PRbxYvnKkKj9
     -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIBjTCCATKgAwIBAgIRAKsurcg8Ds+P8PY7X2zevn4wCgYIKoZIzj0EAwIwJDEM
+    MAoGA1UEChMDc2R4MRQwEgYDVQQDEwtzZHggUm9vdCBDQTAeFw0yNTA3MTExOTQw
+    MzdaFw0zNTA3MDkxOTQwMzdaMCQxDDAKBgNVBAoTA3NkeDEUMBIGA1UEAxMLc2R4
+    IFJvb3QgQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQiFtyO/gss66hCJhHI
+    u3aDIHTyLl4I9w30kRV9cQiriMK5U5e+orM/SVvk9efmWty4scsbMbUdvSyUE1uk
+    cBNoo0UwQzAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBATAdBgNV
+    HQ4EFgQUhtXXKpLID9mQaL1/0qJbkD4Kg1kwCgYIKoZIzj0EAwIDSQAwRgIhAJeu
+    KMKov7GB7QR5pVRZFlShwyd/gSIXT0WF59jNT0ueAiEA5GI3s0dOrXUQC90X3k4u
+    Bz2OL6fLplfD1s0AAPZMw3g=
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIEqDCCApACCQC51vXitqqXrTANBgkqhkiG9w0BAQsFADAWMRQwEgYDVQQDDAth
+    cHNfcm9vdF9jYTAeFw0yMTEwMDEyMzA0MDlaFw0yNDA3MjEyMzA0MDlaMBYxFDAS
+    BgNVBAMMC2Fwc19yb290X2NhMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKC
+    AgEAlDQ60cZmr0wk/M4jQydgUmOijFqTAD3RlZjACLIi5H8URBj6wqJOUKMkhWxP
+    zMmgE/oF+TihXskyQURI3mHvTMqI4jx3Eiza6xt5l0/P3RrMMZsSQf+UYy/5PTx3
+    2lNMgn7VqbZA15hQibIj4y/ut5iwr9LKCTIugTIvMZLpemB07mlSOC/Jye9Ui8HY
+    KCGjCJRX669q00rOAQpCS/OwPWlqiLbqgcH5OIsQwFnyh7WgIhvgAjZshGHyRrb4
+    GNjMN0lVyxHGx/GSCWIWqDiciBU8OTmzmTGmGJXrK/Jq5g52DO+YJCTy7oDPXULO
+    179WAiFI30X0pptIiQ0FwHKd9+YG6x85nDdABpB7n8qxS5MYMQ1JW0r4t1oIbP/n
+    b7TBPxl2RvjaJjrhyNisJNElCnUiaD4jxOXV2lHCHoqesKkDR+jJ0wS1oKfCKUg4
+    ZH3LbVQFCZJ7F7nUhO7dTwTp5QnD648w1vvgdPjJT8vNRUu3fcPjIJJIpZUQLn+w
+    22sHH+zapGiT5qP9iH0lGQAOzbRDVWn+dKOxvrAwZWh22PqffAzIeXAxsBpd3Z/T
+    1mkaybg+fXATmATR/8kIFXIv0E0JJJPgQ2TirYjImNZcqlzfCwrS4+Ozz24CuKt3
+    l1FmGCqcV7FEEoAtXPXNVzUKMwWZQGwTIIRj044LEwFF6YUCAwEAATANBgkqhkiG
+    9w0BAQsFAAOCAgEANMAtjZcVV0j4sEqYa7WEXKyAH+9nvQ62lfxaKLz+2MgL9hX0
+    /1arbmnZGzSpol1feWsrXrH4yZxTX3eAvzc9Whh7nZJkZKN6vAtvM0gCmje5FqPb
+    kyAtS7F5GjPojGFPjXvyxNMuxNcLkdac1J421T6wsuXPuYCG4mtaYCdHLzDe0pJJ
+    47PU3QMBP29vJSb01+L35DQ+WdYKWwjKZY/6e5rT14nT8jEiKXNjt8kuyZysXANf
+    ftgQFzkZ1m/ZFkbV3O1joibvCKZqVz15HlClo6L5MK/6iokGFr0aitBzkcYiS/Yg
+    Y0i5nP1oNCnrlfOOhvfmVnvoyQsEFn36eGPRJhCkXOlFbGOl4joM/fcikEs+NY4g
+    2HdZd103Lw7g06Va3ZjSbmhUsVpoDaTbQ+MFbULhNo+hFD0hcK1j87vna6CME7Yg
+    Ad7WG3Ej4lOwbtiltH+70hH7u8Yrj7w33ocOaDi4ON7a9hhR6I88dC3r8zc/OoNZ
+    hw6qddghe5EvSwK70pCAl4hLqTUs1PmNRattPBSXBrYZ219K33QtwcEXcd0Vrjq5
+    AHoOUJdQ7xwQe9XnvYbMjfS6P5nnZmMM80k3LGhfWNgLklEaDw5YKoYILe5EbP0H
+    G4nqPDcjgN59NpHOg8Cy9oHbCmTUZML8eLXcIAnU+7Y/gFrGNs64fU+K0p8=
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIFDTCCAvWgAwIBAgIUSaDM216CPhyWkuOPp/Eh/Ywu6+EwDQYJKoZIhvcNAQEL
+    BQAwFjEUMBIGA1UEAwwLYXBzX3Jvb3RfY2EwHhcNMjQwODAyMTgxNDAxWhcNMzQw
+    NzMxMTgxNDAxWjAWMRQwEgYDVQQDDAthcHNfcm9vdF9jYTCCAiIwDQYJKoZIhvcN
+    AQEBBQADggIPADCCAgoCggIBAJQ0OtHGZq9MJPzOI0MnYFJjooxakwA90ZWYwAiy
+    IuR/FEQY+sKiTlCjJIVsT8zJoBP6Bfk4oV7JMkFESN5h70zKiOI8dxIs2usbeZdP
+    z90azDGbEkH/lGMv+T08d9pTTIJ+1am2QNeYUImyI+Mv7reYsK/SygkyLoEyLzGS
+    6XpgdO5pUjgvycnvVIvB2CghowiUV+uvatNKzgEKQkvzsD1paoi26oHB+TiLEMBZ
+    8oe1oCIb4AI2bIRh8ka2+BjYzDdJVcsRxsfxkgliFqg4nIgVPDk5s5kxphiV6yvy
+    auYOdgzvmCQk8u6Az11Czte/VgIhSN9F9KabSIkNBcBynffmBusfOZw3QAaQe5/K
+    sUuTGDENSVtK+LdaCGz/52+0wT8Zdkb42iY64cjYrCTRJQp1Img+I8Tl1dpRwh6K
+    nrCpA0foydMEtaCnwilIOGR9y21UBQmSexe51ITu3U8E6eUJw+uPMNb74HT4yU/L
+    zUVLt33D4yCSSKWVEC5/sNtrBx/s2qRok+aj/Yh9JRkADs20Q1Vp/nSjsb6wMGVo
+    dtj6n3wMyHlwMbAaXd2f09ZpGsm4Pn1wE5gE0f/JCBVyL9BNCSST4ENk4q2IyJjW
+    XKpc3wsK0uPjs89uArird5dRZhgqnFexRBKALVz1zVc1CjMFmUBsEyCEY9OOCxMB
+    RemFAgMBAAGjUzBRMB0GA1UdDgQWBBS+TaM2C9PAnvkc4wrp99/MqwDBmjAfBgNV
+    HSMEGDAWgBS+TaM2C9PAnvkc4wrp99/MqwDBmjAPBgNVHRMBAf8EBTADAQH/MA0G
+    CSqGSIb3DQEBCwUAA4ICAQANbgtkySqN0EEF4aK0yM+9mY5XrihngGIc5F1ewUYG
+    5NsBFA2sRnqVuao6eINN5/89EKXUxM2FSPK1YhDkVSWv69OFq4nzbpr7tvgjOWbk
+    mb6uhXeCqzp0joEidEVlm3TdTn2Wf1fdprAFHWu9uX+8kuLzxVdeGxv7NDrThExB
+    8RobiXN8ALFd50yzu/q4m+5dvhhXoAwo1G49Ey+Qu6pS7KkeRxq4N0Q5O2UaAs0R
+    arOp8vZ0bRKQNIcvk28FSnvEGQt1oVFxhDJ//Kj7beQuo45MvT2zFuQcEZfCabLL
+    edgRB01rVjyivM5kwSr6PtXylM1wXct+7VJBBYwSvDye+g2dz4MdxBIt/6iwjUUC
+    5aKn0sCLzgBSVcMMdZsA8pItwIqL/eRhHqmapFaARIUMJ/AH9x4SrTS0Kj6y8n4o
+    H5S4rwtVDjRwIJQcE9OORwByjO43ZlQQWAP2OPVXZcBsw+vlKBVCoJIIK+OwexdI
+    Mh4YlAHZlZoWYsV56aBrEMFvTABUNPtGl52pYDQT1Somggt0h2NRpu8xLlYhoLSK
+    zkEXwuvQvXaHATeH4cc/aLJ3cWkBkIZiOeAEiRfpFMlyuZY5ArwWTt/8uxSQWqoC
+    RidtB4D1VogTIhP5w+ZdMEzbqZSWZ/u0y1Rf5EpLa2bXcbc0j8Nqpd5TkF/lQXsn
+    nQ==
+    -----END CERTIFICATE-----
+
+# The last two certificates are intermediate and root for the Kong Cluster in DEV
 
 nginx_conf: |-
   set $session_storage             shm;

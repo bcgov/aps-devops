@@ -8,7 +8,8 @@ kind: CronJob
 metadata:
   name: "{{ include "sdx-edge.fullname" . }}-cert-renewal"
   labels:
-    app.kubernetes.io/name: job-cert-renewal
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-renewal
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
 spec:
@@ -27,7 +28,8 @@ spec:
         metadata:
           labels:
             DataClass: Low
-            app.kubernetes.io/name: job-cert-renewal
+            app.kubernetes.io/name: sdx-edge
+            app.kubernetes.io/component: job-cert-renewal
             app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
             data-plane: "{{ include "sdx-edge.fullname" . }}"
         spec:
@@ -59,9 +61,6 @@ spec:
 
                     curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     chmod +x kubectl
-
-                    kubectl delete secret ${EDGE_NAME}-client || true
-                    kubectl delete secret ${EDGE_NAME}-server || true
 
                     kubectl create secret \
                       --save-config --dry-run=client -o yaml \
@@ -121,18 +120,22 @@ apiVersion: v1
 metadata:
   name: sdx-job-cert-renewal
   labels:
-    app.kubernetes.io/name: job-cert-renewal
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-renewal
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: sdx-job-cert-renewal
   labels:
-    app.kubernetes.io/name: job-cert-renewal
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-renewal
 rules:
   - verbs:
       - get
       - patch
+      - create
+      - delete
     apiGroups:
       - ''
     resources:
@@ -150,7 +153,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: sdx-job-cert-renewal
   labels:
-    app.kubernetes.io/name: job-cert-renewal
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-renewal
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

@@ -4,20 +4,20 @@ apiVersion: apps/v1
 metadata:
   name: sdx-prometheus-server
   labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/component: server
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: prometheus
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: prometheus
-      app.kubernetes.io/component: server
+      app.kubernetes.io/name: sdx-edge
+      app.kubernetes.io/component: prometheus
   template:
     metadata:
       labels:
         DataClass: Low
-        app.kubernetes.io/name: prometheus
-        app.kubernetes.io/component: server
+        app.kubernetes.io/name: sdx-edge
+        app.kubernetes.io/component: prometheus
     spec:
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -108,8 +108,8 @@ apiVersion: v1
 metadata:
   name: sdx-prometheus-server
   labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/component: server
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: prometheus
 data:
   alerting_rules.yml: |
     {}
@@ -183,8 +183,8 @@ apiVersion: v1
 metadata:
   name: sdx-prometheus-server
   labels:
-    app.kubernetes.io/component: server
-    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: prometheus
 spec:
   ports:
     - name: http
@@ -206,16 +206,16 @@ apiVersion: v1
 metadata:
   name: sdx-prometheus
   labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/component: server
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: prometheus
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: sdx-prometheus
   labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/component: server
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: prometheus
 rules:
   - verbs:
       - list
@@ -232,8 +232,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: sdx-prometheus
   labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/component: server
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

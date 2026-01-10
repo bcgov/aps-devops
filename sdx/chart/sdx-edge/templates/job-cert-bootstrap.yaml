@@ -7,7 +7,8 @@ kind: Job
 metadata:
   name: "{{ include "sdx-edge.fullname" . }}-boot-{{ sha256sum .Values.tls.client.bootstrap.token | trunc 8 }}"
   labels:
-    app.kubernetes.io/name: job-cert-bootstrap
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-bootstrap
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
 spec:
@@ -20,7 +21,8 @@ spec:
     metadata:
       labels:
         DataClass: Low
-        app.kubernetes.io/name: job-cert-bootstrap
+        app.kubernetes.io/name: sdx-edge
+        app.kubernetes.io/component: job-cert-bootstrap
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
         data-plane: "{{ include "sdx-edge.fullname" . }}"
     spec:
@@ -37,7 +39,7 @@ spec:
           name: cert-bootstrap
           command:
             - /bin/bash
-            - -x
+            - +x
             - -e
             - -c
             - |-
@@ -127,14 +129,16 @@ apiVersion: v1
 metadata:
   name: sdx-job-cert-bootstrap
   labels:
-    app.kubernetes.io/name: job-cert-bootstrap
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-bootstrap
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: sdx-job-cert-bootstrap
   labels:
-    app.kubernetes.io/name: job-cert-bootstrap
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-bootstrap
 rules:
   - verbs:
       - get
@@ -158,7 +162,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: sdx-job-cert-bootstrap
   labels:
-    app.kubernetes.io/name: job-cert-bootstrap
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-bootstrap
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
