@@ -5,7 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo add trust-jwks trust-kms updates
+RUN echo add trust-jwks trust-kms updates and dpop upd
 RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
