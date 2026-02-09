@@ -1,7 +1,7 @@
 name: example
 
 image:
-  tag: 3.9-fae42a67
+  tag: 3.9-37f68b55
 
 hpa:
   minReplicas: 1
@@ -14,6 +14,8 @@ route:
 sdx_control_url: gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443
 
 client_ca_url: https://ca-1d4461-prod.apps.silver.devops.gov.bc.ca
+
+sdx_aggregator_url: gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca
 
 mtls_required: true
 
@@ -29,6 +31,15 @@ tls:
   # Added as a SAN to the edge certificate
   server:
     ip: ""
+
+  # C=GB, O=Sectigo Limited, CN=Sectigo Public Server Authentication CA DV R36
+  # C=GB, O=Sectigo Limited, CN=Sectigo Public Server Authentication Root R46
+  # C=US, ST=New Jersey, L=Jersey City, O=The USERTRUST Network, CN=USERTrust RSA Certification Authority
+  # O=sdx, CN=sdx Root CA
+  # CN=aps_root_ca
+  # AWS CN=Amazon Root CA 1,O=Amazon,C=US
+  # LetsEncrypt E7
+  # LetsEncrypt ISRG Root X1
 
   public_ca: |-
     -----BEGIN CERTIFICATE-----
@@ -150,33 +161,7 @@ tls:
     KMKov7GB7QR5pVRZFlShwyd/gSIXT0WF59jNT0ueAiEA5GI3s0dOrXUQC90X3k4u
     Bz2OL6fLplfD1s0AAPZMw3g=
     -----END CERTIFICATE-----
-    -----BEGIN CERTIFICATE-----
-    MIIEqDCCApACCQC51vXitqqXrTANBgkqhkiG9w0BAQsFADAWMRQwEgYDVQQDDAth
-    cHNfcm9vdF9jYTAeFw0yMTEwMDEyMzA0MDlaFw0yNDA3MjEyMzA0MDlaMBYxFDAS
-    BgNVBAMMC2Fwc19yb290X2NhMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKC
-    AgEAlDQ60cZmr0wk/M4jQydgUmOijFqTAD3RlZjACLIi5H8URBj6wqJOUKMkhWxP
-    zMmgE/oF+TihXskyQURI3mHvTMqI4jx3Eiza6xt5l0/P3RrMMZsSQf+UYy/5PTx3
-    2lNMgn7VqbZA15hQibIj4y/ut5iwr9LKCTIugTIvMZLpemB07mlSOC/Jye9Ui8HY
-    KCGjCJRX669q00rOAQpCS/OwPWlqiLbqgcH5OIsQwFnyh7WgIhvgAjZshGHyRrb4
-    GNjMN0lVyxHGx/GSCWIWqDiciBU8OTmzmTGmGJXrK/Jq5g52DO+YJCTy7oDPXULO
-    179WAiFI30X0pptIiQ0FwHKd9+YG6x85nDdABpB7n8qxS5MYMQ1JW0r4t1oIbP/n
-    b7TBPxl2RvjaJjrhyNisJNElCnUiaD4jxOXV2lHCHoqesKkDR+jJ0wS1oKfCKUg4
-    ZH3LbVQFCZJ7F7nUhO7dTwTp5QnD648w1vvgdPjJT8vNRUu3fcPjIJJIpZUQLn+w
-    22sHH+zapGiT5qP9iH0lGQAOzbRDVWn+dKOxvrAwZWh22PqffAzIeXAxsBpd3Z/T
-    1mkaybg+fXATmATR/8kIFXIv0E0JJJPgQ2TirYjImNZcqlzfCwrS4+Ozz24CuKt3
-    l1FmGCqcV7FEEoAtXPXNVzUKMwWZQGwTIIRj044LEwFF6YUCAwEAATANBgkqhkiG
-    9w0BAQsFAAOCAgEANMAtjZcVV0j4sEqYa7WEXKyAH+9nvQ62lfxaKLz+2MgL9hX0
-    /1arbmnZGzSpol1feWsrXrH4yZxTX3eAvzc9Whh7nZJkZKN6vAtvM0gCmje5FqPb
-    kyAtS7F5GjPojGFPjXvyxNMuxNcLkdac1J421T6wsuXPuYCG4mtaYCdHLzDe0pJJ
-    47PU3QMBP29vJSb01+L35DQ+WdYKWwjKZY/6e5rT14nT8jEiKXNjt8kuyZysXANf
-    ftgQFzkZ1m/ZFkbV3O1joibvCKZqVz15HlClo6L5MK/6iokGFr0aitBzkcYiS/Yg
-    Y0i5nP1oNCnrlfOOhvfmVnvoyQsEFn36eGPRJhCkXOlFbGOl4joM/fcikEs+NY4g
-    2HdZd103Lw7g06Va3ZjSbmhUsVpoDaTbQ+MFbULhNo+hFD0hcK1j87vna6CME7Yg
-    Ad7WG3Ej4lOwbtiltH+70hH7u8Yrj7w33ocOaDi4ON7a9hhR6I88dC3r8zc/OoNZ
-    hw6qddghe5EvSwK70pCAl4hLqTUs1PmNRattPBSXBrYZ219K33QtwcEXcd0Vrjq5
-    AHoOUJdQ7xwQe9XnvYbMjfS6P5nnZmMM80k3LGhfWNgLklEaDw5YKoYILe5EbP0H
-    G4nqPDcjgN59NpHOg8Cy9oHbCmTUZML8eLXcIAnU+7Y/gFrGNs64fU+K0p8=
-    -----END CERTIFICATE-----
+
     -----BEGIN CERTIFICATE-----
     MIIFDTCCAvWgAwIBAgIUSaDM216CPhyWkuOPp/Eh/Ywu6+EwDQYJKoZIhvcNAQEL
     BQAwFjEUMBIGA1UEAwwLYXBzX3Jvb3RfY2EwHhcNMjQwODAyMTgxNDAxWhcNMzQw
@@ -208,7 +193,76 @@ tls:
     nQ==
     -----END CERTIFICATE-----
 
-# The last two certificates are intermediate and root for the Kong Cluster in DEV
+    -----BEGIN CERTIFICATE-----
+    MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
+    ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6
+    b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL
+    MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv
+    b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj
+    ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM
+    9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw
+    IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6
+    VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L
+    93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm
+    jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC
+    AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA
+    A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI
+    U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs
+    N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv
+    o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU
+    5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy
+    rqXRfboQnoZsG4q5WTP468SQvvG5
+    -----END CERTIFICATE-----
+
+    -----BEGIN CERTIFICATE-----
+    MIICtzCCAjygAwIBAgIRAMWKhaLGI0XgqMRSU4efWTowCgYIKoZIzj0EAwMwTzEL
+    MAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2VhcmNo
+    IEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDIwHhcNMjQwMzEzMDAwMDAwWhcN
+    MjcwMzEyMjM1OTU5WjAyMQswCQYDVQQGEwJVUzEWMBQGA1UEChMNTGV0J3MgRW5j
+    cnlwdDELMAkGA1UEAxMCRTcwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARB6ASTCFh/
+    vjcwDMCgQer+VtqEkz7JANurZxLP+U9TCeioL6sp5Z8VRvRbYk4P1INBmbefQHJF
+    HCxcSjKmwtvGBWpl/9ra8HW0QDsUaJW2qOJqceJ0ZVFT3hbUHifBM/2jgfgwgfUw
+    DgYDVR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDATAS
+    BgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBSuSJ7chx1EoG/aouVgdAR4wpwA
+    gDAfBgNVHSMEGDAWgBR8Qpau3ktIO/qS+J6Mz22LqXI3lTAyBggrBgEFBQcBAQQm
+    MCQwIgYIKwYBBQUHMAKGFmh0dHA6Ly94Mi5pLmxlbmNyLm9yZy8wEwYDVR0gBAww
+    CjAIBgZngQwBAgEwJwYDVR0fBCAwHjAcoBqgGIYWaHR0cDovL3gyLmMubGVuY3Iu
+    b3JnLzAKBggqhkjOPQQDAwNpADBmAjEA/e5N+wjAk945cpaFxGaeMC13fyvdbNzX
+    lRg9HNdElxi5mXdI4az2CykNU07iFwqEAjEAihPCDkw4b1BvfLg8VNLLuaMpn1Rb
+    Z1682chR6zNRCseyie4SjyTCdkvsAa+omQSf
+    -----END CERTIFICATE-----
+
+    -----BEGIN CERTIFICATE-----
+    MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
+    TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
+    cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
+    WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
+    ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
+    MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc
+    h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
+    0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
+    A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
+    T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
+    B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
+    B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
+    KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
+    OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
+    jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
+    qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
+    rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
+    HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
+    hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
+    ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
+    3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
+    NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
+    ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
+    TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
+    jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
+    oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
+    4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
+    mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
+    emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+    -----END CERTIFICATE-----
 
 nginx_conf: |-
   set $session_storage             shm;
@@ -224,3 +278,11 @@ shared:
 
   prometheus:
     enabled: true
+
+aws:
+  enabled: false
+  region: us-west-2
+  # AWS_ACCESS_KEY_ID
+  access_key_id:
+  # AWS_SECRET_ACCESS_KEY
+  secret_access_key:

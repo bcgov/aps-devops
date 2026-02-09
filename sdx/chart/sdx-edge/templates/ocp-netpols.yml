@@ -5,6 +5,8 @@ metadata:
 spec:
   podSelector:
     matchLabels:
+      app.kubernetes.io/name: sdx-edge
+      app.kubernetes.io/component: kong
       app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
   ingress:
     - from:

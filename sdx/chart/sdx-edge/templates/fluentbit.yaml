@@ -146,9 +146,9 @@ data:
 
         - name: http
           match: "*"
-          host: gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca
+          host: {{ .Values.sdx_aggregator_url }}
           port: 443
-          tls.vhost: gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca
+          tls.vhost: {{ .Values.sdx_aggregator_url }}
           format: json
           tls: on
           tls.verify: off
@@ -170,7 +170,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: fluentd-aggregator
-  labels: {}
+  labels:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: fluentbit
+    enable-metrics: "true"
 spec:
   type: ClusterIP
   ports:
