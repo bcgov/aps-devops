@@ -28,12 +28,27 @@ Deploys a Kong Gateway data plane node configured for secure data exchange opera
 
 #### Installation
 
-```bash
-helm install <release-name> ./chart/sdx-edge \
-  --set route.host=<your-edge-host> \
-  --set sdx_control_url=<control-plane-url> \
-  --set tls.client.bootstrap.token=<bootstrap-token> \
-  --set tls.client.cn=<client-cn>
+> `TOKEN` is a one-time-use token for calling the CA to get a new certificate for mTLS and signing
+
+```sh
+export TOKEN="<TOKEN>"
+export IP="<INTERNET_FACING_IP]"
+export EDGE_ID="<EDGE NAME>"
+export DOMAIN="${EDGE_ID}.servers.sdx"
+
+helm upgrade --install ${EDGE_ID} \
+  --set tls.client.bootstrap.token=${TOKEN} \
+  --set tls.server.ip=${IP} \
+  --set tls.client.cn=${DOMAIN} \
+  --set route.host=${DOMAIN} \
+  oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.1.0
+```
+
+#### Development
+
+```sh
+helm package sdx-edge
+helm push sdx-edge-0.1.0.tgz oci://ghcr.io/bcgov/aps-devops
 ```
 
 #### Configuration
