@@ -87,6 +87,8 @@ spec:
           value: "off"
         - name: KONG_PROXY_LISTEN
           value: 0.0.0.0:8000, [::]:8000, 0.0.0.0:8443 http2 ssl, [::]:8443 http2 ssl, 0.0.0.0:3443 http2 ssl
+        - name: KONG_LUA_SSL_TRUSTED_CERTIFICATE
+          value: '/etc/ssl/certs/ca-certificates.crt,/etc/secrets/sdx-public-ca/ca.crt'
 
         {{ if .Values.aws.enabled }}
         - name: AWS_REGION

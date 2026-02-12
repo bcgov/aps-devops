@@ -62,6 +62,9 @@ spec:
                     curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                     chmod +x kubectl
 
+                    kubectl delete secret ${EDGE_NAME}-client || true
+                    kubectl delete secret ${EDGE_NAME}-server || true
+
                     kubectl create secret \
                       --save-config --dry-run=client -o yaml \
                       tls ${EDGE_NAME}-client \
