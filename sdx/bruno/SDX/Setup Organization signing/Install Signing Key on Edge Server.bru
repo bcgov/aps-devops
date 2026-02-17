@@ -1,0 +1,36 @@
+meta {
+  name: Install Signing Key on Edge Server
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE}}/organizations/:org/keys
+  body: json
+  auth: inherit
+}
+
+params:path {
+  org: ministry-of-stoom
+}
+
+body:json {
+  {
+    "runtimeGroupName": "pukiedge"
+  }
+  
+}
+
+body:multipart-form {
+  subsystem: BRUNO
+  configFile: @file(/Users/aidancope/Downloads/validation-api.yaml)
+}
+
+vars:pre-request {
+  SERVER: https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

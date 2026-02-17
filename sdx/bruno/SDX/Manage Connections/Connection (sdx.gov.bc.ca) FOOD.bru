@@ -1,0 +1,16 @@
+meta {
+  name: Connection (sdx.gov.bc.ca) FOOD
+  type: http
+  seq: 9
+}
+
+get {
+  url: https://sdx.gov.bc.ca/sdx/0/LAB.MIN.FOOD.CASE-MANAGEMENT.v1/anything
+  body: none
+  auth: bearer
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

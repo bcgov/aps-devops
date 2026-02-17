@@ -1,0 +1,30 @@
+meta {
+  name: New Subsystem
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{BASE}}/organizations/:org/subsystems
+  body: json
+  auth: inherit
+}
+
+params:path {
+  org: ministry-of-sdpr
+}
+
+body:json {
+  {
+    "name": "ICM-PROTO"
+  }
+}
+
+vars:pre-request {
+  SERVER: https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

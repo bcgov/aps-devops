@@ -1,0 +1,26 @@
+meta {
+  name: Testing - Token Exchange w/ SSO
+}
+
+auth {
+  mode: oauth2
+}
+
+auth:oauth2 {
+  grant_type: authorization_code
+  callback_url: https://oauth.usebruno.com/callback
+  authorization_url: https://dev.sandbox.loginproxy.gov.bc.ca/auth/realms/standard/protocol/openid-connect/auth
+  access_token_url: https://dev.sandbox.loginproxy.gov.bc.ca/auth/realms/standard/protocol/openid-connect/token
+  refresh_token_url: 
+  client_id: sdg-fe-20770
+  client_secret: 
+  scope: sdg-fe-20770
+  state: 
+  pkce: true
+  credentials_placement: body
+  credentials_id: credentials
+  token_placement: header
+  token_header_prefix: Bearer
+  auto_fetch_token: true
+  auto_refresh_token: false
+}

@@ -1,0 +1,38 @@
+meta {
+  name: Update Runtime Group
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{BASE}}/organizations/:org/runtime-groups
+  body: json
+  auth: inherit
+}
+
+params:path {
+  org: ministry-of-citz
+}
+
+body:json {
+    {
+      "sdxEndpoint": "https://142.34.229.4:443",
+      "consumerEndpoint": "http://internal.pukiedge.servers.sdx",
+      "name": "pukiedge",
+      "hostedOrganizations": [
+        "ministry-of-citz",
+        "ministry-of-food",
+        "ministry-of-sdpr",
+        "ministry-of-stoom"
+      ]
+    }
+}
+
+vars:pre-request {
+  SERVER: https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

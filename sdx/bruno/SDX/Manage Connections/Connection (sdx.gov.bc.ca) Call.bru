@@ -1,0 +1,16 @@
+meta {
+  name: Connection (sdx.gov.bc.ca) Call
+  type: http
+  seq: 6
+}
+
+get {
+  url: https://sdx.gov.bc.ca/sdx/0/LAB.MIN.SDPR.CASE-MANAGEMENT.v1/anything
+  body: none
+  auth: bearer
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

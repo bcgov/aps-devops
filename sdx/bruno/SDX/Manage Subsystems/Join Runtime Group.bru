@@ -1,0 +1,35 @@
+meta {
+  name: Join Runtime Group
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{BASE}}/organizations/:org/subsystems/:subsystem/gateway
+  body: json
+  auth: inherit
+}
+
+params:path {
+  subsystem: ZZ1
+  org: ministry-of-citz
+}
+
+body:json {
+  {
+    "runtimeGroupName": "sdxgov"
+  }
+}
+
+body:multipart-form {
+  runtimeGroupName: tempedge
+}
+
+vars:pre-request {
+  SERVER: https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,16 @@
+meta {
+  name: JWKS
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://sdx.gov.bc.ca/.well-known/jwks.json
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

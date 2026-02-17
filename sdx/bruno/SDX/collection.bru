@@ -1,0 +1,242 @@
+auth {
+  mode: oauth2
+}
+
+auth:oauth2 {
+  grant_type: authorization_code
+  callback_url: https://oauth.usebruno.com/callback
+  authorization_url: {{AUTH}}/protocol/openid-connect/auth
+  access_token_url: {{AUTH}}/protocol/openid-connect/token
+  refresh_token_url: {{AUTH}}/protocol/openid-connect/token
+  client_id: {{CLIENT_ID}}
+  client_secret: {{CLIENT_SECRET}}
+  scope: 
+  state: 
+  pkce: true
+  credentials_placement: body
+  credentials_id: credentials
+  token_placement: header
+  token_header_prefix: Bearer
+  auto_fetch_token: true
+  auto_refresh_token: false
+}
+
+docs {
+  
+  # Organization Onboarding
+  
+  #### Establish new organization
+  
+  #### Setup roles
+  
+  #### Workaround for MIN.CITZ
+  
+  ```sql
+  update "Organization" set tags = '["member_class:MIN","member_id:CITZ"]' where name = 'ministry-of-citizens-services';
+  ```
+  
+  # New Edge Server
+  
+  #### Create a runtime group
+  
+  #### Get a temporary token from the CA
+  
+  ```sh
+  export IP="142.34.229.4"
+  export EDGE_ID="abc123"
+  export DOMAIN="${EDGE_ID}.servers.sdx"
+  
+  step ca token $DOMAIN \
+    --password-file ~/.step-ca-password \
+    --san $DOMAIN \
+    --san $IP > token
+  ```
+  
+  #### Deploy runtime group
+  
+  ```sh
+  helm upgrade --install ${EDGE_ID} \
+    --set tls.client.bootstrap.token=$(cat token) \
+    --set tls.client.cn=${DOMAIN} \
+    --set tls.server.ip=${IP} \
+    --set route.host=${DOMAIN} \
+    --set shared.rbac=false \
+    --set shared.ca_secret=false \
+    --set shared.fluentbit.enabled=false \
+    --set shared.prometheus.enabled=false \
+    oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.1.0
+  ```
+  
+  #### Default routes
+  
+  - Create a new gateway for the runtime group
+  
+  Use the API to create the gateway.
+  
+  - Apply the `sdx-runtime-group.r1` pattern
+  
+  `gwa config set gateway <NEW_GATEWAY_ID>`
+  
+  `pattern-input.yaml`
+  
+  ```yaml
+  pattern: sdx-runtime-group.r1
+  parameters:
+    runtime_group_name: sdxgov
+  ```
+  
+  `gwa gateway-pattern pattern-input.yaml | gwa pg -`
+  
+  #### Register public key
+  
+  > Get the certificate and run:
+  > `openssl x509 -pubkey -noout -in cert.pem`
+  
+  `pattern-input.yaml`
+  
+  ```yaml
+  pattern: sdx-key.r1
+  parameters:
+    runtimeGroupName: sdxgov
+    public_key_pem: |-
+      -----BEGIN PUBLIC KEY-----
+      -----END PUBLIC KEY-----    
+  ```
+  
+  `gwa gateway-pattern pattern-input.yaml | gwa pg -`
+  
+  
+  # Setup organization signing
+  
+  #### Install signing key
+  
+  #### Send to certificate authority
+  
+  > "Buy an e-Seal"
+  
+  ```sh
+  echo "<CSR>" > csr.pem
+  
+  step ca sign csr.pem new.crt \
+    --password-file ~/.step-ca-password \
+    --provisioner=aidan.cope@gov.bc.ca \
+    --set OID.2.5.4.97=BNCA1234 \
+    --contact jim.jam@gov.bc.ca
+  
+  certq new.crt
+  ```
+  
+  #### Register public key
+  
+  Use the results from installing the signing key to populate
+  the below `pattern-input` yaml file.
+  
+  `pattern-input.yaml`
+  
+  ```yaml
+  pattern: sdx-crt.r1
+  parameters:
+    runtime_group_name: tempedge
+    organization: ministry-of-citizens-services
+    crt: |
+      -----BEGIN CERTIFICATE-----
+      -----END CERTIFICATE-----    
+    key_id: ""
+    signing_algorithm: ""
+    jwk: ""
+    pub_key: |
+      -----BEGIN PUBLIC KEY-----
+      -----END PUBLIC KEY-----
+    csr: |
+      -----BEGIN CERTIFICATE REQUEST-----
+      -----END CERTIFICATE REQUEST-----
+  ```
+  
+  ```sh
+  gwa gateway create -i gw-o-min-sdpr -d MIN.SDPR
+  
+  gwa gateway-pattern pattern-input.yaml | gwa pg -
+  ```
+  
+  The organization is now ready to use the runtime group
+  to make connections with other member systems.
+  
+  # Manage Subsystems
+  
+  - New subsystem
+  - Join Runtime Group
+  - New service
+  
+  # Manage Connections
+  
+  - Client: Find Service
+  - Provider: Be told about Client
+  - Both apply patterns
+  - Test
+  
+  #### Consumer setup
+  
+  ```yaml
+  pattern: sdx-p2p-consumer.r1
+  parameters:
+    client_id: LAB.MIN.CITZ.MY-APP
+    service_id: LAB.MIN.SDPR.OAS-SPECTRAL-VALIDATION.v0
+    upgrades: ""
+  ```
+  
+  #### Provider setup
+  
+  ```yaml
+  pattern: sdx-p2p-provider.r1
+  parameters:
+    client_id: LAB.MIN.CITZ.MY-APP
+    service_id: LAB.MIN.SDPR.OAS-SPECTRAL-VALIDATION.v0
+    upstream_url: https://httpbin-regression.api.gov.bc.ca
+    upgrades: ""
+  ```
+  
+  #### Signature check
+  
+  ```sh
+  -- EncodedMessage: X-Edge-Token header
+  -- signature.sig: X-Entity-Sig base64 decoded
+  
+  echo -n "" > EncodedMessage
+  echo -n "" | base64 -D > signature.sig
+  
+  aws kms verify \
+      --key-id 01c95e77-82b9-44f2-8ad8-0c75476fff90 \
+      --message fileb://EncodedMessage \
+      --message-type RAW \
+      --signing-algorithm ECDSA_SHA_512 \
+      --signature fileb://signature.sig 
+  ```
+  
+  #### Testing
+  
+  https://sdx.gov.bc.ca/sdx-apsdev/ministry-of-citizens-services.OAS-SPECTRAL-VALIDATION.v0/hello
+  
+  # Audit
+  
+  #### Transparency Log (Tamper-proof Ledger)
+  
+  Use the `x-trust-ledger-uuid` (Entry UUID) at https://search.sigstore.dev/
+  
+  
+  #### Timestamp Authority
+  
+  ```sh
+  timestamp-cli verify --timestamp response.tsr --artifact "myblob" --certificate-chain ts_chain.pem --format json
+  
+  timestamp-cli inspect --timestamp response.tsr --format json | jq
+  
+  ```
+  
+  #### Analyze logs
+  
+  https://aps-ops-kafka-api-gov-bc-ca.dev.api.gov.bc.ca/
+  
+  
+  
+  
+}

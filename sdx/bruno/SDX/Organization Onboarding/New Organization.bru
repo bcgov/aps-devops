@@ -1,0 +1,31 @@
+meta {
+  name: New Organization
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{DS_API}}/organizations/ca.bc.gov
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "ministry-of-stoom",
+    "title": "Ministry of stoom",
+    "description": "",
+    "extSource": "custom",
+    "extRecordHash": "0000",
+    "tags": [
+      "member_class:MIN",
+      "member_id:STOOM"
+    ],
+    "orgUnits": []
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

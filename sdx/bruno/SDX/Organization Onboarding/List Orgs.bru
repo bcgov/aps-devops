@@ -1,0 +1,32 @@
+meta {
+  name: List Orgs
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{DS_API}}/organizations
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "extForeignKey": "ministry-of-food",
+    "name": "ministry-of-food",
+    "title": "Ministry of Food",
+    "description": "It is a ministry concerned with food",
+    "extSource": "custom",
+    "extRecordHash": "0000",
+    "tags": [
+      "member_class:MIN",
+      "member_id:FOOD"
+    ],
+    "orgUnits": []
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,24 @@
+meta {
+  name: List Org Subsystems
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE}}/organizations/:org/subsystems
+  body: none
+  auth: inherit
+}
+
+params:path {
+  org: ministry-of-sdpr
+}
+
+vars:pre-request {
+  SERVER: https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

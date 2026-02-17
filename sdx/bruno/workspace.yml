@@ -1,0 +1,12 @@
+opencollection: 1.0.0
+info:
+  name: "CSBC Secure Data Exchange"
+  type: workspace
+
+collections:
+  - name: "Secure Data Exchange"
+    path: "./SDX"
+
+specs:
+
+docs: ""

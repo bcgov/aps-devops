@@ -1,0 +1,49 @@
+meta {
+  name: Org RBAC
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{DS_API}}/organizations/ca.bc.gov/access
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "ministry-of-stoom",
+    "parent": "/ca.bc.gov",
+    "members": [
+      {
+        "member": {
+          "email": "miso-person@gov.bc.ca"
+        },
+        "roles": [
+          "organization-admin"
+        ]
+      },
+      {
+        "member": {
+          "email": "system-X-techlead@gov.bc.ca"
+        },
+        "roles": [
+          "system-owner"
+        ]
+      },
+      {
+        "member": {
+          "email": "system-Y-techlead@gov.bc.ca"
+        },
+        "roles": [
+          "system-owner"
+        ]
+      }    
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

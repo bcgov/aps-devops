@@ -1,0 +1,28 @@
+meta {
+  name: Available Runtime Groups
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE}}/organizations/:org/runtime-groups?filter=available
+  body: none
+  auth: inherit
+}
+
+params:query {
+  filter: available
+}
+
+params:path {
+  org: ministry-of-stoom
+}
+
+vars:pre-request {
+  SERVER: https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
