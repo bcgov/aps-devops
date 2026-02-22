@@ -1,0 +1,25 @@
+meta {
+  name: OAS Validator
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{VALIDATION_API}}/versions/:version/rulesets/:ruleset/validations
+  body: file
+  auth: inherit
+}
+
+params:path {
+  ruleset: basic-ruleset
+  version: v0.1.0-test
+}
+
+body:file {
+  file: @file(/Users/aidancope/Downloads/validation-api.yaml) @contentType(application/yaml; charset=utf-8)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

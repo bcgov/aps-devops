@@ -16,7 +16,7 @@ params:query {
 }
 
 params:path {
-  org: ministry-of-sdpr
+  org: {{ORG}}
 }
 
 body:json {
@@ -26,7 +26,16 @@ body:json {
       "client_id": "LAB.MIN.CITZ.SDG-FE",
       "service_id": "LAB.MIN.SDPR.CASE-MANAGEMENT.v1",
       "upstream_url": "https://httpbin-regression-api-gov-bc-ca.dev.api.gov.bc.ca",
-      "upgrades": "edge-sign"
+      "upgrades": "edge-sign token-exchange",
+      "upgrade_config": {
+        "edge_sign": {},
+        "token_exchange": {
+          "client_id": "aps-kong-gw-20771",
+          "token_endpoint": "https://dev.sandbox.loginproxy.gov.bc.ca/auth/realms/standard/protocol/openid-connect/token",
+          "scopes": ["sdpr-case-mgmt-20772"],
+          "audience": "sdpr-case-mgmt-20772"
+        }
+      }
     }
   }
 }
