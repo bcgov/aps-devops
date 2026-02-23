@@ -5,14 +5,14 @@ meta {
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: false
+  dryRun: true
 }
 
 params:path {
