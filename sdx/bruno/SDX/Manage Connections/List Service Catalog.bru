@@ -1,13 +1,13 @@
 meta {
-  name: JWKS
+  name: List Service Catalog
   type: http
-  seq: 3
+  seq: 1
 }
 
 get {
-  url: https://sdx.gov.bc.ca/.well-known/jwks.json
+  url: {{BASE}}/catalog/services
   body: none
-  auth: none
+  auth: inherit
 }
 
 settings {

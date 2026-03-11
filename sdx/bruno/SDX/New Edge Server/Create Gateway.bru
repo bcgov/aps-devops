@@ -1,23 +1,28 @@
 meta {
-  name: New Subsystem
+  name: Create Gateway
   type: http
-  seq: 3
+  seq: 4
 }
 
 put {
-  url: {{BASE}}/organizations/:org/subsystems
-  body: json
+  url: {{BASE}}/organizations/:org/runtime-groups/:name/gateway
+  body: none
   auth: inherit
 }
 
 params:path {
+  name: pukiedge
   org: {{ORG}}
 }
 
 body:json {
   {
-    "name": "TEST-SYSTEM"
+    "runtimeGroupName": "stoomedg"
   }
+}
+
+body:multipart-form {
+  runtimeGroupName: tempedge
 }
 
 vars:pre-request {

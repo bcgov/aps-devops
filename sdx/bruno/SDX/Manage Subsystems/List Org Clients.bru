@@ -1,23 +1,17 @@
 meta {
-  name: New Subsystem
+  name: List Org Clients
   type: http
-  seq: 3
+  seq: 2
 }
 
-put {
-  url: {{BASE}}/organizations/:org/subsystems
-  body: json
+get {
+  url: {{BASE}}/organizations/:org/clients
+  body: none
   auth: inherit
 }
 
 params:path {
   org: {{ORG}}
-}
-
-body:json {
-  {
-    "name": "TEST-SYSTEM"
-  }
 }
 
 vars:pre-request {

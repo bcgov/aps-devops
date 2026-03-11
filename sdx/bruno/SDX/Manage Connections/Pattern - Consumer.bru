@@ -5,14 +5,14 @@ meta {
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: true
+  dryRun: false
 }
 
 params:path {
@@ -23,8 +23,8 @@ body:json {
   {
     "pattern": "sdx-p2p-consumer.r1",
     "parameters": {
-      "client_id": "LAB.MIN.CITZ.SDG-FE",
-      "service_id": "LAB.MIN.SDPR.CASE-MANAGEMENT.v1",
+      "client_id": "LAB.MIN.BOOK.TEST-SYSTEM",
+      "service_id": "LAB.MIN.BOOK.CASE-MANAGEMENT.v1",
       "upgrades": ""
     }
   }

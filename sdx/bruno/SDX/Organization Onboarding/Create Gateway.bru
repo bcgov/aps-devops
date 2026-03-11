@@ -1,12 +1,12 @@
 meta {
-  name: Join Runtime Group
+  name: Create Gateway
   type: http
   seq: 3
 }
 
 put {
   url: {{BASE}}/organizations/:org/gateway
-  body: json
+  body: none
   auth: inherit
 }
 
