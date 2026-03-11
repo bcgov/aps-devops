@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: https://sdx.gov.bc.ca/sdx/0/LAB.MIN.SDPR.CASE-MANAGEMENT.v1/hello
+  url: {{GATEWAY}}/sdx/0/LAB.MIN.BOOK.CASE-MANAGEMENT.v1/hello
   body: none
-  auth: inherit
+  auth: none
+}
+
+headers {
+  ~Host: internal.pukiedge.servers.sdx
 }
 
 settings {

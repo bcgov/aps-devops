@@ -5,14 +5,14 @@ meta {
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: true
+  dryRun: false
 }
 
 params:path {
@@ -23,10 +23,12 @@ body:json {
   {
     "pattern": "sdx-p2p-provider.r1",
     "parameters": {
+      "conn_id": "001",
       "client_id": "LAB.MIN.BOOK.TEST-SYSTEM",
       "service_id": "LAB.MIN.BOOK.CASE-MANAGEMENT.v1",
       "upstream_url": "https://httpbin-regression-api-gov-bc-ca.dev.api.gov.bc.ca",
-      "upgrades": "edge-sign token-exchange",
+      "use_sni": "false",
+      "upgrades": "",
       "upgrade_config": {
         "edge_sign": {},
         "token_exchange": {
