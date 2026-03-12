@@ -1,18 +1,18 @@
 meta {
   name: Pattern - Provider
   type: http
-  seq: 4
+  seq: 6
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: false
+  dryRun: true
 }
 
 params:path {
@@ -24,13 +24,16 @@ body:json {
     "pattern": "sdx-p2p-provider.r1",
     "parameters": {
       "conn_id": "001",
-      "client_id": "LAB.MIN.BOOK.TEST-SYSTEM",
+      "client_id": "LAB.MIN.BOOK.TEST-ABC01",
       "service_id": "LAB.MIN.BOOK.CASE-MANAGEMENT.v1",
       "upstream_url": "https://httpbin-regression-api-gov-bc-ca.dev.api.gov.bc.ca",
-      "use_sni": "false",
-      "upgrades": "",
-      "upgrade_config": {
-        "edge_sign": {},
+      "upgrades": {
+        "sign": {},
+        "verify": {}
+      },
+      "_upgrades": {
+        "sign": {},
+        "verify": {},
         "token_exchange": {
           "client_id": "aps-kong-gw-20771",
           "token_endpoint": "https://dev.sandbox.loginproxy.gov.bc.ca/auth/realms/standard/protocol/openid-connect/token",

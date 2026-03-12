@@ -1,11 +1,11 @@
 meta {
-  name: JWKS
+  name: JWKS RG
   type: http
-  seq: 11
+  seq: 12
 }
 
 get {
-  url: {{GATEWAY}}/.well-known/jwks.json
+  url: {{GATEWAY}}/keysets/sdx.edge.abc01/.well-known/jwks.json
   body: none
   auth: inherit
 }

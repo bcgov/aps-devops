@@ -1,18 +1,18 @@
 meta {
   name: Pattern - Runtime Group
   type: http
-  seq: 4
+  seq: 5
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: true
+  dryRun: false
 }
 
 params:path {
@@ -23,7 +23,7 @@ body:json {
   {
     "pattern": "sdx-runtime-group.r1",
     "parameters": {
-      "runtime_group_name": "pukiedge"
+      "runtime_group_name": "abc01"
     }
   }
 }
