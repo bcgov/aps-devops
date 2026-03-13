@@ -23,12 +23,15 @@ runs:
         scope: "@bcgov"
 
     - name: Setup Yarn
+      shell: bash
       run: corepack enable && corepack prepare yarn@4.4.1 --activate
 
     - name: Install dependencies
+      shell: bash
       run: yarn install --immutable
 
     - name: Generate TypeScript declaration files
+      shell: bash
       run: yarn tsc
 
     - name: Determine release version
