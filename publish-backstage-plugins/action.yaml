@@ -5,8 +5,15 @@ inputs:
     description: "GitHub token for authentication"
     required: true
 outputs:
-  result:
-    description: "Summary of actions taken"
+  version:
+    description: "The generated release version derived from the root package.json"
+    value: ${{ steps.finalize.outputs.version }}
+  published_package_versions:
+    description: "JSON array of published package names and versions"
+    value: ${{ steps.finalize.outputs.published_package_versions }}
+  plugin_count:
+    description: "Number of plugins published"
+    value: ${{ steps.finalize.outputs.plugin_count }}
 runs:
   using: "composite"
   steps:
@@ -217,6 +224,33 @@ runs:
           echo "Publishing $package_name@$package_version"
           npm publish "$tarball_path" --registry=https://npm.pkg.github.com
         done < /tmp/publish-tarballs.txt
+
+    - name: Finalize outputs
+      id: finalize
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "version=${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
+        echo "plugin_count=$(wc -l < /tmp/publish-tarballs.txt | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
+        published_package_versions="$(
+          node -e "
+            const fs = require('fs');
+            const lines = fs.readFileSync('/tmp/publish-tarballs.txt', 'utf8')
+              .split('\n')
+              .filter(Boolean);
+
+            const packages = lines.map(line => {
+              const [pluginPath, packageName, packageVersion] = line.split('|');
+              return { name: packageName, version: packageVersion, path: pluginPath };
+            });
+
+            process.stdout.write(JSON.stringify(packages));
+          "
+        )"
+
+        echo "published_package_versions=${published_package_versions}" >> "$GITHUB_OUTPUT"
 
     - name: Write published summary
       if: ${{ success() }}
