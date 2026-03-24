@@ -35,7 +35,7 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: yarn install --immutable
+      run: yarn install
 
     - name: Generate TypeScript declaration files
       shell: bash
@@ -191,15 +191,15 @@ runs:
           echo ""
           echo "Packing $package_name@$package_version from $plugin_path"
 
-          tarball_name="$(
+          (
             cd "$plugin_path"
-            npm pack --pack-destination /tmp/plugin-tarballs | tail -n 1
-          )"
+            yarn pack --out /tmp/plugin-tarballs/%s-%v.tgz
+          )
 
-          tarball_path="/tmp/plugin-tarballs/$tarball_name"
+          tarball_path="/tmp/plugin-tarballs/${package_name//\//-}-${package_version}.tgz"
 
-          if [ ! -f "$tarball_path" ]; then
-            echo "ERROR: Expected tarball not found: $tarball_path"
+          if [ -z "$tarball_path" ] || [ ! -f "$tarball_path" ]; then
+            echo "ERROR: Expected tarball not found in /tmp/plugin-tarballs"
             exit 1
           fi
 
