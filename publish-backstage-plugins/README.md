@@ -45,19 +45,29 @@ This action assumes:
 
 ### `token`
 
-GitHub token used to authenticate against GitHub Packages and for registry access during downstream repository updates.
+GitHub token used to authenticate against GitHub Packages.
 
 Required: `true`
 
 This token must have permission to publish packages. **Always pass this value using a GitHub Secret (e.g., `${{ secrets.GITHUB_TOKEN }}`).**
 
-### `target_repo_ssh`
+### `dispatch_repo`
 
-Optional. The SSH URL of a downstream repository to update (e.g., `git@github.com:bcgov/backstage-app.git`).
+Optional. The full name of a downstream repository to trigger via `repository_dispatch` (e.g., `bcgov/backstage-app`).
 
-### `ssh_key`
+### `dispatch_token`
 
-Optional. A private SSH key (Deploy Key) with write permissions for the `target_repo_ssh`. **Always pass this value using a GitHub Secret (e.g., `${{ secrets.SSH_KEY }}`).**
+Optional. A Personal Access Token (PAT) with permissions to trigger actions on the `dispatch_repo`. **Always pass this value using a GitHub Secret.**
+
+#### How to create the `dispatch_token`
+1. Navigate to your GitHub **Settings** > **Developer settings** > **Personal access tokens** > **Fine-grained tokens**.
+2. Click **Generate new token**.
+3. **Resource owner**: Select the organization that owns the **target** repository.
+4. **Repository access**: Select **Only select repositories** and choose the target repository (e.g., `csit-developer-portal-poc`).
+5. **Permissions**: Under **Repository permissions**, find **Actions** and select **Access: Read and Write**.
+6. Click **Generate token** and copy the value into a Secret in your plugin repository.
+
+**Security Note:** Cross-repository triggers require a token with write access to the destination. Using a **Fine-grained PAT** is the recommended way to maintain the principle of least privilege.
 
 ## Outputs
 
@@ -190,14 +200,9 @@ Before publishing, it checks whether that exact package version already exists i
 
 ## Updating downstream repositories
 
-If `target_repo_ssh` and `ssh_key` are provided, the action will:
-1. Clone the target repository using the provided SSH key.
-2. Update its `.yarnrc.yml` to ensure the `@bcgov` scope points to `https://npm.pkg.github.com`.
-3. Update its `package.json` and `yarn.lock` files across all workspaces with the newly published package versions using `yarn up`.
-4. Commit and push the changes directly to the default branch of the target repository.
+If `dispatch_repo` and `dispatch_token` are provided, the action will submit a `plugin-published` event against `dispatch_repo` with the `client_payload` contents:
 
-During the update process, the `token` input is exposed as the `GITHUB_TOKEN` environment variable. This allows `yarn` to authenticate against the registry if the target repository's `.yarnrc.yml` is configured to use `${GITHUB_TOKEN:-}` for authentication.
-This will naturally trigger any CI/CD workflows configured in the target repository.
+- `packages`: A JSON array of the published packages (name and version).
 
 ## Example usage
 
@@ -224,8 +229,8 @@ jobs:
         uses: bcgov/aps-devops/publish-backstage-plugins@dev
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          target_repo_ssh: 'git@github.com:bcgov/csit-developer-portal-poc.git' # optional
-          ssh_key: ${{ secrets.SSH_DEPLOY_KEY }} # optional
+          dispatch_repo: 'bcgov/backstage-app'
+          dispatch_token: ${{ secrets.DISPATCH_PAT }}
 
       - name: Show publish outputs
         shell: bash
