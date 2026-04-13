@@ -53,11 +53,19 @@ This token must have permission to publish packages. **Always pass this value us
 
 ### `dispatch_repo`
 
-Optional. The full name of a downstream repository to trigger via `repository_dispatch` (e.g., `bcgov/backstage-app`).
+Optional. The full name of a downstream repository to trigger (e.g., `bcgov/backstage-app`).
 
 ### `dispatch_token`
 
 Optional. A Personal Access Token (PAT) with permissions to trigger actions on the `dispatch_repo`. **Always pass this value using a GitHub Secret.**
+
+### `dispatch_workflow`
+
+Optional. The filename or ID of the workflow in the `dispatch_repo` to trigger (e.g., `update-plugins.yml`).
+
+### `dispatch_branch`
+
+Optional. The branch (ref) in the target repository to run the workflow on. Defaults to `main`.
 
 #### How to create the `dispatch_token`
 1. Navigate to your GitHub **Settings** > **Developer settings** > **Personal access tokens** > **Fine-grained tokens**.
@@ -200,9 +208,10 @@ Before publishing, it checks whether that exact package version already exists i
 
 ## Updating downstream repositories
 
-If `dispatch_repo` and `dispatch_token` are provided, the action will submit a `plugin-published` event against `dispatch_repo` with the `client_payload` contents:
+If `dispatch_repo`, `dispatch_token`, and `dispatch_workflow` are provided, the action will trigger a `workflow_dispatch` event in the target repository.
 
-- `packages`: A JSON array of the published packages (name and version).
+The triggered workflow receives the following input:
+- `packages`: A stringified JSON array of the published packages (name and version).
 
 ## Example usage
 
@@ -231,6 +240,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           dispatch_repo: 'bcgov/backstage-app'
           dispatch_token: ${{ secrets.DISPATCH_PAT }}
+          dispatch_workflow: 'update-plugins.yml'
 
       - name: Show publish outputs
         shell: bash

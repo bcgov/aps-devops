@@ -10,6 +10,12 @@ inputs:
   dispatch_token:
     description: "Optional: PAT or GitHub App token with 'Actions: Write' permissions on the target repository"
     required: false
+  dispatch_workflow:
+    description: "Optional: The filename or ID of the workflow to trigger (e.g., 'update-plugins.yml')"
+    required: false
+  dispatch_branch:
+    description: "Optional: The branch (ref) in the target repository to run the workflow on. Defaults to 'main'."
+    required: false
 outputs:
   version:
     description: "The generated release version derived from the root package.json"
@@ -289,29 +295,33 @@ runs:
           done < /tmp/publish-tarballs.txt
         } >> "$GITHUB_STEP_SUMMARY"
 
-    - name: Dispatch update event
-      if: ${{ inputs.dispatch_repo != '' && inputs.dispatch_token != '' && success() }}
+    - name: Dispatch workflow event
+      if: ${{ inputs.dispatch_repo != '' && inputs.dispatch_token != '' && inputs.dispatch_workflow != '' && success() }}
       id: dispatch
       shell: bash
       env:
         D_REPO: ${{ inputs.dispatch_repo }}
         D_TOKEN: ${{ inputs.dispatch_token }}
+        D_WORKFLOW: ${{ inputs.dispatch_workflow }}
         D_PAYLOAD: ${{ steps.finalize.outputs.published_package_versions }}
+        D_BRANCH: ${{ inputs.dispatch_branch || 'main' }}
       run: |
         set -euo pipefail
-        echo "Dispatching event to $D_REPO"
+        echo "Dispatching workflow $D_WORKFLOW in $D_REPO on ref $D_BRANCH"
 
         # Build the JSON payload
+        # Note: workflow_dispatch inputs MUST be strings
         PAYLOAD=$(jq -n \
-          --argjson packages "$D_PAYLOAD" \
-          '{event_type: "plugin-published", client_payload: {packages: $packages}}')
+          --arg ref "$D_BRANCH" \
+          --arg packages "$D_PAYLOAD" \
+          `{ref: $ref, inputs: {packages: $packages}}`)
 
         # Send the request to GitHub API
         curl -L -X POST \
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: Bearer $D_TOKEN" \
           -H "X-GitHub-Api-Version: 2026-03-10" \
-          "https://api.github.com/repos/$D_REPO/dispatches" \
+          "https://api.github.com/repos/$D_REPO/actions/workflows/$D_WORKFLOW/dispatches" \
           -d "$PAYLOAD"
 
         echo "status=dispatched" >> "$GITHUB_OUTPUT"
@@ -319,6 +329,6 @@ runs:
         {
           echo "### Downstream Dispatch"
           echo ""
-          echo "Successfully dispatched update event to: \`https://github.com/${D_REPO}\`"
+          echo "Successfully dispatched workflow event to: \`https://github.com/${D_REPO}\`"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
