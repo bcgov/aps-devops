@@ -317,6 +317,12 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
+        # Update .yarnrc.yml to use GitHub Packages registry for @bcgov scope
+        if [ -f .yarnrc.yml ]; then
+          echo "Updating .yarnrc.yml registry for @bcgov scope"
+          sed -i 's|npmRegistryServer: "https://registry.npmjs.org"|npmRegistryServer: "https://npm.pkg.github.com"|' .yarnrc.yml
+        fi
+
         # Update dependencies using the published versions
         echo "$D_PAYLOAD" | jq -c '.[]' | while read -r pkg; do
           NAME=$(echo "$pkg" | jq -r '.name')
@@ -327,7 +333,7 @@ runs:
 
         # Commit and push
         if [[ -n $(git status --porcelain) ]]; then
-          git add "**/package.json" yarn.lock
+          git add "**/package.json" yarn.lock .yarnrc.yml
           git commit -m "chore: update plugins to version ${{ steps.finalize.outputs.version }}"
           git push
           echo "status=updated" >> "$GITHUB_OUTPUT"

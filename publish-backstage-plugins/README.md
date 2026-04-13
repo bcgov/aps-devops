@@ -221,7 +221,7 @@ jobs:
         uses: bcgov/aps-devops/publish-backstage-plugins@dev
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          target_repo: 'git@github.com:bcgov/csit-developer-portal-poc.git' # optional
+          target_repo_ssh: 'git@github.com:bcgov/csit-developer-portal-poc.git' # optional
           ssh_key: ${{ secrets.SSH_DEPLOY_KEY }} # optional
 
       - name: Show publish outputs
