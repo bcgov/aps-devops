@@ -49,7 +49,15 @@ GitHub token used to authenticate against GitHub Packages.
 
 Required: `true`
 
-This token must have permission to publish packages.
+This token must have permission to publish packages. **Always pass this value using a GitHub Secret (e.g., `${{ secrets.GITHUB_TOKEN }}`).**
+
+### `target_repo_ssh`
+
+Optional. The SSH URL of a downstream repository to update (e.g., `git@github.com:bcgov/backstage-app.git`).
+
+### `ssh_key`
+
+Optional. A private SSH key (Deploy Key) with write permissions for the `target_repo_ssh`. **Always pass this value using a GitHub Secret (e.g., `${{ secrets.SSH_KEY }}`).**
 
 ## Outputs
 
@@ -180,6 +188,14 @@ For each discovered plugin, the action:
 
 Before publishing, it checks whether that exact package version already exists in GitHub Packages. If any package version already exists, the action fails before publishing anything.
 
+## Updating downstream repositories
+
+If `target_repo_ssh` and `ssh_key` are provided, the action will:
+1. Clone the target repository using the provided SSH key.
+2. Update its `package.json` and `yarn.lock` with the newly published package versions.
+3. Commit and push the changes directly to the default branch of the target repository.
+This will naturally trigger any CI/CD workflows configured in the target repository.
+
 ## Example usage
 
 ```yaml
@@ -202,9 +218,11 @@ jobs:
     steps:
       - name: Publish Backstage plugins
         id: publish_plugins
-        uses: ./.github/actions/publish-backstage-plugins
+        uses: bcgov/aps-devops/publish-backstage-plugins@dev
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          target_repo: 'git@github.com:bcgov/csit-developer-portal-poc.git' # optional
+          ssh_key: ${{ secrets.SSH_DEPLOY_KEY }} # optional
 
       - name: Show publish outputs
         shell: bash
@@ -212,6 +230,7 @@ jobs:
           echo "Version: ${{ steps.publish_plugins.outputs.version }}"
           echo "Plugin count: ${{ steps.publish_plugins.outputs.plugin_count }}"
           echo 'Published packages: ${{ steps.publish_plugins.outputs.published_package_versions }}'
+          echo 'Target repo status: ${{ steps.publish_plugins.outputs.target_repo_status }}'
 ```
 
 ## Registry configuration
