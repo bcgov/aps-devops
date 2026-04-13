@@ -297,6 +297,7 @@ runs:
         SSH_KEY: ${{ inputs.ssh_key }}
         TARGET_REPO: ${{ inputs.target_repo_ssh }}
         D_PAYLOAD: ${{ steps.finalize.outputs.published_package_versions }}
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         set -euo pipefail
         echo "Updating target repository: $TARGET_REPO"

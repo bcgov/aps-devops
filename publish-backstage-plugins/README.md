@@ -45,7 +45,7 @@ This action assumes:
 
 ### `token`
 
-GitHub token used to authenticate against GitHub Packages.
+GitHub token used to authenticate against GitHub Packages and for registry access during downstream repository updates.
 
 Required: `true`
 
@@ -192,8 +192,11 @@ Before publishing, it checks whether that exact package version already exists i
 
 If `target_repo_ssh` and `ssh_key` are provided, the action will:
 1. Clone the target repository using the provided SSH key.
-2. Update its `package.json` and `yarn.lock` with the newly published package versions.
-3. Commit and push the changes directly to the default branch of the target repository.
+2. Update its `.yarnrc.yml` to ensure the `@bcgov` scope points to `https://npm.pkg.github.com`.
+3. Update its `package.json` and `yarn.lock` files across all workspaces with the newly published package versions using `yarn up`.
+4. Commit and push the changes directly to the default branch of the target repository.
+
+During the update process, the `token` input is exposed as the `GITHUB_TOKEN` environment variable. This allows `yarn` to authenticate against the registry if the target repository's `.yarnrc.yml` is configured to use `${GITHUB_TOKEN:-}` for authentication.
 This will naturally trigger any CI/CD workflows configured in the target repository.
 
 ## Example usage
