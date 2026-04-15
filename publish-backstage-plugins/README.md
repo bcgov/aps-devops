@@ -59,14 +59,6 @@ Optional. The full name of a downstream repository to trigger (e.g., `bcgov/back
 
 Optional. A Personal Access Token (PAT) with permissions to trigger actions on the `dispatch_repo`. **Always pass this value using a GitHub Secret.**
 
-### `dispatch_workflow`
-
-Optional. The filename or ID of the workflow in the `dispatch_repo` to trigger (e.g., `update-plugins.yml`).
-
-### `dispatch_branch`
-
-Optional. The branch (ref) in the target repository to run the workflow on. Defaults to `main`.
-
 #### How to create the `dispatch_token`
 1. Navigate to your GitHub **Settings** > **Developer settings** > **Personal access tokens** > **Fine-grained tokens**.
 2. Click **Generate new token**.
@@ -76,6 +68,14 @@ Optional. The branch (ref) in the target repository to run the workflow on. Defa
 6. Click **Generate token** and copy the value into a Secret in your plugin repository.
 
 **Security Note:** Cross-repository triggers require a token with write access to the destination. Using a **Fine-grained PAT** is the recommended way to maintain the principle of least privilege.
+
+### `dispatch_workflow`
+
+Optional. The filename or ID of the workflow in the `dispatch_repo` to trigger (e.g., `update-plugins.yml`).
+
+### `dispatch_branch`
+
+Optional. The branch (ref) in the target repository to run the workflow on. Defaults to `main`.
 
 ## Outputs
 
