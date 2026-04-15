@@ -314,7 +314,7 @@ runs:
         PAYLOAD=$(jq -n \
           --arg ref "$D_BRANCH" \
           --arg packages "$D_PAYLOAD" \
-          `{ref: $ref, inputs: {packages: $packages}}`)
+          '{ref: $ref, inputs: {packages: $packages}}')
 
         # Send the request to GitHub API
         curl -L -X POST \
