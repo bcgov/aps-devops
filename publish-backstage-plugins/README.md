@@ -241,6 +241,7 @@ jobs:
           dispatch_repo: 'bcgov/backstage-app'
           dispatch_token: ${{ secrets.DISPATCH_PAT }}
           dispatch_workflow: 'update-plugins.yml'
+          dispatch_branch: 'main'
 
       - name: Show publish outputs
         shell: bash
