@@ -87,6 +87,7 @@ runs:
 
         echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
         echo "Release version: ${NEW_VERSION}"
+        
 
     - name: Discover plugins
       shell: bash
@@ -182,7 +183,11 @@ runs:
 
           if npm view "${package_name}@${package_version}" version \
             --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
-            echo "ERROR: ${package_name}@${package_version} already exists"
+            echo "ERROR: ${package_name}@${package_version} already exists in GitHub Packages"
+            any_conflicts=1
+          elif npm view "${package_name}@${package_version}" \
+            version >/dev/null 2>&1; then
+            echo "ERROR: ${package_name}@${package_version} already exists in npmjs.org"
             any_conflicts=1
           else
             echo "OK: ${package_name}@${package_version} does not exist yet"
@@ -227,7 +232,7 @@ runs:
           echo "Packed: ${package_name}@${package_version} -> ${tarball_path}"
         done < /tmp/publish-tarballs.txt
 
-    - name: Publish all tarballs
+    - name: Publish to GitHub Packages
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.token }}
@@ -236,8 +241,33 @@ runs:
 
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
-          echo "Publishing $package_name@$package_version"
+          echo "Publishing $package_name@$package_version to GitHub"
           npm publish "$tarball_path" --registry=https://npm.pkg.github.com
+        done < /tmp/publish-tarballs.txt
+
+    - name: Publish to npmjs.org
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Get OIDC token from GitHub Actions
+        OIDC_TOKEN=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://registry.npmjs.org" | \
+          jq -r '.token')
+        
+        while IFS='|' read -r plugin_path package_name package_version tarball_path; do
+          echo ""
+          echo "Publishing $package_name@$package_version to npmjs.org"
+          
+          TAG="latest"
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            TAG="dev"
+          fi
+          
+          # Publish to npmjs.org (default registry)
+          npm publish --access public --tag "$TAG" --tag "$package_version" \
+            --registry https://registry.npmjs.org
+            "$tarball_path"
         done < /tmp/publish-tarballs.txt
 
     - name: Finalize outputs
@@ -311,10 +341,7 @@ runs:
 
         # Build the JSON payload
         # Note: workflow_dispatch inputs MUST be strings
-        PAYLOAD=$(jq -n \
-          --arg ref "$D_BRANCH" \
-          --arg packages "$D_PAYLOAD" \
-          '{ref: $ref, inputs: {packages: $packages}}')
+        PAYLOAD="{\"ref\":\"$D_BRANCH\",\"inputs\":{\"packages\":\"$D_PAYLOAD\"}}"
 
         # Send the request to GitHub API
         curl -L -X POST \
@@ -332,3 +359,8 @@ runs:
           echo "Successfully dispatched workflow event to: \`https://github.com/${D_REPO}\`"
           echo ""
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Cleanup temp files
+      if: ${{ always() }}
+      shell: bash
+      run: rm -rf /tmp/plugin-*

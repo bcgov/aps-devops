@@ -1,6 +1,6 @@
 # Publish Backstage Plugins
 
-This GitHub composite action discovers Backstage plugins in the local `plugins/` directory, builds them, assigns a release version, packs them, and publishes them to the GitHub npm registry.
+This GitHub composite action discovers Backstage plugins in the local `plugins/` directory, builds them, assigns a release version, packs them, and publishes them to both the GitHub npm and npmjs.org registries.
 
 It is intended for monorepos that contain one or more Backstage plugins under `plugins/<plugin-name>`.
 
@@ -17,7 +17,7 @@ The action performs the following steps:
 1. Checks out the repository with full history
 2. Sets up Node.js 22
 3. Enables Yarn 4.4.1 through Corepack
-4. Installs dependencies using `yarn install --immutable`
+4. Installs dependencies using `yarn install`
 5. Generates TypeScript declaration files with `yarn tsc`
 6. Determines a release version from the **root `package.json` version**
 7. Discovers plugin packages under `plugins/`
@@ -25,7 +25,7 @@ The action performs the following steps:
 9. Updates each plugin's `package.json` version to the generated release version and removes the `private` flag
 10. Performs a preflight check to ensure the target package versions do not already exist
 11. Packs each plugin into an npm tarball
-12. Publishes each tarball to the GitHub npm registry
+12. Publishes each tarball to the GitHub npm and npmjs.org registries
 13. Writes action outputs for downstream workflow steps
 14. Writes a summary to the GitHub Actions job summary
 
@@ -50,6 +50,7 @@ GitHub token used to authenticate against GitHub Packages.
 Required: `true`
 
 This token must have permission to publish packages. **Always pass this value using a GitHub Secret (e.g., `${{ secrets.GITHUB_TOKEN }}`).**
+
 
 ### `dispatch_repo`
 
@@ -204,7 +205,7 @@ For each discovered plugin, the action:
 - Creates an npm tarball using `npm pack`
 - Publishes the tarball with `npm publish`
 
-Before publishing, it checks whether that exact package version already exists in GitHub Packages. If any package version already exists, the action fails before publishing anything.
+Before publishing, it checks whether that exact package version already exists in GitHub Packages (or npmjs.org if we're publishing there as well). If any package version already exists, the action fails before publishing anything.
 
 ## Updating downstream repositories
 
@@ -229,8 +230,9 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      contents: write
       packages: write
+      id-token: write
 
     steps:
       - name: Publish Backstage plugins
@@ -260,20 +262,10 @@ The action publishes to:
 https://npm.pkg.github.com
 ```
 
-It configures the npm scope as:
+and
 
 ```text
-@bcgov
-```
-
-Make sure your package names match that scope if you want them published successfully.
-
-Example:
-
-```json
-{
-  "name": "@bcgov/my-backstage-plugin"
-}
+https://npmjs.com
 ```
 
 ## GitHub Actions summary
@@ -294,7 +286,7 @@ The action will fail if:
 - Dependency installation fails
 - TypeScript declaration generation fails
 - Any plugin build fails
-- A target package version already exists in the registry
+- A target package version already exists in either registry
 - A tarball is not created as expected
 - Publishing any package fails
 
@@ -329,4 +321,7 @@ The action will fail if:
 - Keep the **root `package.json` version** up to date, since all published plugin versions are derived from it
 - Ensure each plugin has a working `build` script
 - Use branch names that normalize cleanly into prerelease identifiers
-- Grant `packages: write` permission to the workflow job
+- Grant the below permissions to the workflow job
+  - `packages: write`
+  - `contents: write`
+  - `id-token: write`
