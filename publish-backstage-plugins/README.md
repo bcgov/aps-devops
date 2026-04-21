@@ -325,3 +325,5 @@ The action will fail if:
   - `packages: write`
   - `contents: write`
   - `id-token: write`
+- This action relies on NPM Trusted Publishing being configured. See https://docs.npmjs.com/trusted-publishers for 
+  more information.
