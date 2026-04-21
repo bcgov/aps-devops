@@ -251,6 +251,10 @@ runs:
         # from setup-node do not interfere with the OIDC flow for npmjs.org.
         rm -f "$HOME/.npmrc"
         unset NODE_AUTH_TOKEN
+        # Explicitly override npm environment variables to force npmjs.org for @bcgov scope
+        # This is necessary because actions/setup-node sets persistent env vars for GitHub Packages.
+        export NPM_CONFIG_REGISTRY=https://registry.npmjs.org
+        export NPM_CONFIG_@BCGOV:REGISTRY=https://registry.npmjs.org
 
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
@@ -263,7 +267,6 @@ runs:
           
           npm publish "$tarball_path" \
             --access public --tag "$TAG" \
-            --registry https://registry.npmjs.org
 
         done < /tmp/publish-tarballs.txt
 
