@@ -24,7 +24,7 @@ outputs:
     description: "Number of plugins published"
     value: ${{ steps.finalize.outputs.plugin_count }}
   target_repo_status:
-    description: "The status of the downstream update ('dispatched', 'no-changes', or 'skipped')"
+    description: "The status of the downstream update ('updated', 'no-changes', or 'skipped')"
     value: ${{ steps.dispatch.outputs.status || 'skipped' }}
 runs:
   using: "composite"
@@ -257,11 +257,12 @@ runs:
           fi
           
           # Publish to npmjs.org (default registry)
-          # We use a clean config to ensure the @bcgov scope mapping for GitHub Packages 
-          # doesn't interfere with OIDC/Trusted Publishing for npmjs.org.
-          npm_config_userconfig=/dev/null npm publish "$tarball_path" \
+          # We unset NODE_AUTH_TOKEN and explicitly override the scope registry to ensure 
+          # OIDC/Trusted Publishing for npmjs.org is triggered and doesn't default to GitHub.
+          NODE_AUTH_TOKEN= npm publish "$tarball_path" \
             --access public --tag "$TAG" \
-            --registry https://registry.npmjs.org
+            --registry https://registry.npmjs.org \
+            --@bcgov:registry=https://registry.npmjs.org
 
         done < /tmp/publish-tarballs.txt
 

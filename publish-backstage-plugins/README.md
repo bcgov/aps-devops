@@ -356,5 +356,15 @@ The action will fail if:
   - `contents: write` (for reading repository contents and committing to downstream repos)
   - `id-token: write` (for npm Trusted Publishing authentication)
 - This action requires npm Trusted Publishing to be configured. See https://docs.npmjs.com/trusted-publishers for setup instructions
+### `target_repo_status`
+
+The status of the downstream update (`updated`, `no-changes`, or `skipped`).
+
+Example:
+
+```yaml
+${{ steps.publish_plugins.outputs.target_repo_status }}
+```
+
 - For downstream repository updates, ensure the deploy key has write access and the target branch exists
 - The downstream repository should be a Yarn workspace or monorepo for the `yarn up` commands to work correctly
