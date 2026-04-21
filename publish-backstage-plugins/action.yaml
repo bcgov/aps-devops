@@ -257,10 +257,11 @@ runs:
           fi
           
           # Publish to npmjs.org (default registry)
-          # We override the @bcgov scope registry to ensure it doesn't default to GitHub
-          npm publish --access public --tag "$TAG" --@bcgov:registry=https://registry.npmjs.org \
-            --registry https://registry.npmjs.org \
-            "$tarball_path"
+          # We use a clean config to ensure the @bcgov scope mapping for GitHub Packages 
+          # doesn't interfere with OIDC/Trusted Publishing for npmjs.org.
+          npm_config_userconfig=/dev/null npm publish "$tarball_path" \
+            --access public --tag "$TAG" \
+            --registry https://registry.npmjs.org
 
         done < /tmp/publish-tarballs.txt
 
