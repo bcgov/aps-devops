@@ -257,12 +257,10 @@ runs:
           fi
           
           # Publish to npmjs.org (default registry)
-          npm publish --access public --tag "$package_version" \
+          npm publish --access public --tag "$TAG" \
             --registry https://registry.npmjs.org \
             "$tarball_path"
 
-          npm dist-tag add "${package_name}@${package_version}" "$package_version" \
-            --registry https://registry.npmjs.org
         done < /tmp/publish-tarballs.txt
 
     - name: Finalize outputs
