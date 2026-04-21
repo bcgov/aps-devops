@@ -247,6 +247,11 @@ runs:
       run: |
         set -euo pipefail
         
+        # Entirely reset npm configuration to ensure the GitHub-specific settings 
+        # from setup-node do not interfere with the OIDC flow for npmjs.org.
+        rm -f "$HOME/.npmrc"
+        unset NODE_AUTH_TOKEN
+
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
           echo "Publishing $package_name@$package_version to npmjs.org"
@@ -256,13 +261,9 @@ runs:
             TAG="dev"
           fi
           
-          # Publish to npmjs.org (default registry)
-          # We unset NODE_AUTH_TOKEN and explicitly override the scope registry to ensure 
-          # OIDC/Trusted Publishing for npmjs.org is triggered and doesn't default to GitHub.
-          NODE_AUTH_TOKEN= npm publish "$tarball_path" \
+          npm publish "$tarball_path" \
             --access public --tag "$TAG" \
-            --registry https://registry.npmjs.org \
-            --@bcgov:registry=https://registry.npmjs.org
+            --registry https://registry.npmjs.org
 
         done < /tmp/publish-tarballs.txt
 
