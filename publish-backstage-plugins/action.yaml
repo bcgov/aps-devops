@@ -353,9 +353,6 @@ runs:
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
 
-        # Setup Yarn
-        corepack enable && corepack prepare yarn@4.4.1 --activate
-
         # Update dependencies using the published versions
         while IFS= read -r pkg; do
           NAME=$(echo "$pkg" | jq -r '.name')
