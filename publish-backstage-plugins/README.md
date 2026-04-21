@@ -25,9 +25,11 @@ The action performs the following steps:
 9. Updates each plugin's `package.json` version to the generated release version and removes the `private` flag
 10. Performs a preflight check to ensure the target package versions do not already exist
 11. Packs each plugin into an npm tarball
-12. Publishes each tarball to the GitHub npm and npmjs.org registries
-13. Writes action outputs for downstream workflow steps
-14. Writes a summary to the GitHub Actions job summary
+12. Publishes each tarball to the GitHub Packages npm registry
+13. Publishes each tarball to npmjs.org with dist-tags
+14. (Optional) Updates a downstream repository by committing updated plugin dependency versions
+15. Writes action outputs for downstream workflow steps
+16. Writes a summary to the GitHub Actions job summary
 
 ## Requirements
 
@@ -51,32 +53,40 @@ Required: `true`
 
 This token must have permission to publish packages. **Always pass this value using a GitHub Secret (e.g., `${{ secrets.GITHUB_TOKEN }}`).**
 
-
 ### `dispatch_repo`
 
-Optional. The full name of a downstream repository to trigger (e.g., `bcgov/backstage-app`).
+Optional. The full name of a downstream repository to update (e.g., `owner/repo-c`).
 
-### `dispatch_token`
+### `dispatch_ssh_key`
 
-Optional. A Personal Access Token (PAT) with permissions to trigger actions on the `dispatch_repo`. **Always pass this value using a GitHub Secret.**
+Optional. SSH private key with access to the target repository for dispatching updates. **Always pass this value using a GitHub Secret.**
 
-#### How to create the `dispatch_token`
-1. Navigate to your GitHub **Settings** > **Developer settings** > **Personal access tokens** > **Fine-grained tokens**.
-2. Click **Generate new token**.
-3. **Resource owner**: Select the organization that owns the **target** repository.
-4. **Repository access**: Select **Only select repositories** and choose the target repository (e.g., `csit-developer-portal-poc`).
-5. **Permissions**: Under **Repository permissions**, find **Actions** and select **Access: Read and Write**.
-6. Click **Generate token** and copy the value into a Secret in your plugin repository.
+To set up SSH authentication for the downstream repository:
 
-**Security Note:** Cross-repository triggers require a token with write access to the destination. Using a **Fine-grained PAT** is the recommended way to maintain the principle of least privilege.
+1. Generate an SSH key pair (if you don't have one):
+   ```bash
+   ssh-keygen -t ed25519 -C "github-actions-dispatch" -f dispatch_key -N ""
+   ```
 
-### `dispatch_workflow`
+2. Add the public key as a Deploy Key to the downstream repository:
+   1. Go to the downstream repo (`dispatch_repo`) -> Settings -> Deploy Keys
+   2. Click `Add deploy key`
+   3. Paste contents of `dispatch_key.pub`
+   4. Check `Allow write access` (required for pushing commits)
+   5. Save
 
-Optional. The filename or ID of the workflow in the `dispatch_repo` to trigger (e.g., `update-plugins.yml`).
+3. Store the private key as a secret in the upstream repository:
+   1. Go to the upstream repo -> Settings -> Secrets and Variables -> Actions
+   2. Click `New repository secret`
+      1. Name: `DISPATCH_SSH_KEY` (or your preferred name)
+      2. Value: Paste the entire contents of the private key file
+   3. Save
+
 
 ### `dispatch_branch`
 
-Optional. The branch (ref) in the target repository to run the workflow on. Defaults to `main`.
+Optional. The branch (ref) in the target repository to commit to. Defaults to `main`.
+
 
 ## Outputs
 
@@ -205,14 +215,36 @@ For each discovered plugin, the action:
 - Creates an npm tarball using `npm pack`
 - Publishes the tarball with `npm publish`
 
-Before publishing, it checks whether that exact package version already exists in GitHub Packages (or npmjs.org if we're publishing there as well). If any package version already exists, the action fails before publishing anything.
+Before publishing, it checks whether that exact package version already exists in GitHub Packages or npmjs.org. If any package version already exists, the action fails before publishing anything.
 
 ## Updating downstream repositories
 
-If `dispatch_repo`, `dispatch_token`, and `dispatch_workflow` are provided, the action will trigger a `workflow_dispatch` event in the target repository.
+If `dispatch_repo` and `dispatch_ssh_key` are provided, the action will automatically update the downstream repository with the latest published plugin versions.
 
-The triggered workflow receives the following input:
-- `packages`: A stringified JSON array of the published packages (name and version).
+### How it works
+
+1. Clones the downstream repository using SSH authentication
+2. For each published plugin, runs `yarn up <package-name>@<version> --mode=update-lockfile` to update the dependency
+3. Commits the updated `package.json` and `yarn.lock` files
+4. Pushes the commit to the specified branch
+
+### Monorepo support
+
+The action supports monorepos with multiple `package.json` files. The `yarn up` command will find and update the specified packages wherever they appear in the monorepo's workspace structure.
+
+Example scenario:
+```
+downstream-repo/
+├── package.json
+├── apps/
+│   └── app-a/
+│       └── package.json
+└── packages/
+    └── lib-b/
+        └── package.json
+```
+
+If plugins are dependencies in multiple `package.json` files, `yarn up` will update all of them.
 
 ## Example usage
 
@@ -241,8 +273,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           dispatch_repo: 'bcgov/backstage-app'
-          dispatch_token: ${{ secrets.DISPATCH_PAT }}
-          dispatch_workflow: 'update-plugins.yml'
+          dispatch_ssh_key: ${{ secrets.DISPATCH_SSH_KEY }}
           dispatch_branch: 'main'
 
       - name: Show publish outputs
@@ -256,17 +287,16 @@ jobs:
 
 ## Registry configuration
 
-The action publishes to:
+The action publishes to two registries:
 
-```text
-https://npm.pkg.github.com
-```
+1. **GitHub Packages** (`https://npm.pkg.github.com`)
+   - Requires `NODE_AUTH_TOKEN` from the `token` input
+   - Used for internal/private distribution
 
-and
-
-```text
-https://npmjs.com
-```
+2. **npmjs.org** (`https://registry.npmjs.org`)
+   - Uses [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) for authentication
+   - No additional secrets required
+   - Publishes with dist-tags: the package version and either `latest` (main branch) or `dev` (other branches)
 
 ## GitHub Actions summary
 
@@ -321,9 +351,10 @@ The action will fail if:
 - Keep the **root `package.json` version** up to date, since all published plugin versions are derived from it
 - Ensure each plugin has a working `build` script
 - Use branch names that normalize cleanly into prerelease identifiers
-- Grant the below permissions to the workflow job
-  - `packages: write`
-  - `contents: write`
-  - `id-token: write`
-- This action relies on NPM Trusted Publishing being configured. See https://docs.npmjs.com/trusted-publishers for 
-  more information.
+- Grant the below permissions to the workflow job:
+  - `packages: write` (for publishing to GitHub Packages)
+  - `contents: write` (for reading repository contents and committing to downstream repos)
+  - `id-token: write` (for npm Trusted Publishing authentication)
+- This action requires npm Trusted Publishing to be configured. See https://docs.npmjs.com/trusted-publishers for setup instructions
+- For downstream repository updates, ensure the deploy key has write access and the target branch exists
+- The downstream repository should be a Yarn workspace or monorepo for the `yarn up` commands to work correctly

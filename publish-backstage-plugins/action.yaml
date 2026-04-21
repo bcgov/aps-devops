@@ -5,16 +5,13 @@ inputs:
     description: "GitHub token for authentication"
     required: true
   dispatch_repo:
-    description: "Optional: The target repository to trigger (e.g., 'owner/repo-c')"
+    description: "Optional: The target repository to update (e.g., 'owner/repo-c')"
     required: false
-  dispatch_token:
-    description: "Optional: PAT or GitHub App token with 'Actions: Write' permissions on the target repository"
-    required: false
-  dispatch_workflow:
-    description: "Optional: The filename or ID of the workflow to trigger (e.g., 'update-plugins.yml')"
+  dispatch_ssh_key:
+    description: "Optional: SSH private key with access to the target repository"
     required: false
   dispatch_branch:
-    description: "Optional: The branch (ref) in the target repository to run the workflow on. Defaults to 'main'."
+    description: "Optional: The branch (ref) in the target repository to commit to. Defaults to 'main'."
     required: false
 outputs:
   version:
@@ -27,7 +24,7 @@ outputs:
     description: "Number of plugins published"
     value: ${{ steps.finalize.outputs.plugin_count }}
   target_repo_status:
-    description: "The status of the downstream dispatch ('dispatched' or 'skipped')"
+    description: "The status of the downstream update ('dispatched', 'no-changes', or 'skipped')"
     value: ${{ steps.dispatch.outputs.status || 'skipped' }}
 runs:
   using: "composite"
@@ -249,11 +246,6 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-
-        # Get OIDC token from GitHub Actions
-        OIDC_TOKEN=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://registry.npmjs.org" | \
-          jq -r '.token')
         
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
@@ -265,9 +257,12 @@ runs:
           fi
           
           # Publish to npmjs.org (default registry)
-          npm publish --access public --tag "$TAG" --tag "$package_version" \
-            --registry https://registry.npmjs.org
+          npm publish --access public --tag "$package_version" \
+            --registry https://registry.npmjs.org \
             "$tarball_path"
+
+          npm dist-tag add "${package_name}@${package_version}" "$package_version" \
+            --registry https://registry.npmjs.org
         done < /tmp/publish-tarballs.txt
 
     - name: Finalize outputs
@@ -325,40 +320,76 @@ runs:
           done < /tmp/publish-tarballs.txt
         } >> "$GITHUB_STEP_SUMMARY"
 
-    - name: Dispatch workflow event
-      if: ${{ inputs.dispatch_repo != '' && inputs.dispatch_token != '' && inputs.dispatch_workflow != '' && success() }}
+    - name: Dispatch via repository commit
+      if: ${{ inputs.dispatch_repo != '' && inputs.dispatch_ssh_key != '' && success() }}
       id: dispatch
       shell: bash
       env:
         D_REPO: ${{ inputs.dispatch_repo }}
-        D_TOKEN: ${{ inputs.dispatch_token }}
-        D_WORKFLOW: ${{ inputs.dispatch_workflow }}
+        D_SSH_KEY: ${{ inputs.dispatch_ssh_key }}
         D_PAYLOAD: ${{ steps.finalize.outputs.published_package_versions }}
         D_BRANCH: ${{ inputs.dispatch_branch || 'main' }}
       run: |
         set -euo pipefail
-        echo "Dispatching workflow $D_WORKFLOW in $D_REPO on ref $D_BRANCH"
+        echo "Updating dependencies in $D_REPO on ref $D_BRANCH"
 
-        # Build the JSON payload
-        # Note: workflow_dispatch inputs MUST be strings
-        PAYLOAD="{\"ref\":\"$D_BRANCH\",\"inputs\":{\"packages\":\"$D_PAYLOAD\"}}"
+        # Setup SSH authentication
+        mkdir -p "$HOME/.ssh"
+        echo "$D_SSH_KEY" > "$HOME/.ssh/dispatch_key"
+        chmod 600 "$HOME/.ssh/dispatch_key"
+ 
+        # Add GitHub to known hosts
+        ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
 
-        # Send the request to GitHub API
-        curl -L -X POST \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer $D_TOKEN" \
-          -H "X-GitHub-Api-Version: 2026-03-10" \
-          "https://api.github.com/repos/$D_REPO/actions/workflows/$D_WORKFLOW/dispatches" \
-          -d "$PAYLOAD"
+        # Export GIT_SSH_COMMAND to use our custom SSH key
+        export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/dispatch_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 
-        echo "status=dispatched" >> "$GITHUB_OUTPUT"
+        # Clone the dispatch repository
+        DISPATCH_DIR=$(mktemp -d)
+        git clone --branch "$D_BRANCH" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR"
+        cd "$DISPATCH_DIR"
+
+        # Configure git user for commits
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+        # Setup Yarn
+        corepack enable && corepack prepare yarn@4.4.1 --activate
+
+        # Update dependencies using the published versions
+        while IFS= read -r pkg; do
+          NAME=$(echo "$pkg" | jq -r '.name')
+          VERSION=$(echo "$pkg" | jq -r '.version')
+          echo "Updating $NAME to $VERSION"
+          yarn up "$NAME@$VERSION" --mode=update-lockfile
+        done < <(echo "$D_PAYLOAD" | jq -c '.[]')
+
+        # Commit and push
+        if [[ -n $(git status --porcelain) ]]; then
+          git add '**/package.json' yarn.lock
+          git commit -m "update plugins to version ${{ steps.finalize.outputs.version }}"
+          git push origin "$D_BRANCH"
+          echo "status=updated" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Downstream Repository Update"
+            echo ""
+            echo "Successfully updated target repository: \`${D_REPO}\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "No changes detected in target repository."
+          echo "status=no-changes" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Downstream Repository Update"
+            echo ""
+            echo "No changes required for target repository: \`${D_REPO}\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
         
-        {
-          echo "### Downstream Dispatch"
-          echo ""
-          echo "Successfully dispatched workflow event to: \`https://github.com/${D_REPO}\`"
-          echo ""
-        } >> "$GITHUB_STEP_SUMMARY"
+        # Cleanup
+        cd /
+        rm -rf "$DISPATCH_DIR"
 
     - name: Cleanup temp files
       if: ${{ always() }}
