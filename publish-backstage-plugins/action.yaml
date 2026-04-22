@@ -38,7 +38,6 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: "22"
-        registry-url: "https://registry.npmjs.org"
 
     - name: Setup Yarn
       shell: bash
@@ -252,6 +251,10 @@ runs:
 
     #     rm .npmrc
 
+    - name: Upgrade npm (OIDC support requires modern npm)
+      shell: bash
+      run: npm install -g npm@latest
+
     - name: Publish to npmjs.org
       shell: bash
       env:
@@ -276,6 +279,15 @@ runs:
             TAG="dev"
           fi
           
+          # We specify the registry for the @bcgov scope explicitly to prevent redirection.
+          # Using the trailing slash on the registry URL is recommended for some npm versions.
+          npm publish "$tarball_path" \
+            --access public \
+            --tag "$TAG" \
+            --registry https://registry.npmjs.org \
+            --@bcgov:registry=https://registry.npmjs.org \
+            --provenance \
+            --loglevel verbose
           # Rely on setup-node's .npmrc configuration to trigger OIDC
           npm publish "$tarball_path" --access public --tag "$TAG"
 
