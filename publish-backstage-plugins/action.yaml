@@ -38,8 +38,6 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: "22"
-        registry-url: "https://npm.pkg.github.com"
-        scope: "@bcgov"
 
     - name: Setup Yarn
       shell: bash
@@ -172,6 +170,9 @@ runs:
       run: |
         set -euo pipefail
 
+        # Create temporary config for GitHub authentication
+        echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+
         any_conflicts=0
 
         while IFS='|' read -r plugin_path package_name package_version; do
@@ -190,6 +191,8 @@ runs:
             echo "OK: ${package_name}@${package_version} does not exist yet"
           fi
         done < /tmp/publish-plan.txt
+
+        rm .npmrc
 
         if [ "$any_conflicts" -ne 0 ]; then
           echo ""
@@ -236,22 +239,22 @@ runs:
       run: |
         set -euo pipefail
 
+        # Create temporary config for GitHub authentication
+        echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
           echo "Publishing $package_name@$package_version to GitHub"
           npm publish "$tarball_path" --registry=https://npm.pkg.github.com
         done < /tmp/publish-tarballs.txt
 
+        rm .npmrc
+
     - name: Publish to npmjs.org
       shell: bash
       run: |
         set -euo pipefail
         
-        # Entirely reset npm configuration to ensure the GitHub-specific settings 
-        # from setup-node do not interfere with the OIDC flow for npmjs.org.
-        rm -f "$HOME/.npmrc"
-        unset NODE_AUTH_TOKEN
-
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
           echo "Publishing $package_name@$package_version to npmjs.org"
@@ -264,8 +267,7 @@ runs:
           npm publish "$tarball_path" \
             --access public \
             --tag "$TAG" \
-            --registry https://registry.npmjs.org \
-            --@bcgov:registry=https://registry.npmjs.org
+            --registry https://registry.npmjs.org
 
         done < /tmp/publish-tarballs.txt
 
