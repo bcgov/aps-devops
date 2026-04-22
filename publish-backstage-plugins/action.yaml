@@ -253,11 +253,16 @@ runs:
 
     - name: Publish to npmjs.org
       shell: bash
-      env:
-        NODE_AUTH_TOKEN: ""
-        NPM_TOKEN: ""
       run: |
         set -euo pipefail
+
+        # Ensure no lingering .npmrc or environment variables interfere with OIDC
+        rm -f .npmrc "$HOME/.npmrc"
+        unset NODE_AUTH_TOKEN
+
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+          echo "Warning: ACTIONS_ID_TOKEN_REQUEST_URL not found. Trusted Publishing might fail."
+        fi
 
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
@@ -268,11 +273,14 @@ runs:
             TAG="dev"
           fi
           
-          # Force npm to ignore any lingering .npmrc files to trigger OIDC/Trusted Publishing
-          npm_config_userconfig=/dev/null npm publish "$tarball_path" \
+          # We specify the registry for the @bcgov scope explicitly to prevent redirection.
+          # Using the trailing slash on the registry URL is recommended for some npm versions.
+          npm publish "$tarball_path" \
             --access public \
             --tag "$TAG" \
-            --registry https://registry.npmjs.org
+            --registry https://registry.npmjs.org/ \
+            --@bcgov:registry=https://registry.npmjs.org/ \
+            --loglevel verbose
 
         done < /tmp/publish-tarballs.txt
 
