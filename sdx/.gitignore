@@ -2,3 +2,7 @@
 *.key
 *.ca-bundle
 LOCAL.md
+.terraform*
+.claude
+terraform.tfvars
+terraform.tfstate*

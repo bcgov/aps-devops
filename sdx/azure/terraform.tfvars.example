@@ -1,0 +1,36 @@
+# Copy this file to terraform.tfvars and fill in the required values.
+
+# Azure placement
+resource_group_name = "sdx-edge-rg"
+location            = "canadacentral"
+
+# AKS cluster
+cluster_name       = "sdx-edge-aks"
+node_count         = 2
+vm_size            = "Standard_D1s_v2"
+kubernetes_version = null   # null = latest stable
+
+# SDX Edge identity
+edge_id   = "my-edge"       # becomes <edge_id>.servers.sdx and the Helm release name
+namespace = "sdx-edge"
+
+# Required: one-time token obtained from the SDX CA portal
+sdx_bootstrap_token = "REPLACE_ME"
+
+# SDX control plane endpoints (defaults point to the BC Gov dev environment)
+sdx_control_url    = "sdx-cluster-api-gov-bc-ca.dev.api.gov.bc.ca:443"
+client_ca_url      = "https://sdx-ca-api-gov-bc-ca.dev.api.gov.bc.ca"
+sdx_aggregator_url = "gwaggregator-api-gov-bc-ca.dev.api.gov.bc.ca"
+
+# Set to false only when testing without client certificate enforcement
+mtls_required = true
+
+# Optional HTTP proxy (leave empty string to disable)
+https_proxy = ""
+
+
+tags = {
+  project    = "sdx-edge"
+  managed_by = "terraform"
+  environment = "dev"
+}
