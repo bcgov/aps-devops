@@ -253,15 +253,20 @@ runs:
 
     - name: Publish to npmjs.org
       shell: bash
+      env:
+        NODE_AUTH_TOKEN: ""
+        NPM_CONFIG_PROVENANCE: "true"
       run: |
         set -euo pipefail
 
         # Ensure no lingering .npmrc or environment variables interfere with OIDC
         rm -f .npmrc "$HOME/.npmrc"
-        unset NODE_AUTH_TOKEN
 
-        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
-          echo "Warning: ACTIONS_ID_TOKEN_REQUEST_URL not found. Trusted Publishing might fail."
+        # Diagnostic check for OIDC availability
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+          echo "::error::ACTIONS_ID_TOKEN_REQUEST_TOKEN is missing. Ensure 'id-token: write' permission is set in the caller workflow job."
+        else
+          echo "OIDC environment detected."
         fi
 
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
@@ -278,8 +283,9 @@ runs:
           npm publish "$tarball_path" \
             --access public \
             --tag "$TAG" \
-            --registry https://registry.npmjs.org/ \
-            --@bcgov:registry=https://registry.npmjs.org/ \
+            --registry https://registry.npmjs.org \
+            --@bcgov:registry=https://registry.npmjs.org \
+            --provenance \
             --loglevel verbose
 
         done < /tmp/publish-tarballs.txt
