@@ -1,13 +1,17 @@
 meta {
   name: Connection POST
   type: http
-  seq: 8
+  seq: 11
 }
 
 get {
-  url: {{GATEWAY}}/sdx/0/LAB.MIN.BOOK.CASE-MANAGEMENT.v1/headers
+  url: {{GATEWAY}}/sdx/0/LAB.MIN.JAMES.CASE-MANAGEMENT.v1/activity
   body: none
-  auth: inherit
+  auth: none
+}
+
+headers {
+  subject: 666
 }
 
 settings {

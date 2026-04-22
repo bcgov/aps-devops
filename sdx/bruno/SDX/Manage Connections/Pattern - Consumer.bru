@@ -1,18 +1,18 @@
 meta {
   name: Pattern - Consumer
   type: http
-  seq: 5
+  seq: 8
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: true
+  dryRun: false
 }
 
 params:path {
@@ -23,12 +23,10 @@ body:json {
   {
     "pattern": "sdx-p2p-consumer.r1",
     "parameters": {
-      "conn_id": "001",
-      "client_id": "LAB.MIN.BOOK.TEST-ABC01",
-      "service_id": "LAB.MIN.BOOK.CASE-MANAGEMENT.v1",
+      "conn_id": "010",
+      "client_id": "LAB.MIN.CITZ.SDG",
+      "service_id": "LAB.MIN.CITZ.DATA-USAGE.v1",
       "upgrades": {
-        "sign": {},
-        "verify": {}
       }
     }
   }

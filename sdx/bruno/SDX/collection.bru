@@ -15,6 +15,7 @@ auth:oauth2 {
   pkce: true
   credentials_placement: body
   credentials_id: credentials
+  token_source: access_token
   token_placement: header
   token_header_prefix: Bearer
   auto_fetch_token: true
@@ -22,7 +23,7 @@ auth:oauth2 {
 }
 
 vars:pre-request {
-  ORG: ministry-of-books
+  ORG: ministry-of-citz
 }
 
 docs {

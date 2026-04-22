@@ -1,0 +1,23 @@
+meta {
+  name: Get Token
+  type: http
+  seq: 9
+}
+
+post {
+  url: http://localhost:8080/token
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "subject": "my-service.clients.sdx",
+    "san": ["alt-name-1.clients.sdx", "10.0.0.5"]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

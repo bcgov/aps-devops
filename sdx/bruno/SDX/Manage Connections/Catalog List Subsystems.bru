@@ -1,13 +1,13 @@
 meta {
-  name: JWKS
+  name: Catalog List Subsystems
   type: http
-  seq: 12
+  seq: 4
 }
 
 get {
-  url: {{GATEWAY}}/.well-known/jwks.json
+  url: {{BASE}}/catalog/subsystems
   body: none
-  auth: inherit
+  auth: none
 }
 
 settings {

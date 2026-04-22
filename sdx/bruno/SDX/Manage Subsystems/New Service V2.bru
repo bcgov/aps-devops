@@ -1,13 +1,17 @@
 meta {
-  name: New Service
+  name: New Service V2
   type: http
-  seq: 5
+  seq: 6
 }
 
 put {
-  url: {{BASE}}/organizations/:org/oas-services
-  body: multipartForm
+  url: {{BASE}}/organizations/:org/oas-services?subsystem=DATA-USAGE-TOOL
+  body: file
   auth: inherit
+}
+
+params:query {
+  subsystem: DATA-USAGE-TOOL
 }
 
 params:path {
@@ -23,6 +27,10 @@ body:json {
 body:multipart-form {
   subsystem: DATA-USAGE-TOOL
   configFile: @file(/Users/aidancope/Downloads/openapi-t.yaml)
+}
+
+body:file {
+  file: @file(/Users/aidancope/Downloads/ICM-PROTO_v1-microcks.yaml) @contentType(text/yaml; charset=utf-8)
 }
 
 vars:pre-request {

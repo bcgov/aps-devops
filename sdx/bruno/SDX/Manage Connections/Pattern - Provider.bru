@@ -1,18 +1,18 @@
 meta {
   name: Pattern - Provider
   type: http
-  seq: 6
+  seq: 9
 }
 
 put {
-  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=true
+  url: {{BASE}}/organizations/:org/pattern?action=apply&dryRun=false
   body: json
   auth: inherit
 }
 
 params:query {
   action: apply
-  dryRun: true
+  dryRun: false
 }
 
 params:path {
@@ -23,13 +23,12 @@ body:json {
   {
     "pattern": "sdx-p2p-provider.r1",
     "parameters": {
-      "conn_id": "001",
-      "client_id": "LAB.MIN.BOOK.TEST-ABC01",
-      "service_id": "LAB.MIN.BOOK.CASE-MANAGEMENT.v1",
-      "upstream_url": "https://httpbin-regression-api-gov-bc-ca.dev.api.gov.bc.ca",
+      "conn_id": "010",
+      "client_id": "LAB.MIN.CITZ.SDG",
+      "service_id": "LAB.MIN.CITZ.DATA-USAGE.v1",
+      "upstream_url": "http://data-usage-mock",
       "upgrades": {
-        "sign": {},
-        "verify": {}
+        "sign": {}
       },
       "_upgrades": {
         "sign": {},
@@ -37,7 +36,7 @@ body:json {
         "token_exchange": {
           "client_id": "aps-kong-gw-20771",
           "token_endpoint": "https://dev.sandbox.loginproxy.gov.bc.ca/auth/realms/standard/protocol/openid-connect/token",
-          "scopes": ["sdpr-case-mgmt-20772"],
+          "scopes": ["sdpr:cases:read", "social-privacy-zone"],
           "audience": "sdpr-case-mgmt-20772"
         }
       }

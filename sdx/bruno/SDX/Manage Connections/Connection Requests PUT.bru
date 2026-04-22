@@ -1,0 +1,30 @@
+meta {
+  name: Connection Requests PUT
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{BASE}}/organizations/:org/connections
+  body: json
+  auth: inherit
+}
+
+params:path {
+  org: {{ORG}}
+}
+
+body:json {
+  {
+    "clientId": "LAB.MIN.CITZ.DATA-USAGE-TOOL",
+    "serviceId": "LAB.MIN.CITZ.DATA-USAGE.v1",
+    "isApproved": true,
+    "isActive": true
+  
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
