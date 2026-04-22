@@ -38,6 +38,7 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: "22"
+        registry-url: "https://registry.npmjs.org"
 
     - name: Setup Yarn
       shell: bash
@@ -165,8 +166,8 @@ runs:
 
     - name: Preflight check package versions
       shell: bash
-      env:
-        NODE_AUTH_TOKEN: ${{ inputs.token }}
+      #env:
+      #  NODE_AUTH_TOKEN: ${{ inputs.token }}
       run: |
         set -euo pipefail
 
@@ -259,9 +260,6 @@ runs:
       run: |
         set -euo pipefail
 
-        # Ensure no lingering .npmrc or environment variables interfere with OIDC
-        rm -f .npmrc "$HOME/.npmrc"
-
         # Diagnostic check for OIDC availability
         if [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
           echo "::error::ACTIONS_ID_TOKEN_REQUEST_TOKEN is missing. Ensure 'id-token: write' permission is set in the caller workflow job."
@@ -278,15 +276,8 @@ runs:
             TAG="dev"
           fi
           
-          # We specify the registry for the @bcgov scope explicitly to prevent redirection.
-          # Using the trailing slash on the registry URL is recommended for some npm versions.
-          npm publish "$tarball_path" \
-            --access public \
-            --tag "$TAG" \
-            --registry https://registry.npmjs.org \
-            --@bcgov:registry=https://registry.npmjs.org \
-            --provenance \
-            --loglevel verbose
+          # Rely on setup-node's .npmrc configuration to trigger OIDC
+          npm publish "$tarball_path" --access public --tag "$TAG"
 
         done < /tmp/publish-tarballs.txt
 
