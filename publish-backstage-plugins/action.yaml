@@ -252,9 +252,12 @@ runs:
 
     - name: Publish to npmjs.org
       shell: bash
+      env:
+        NODE_AUTH_TOKEN: ""
+        NPM_TOKEN: ""
       run: |
         set -euo pipefail
-        
+
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
           echo "Publishing $package_name@$package_version to npmjs.org"
@@ -264,7 +267,8 @@ runs:
             TAG="dev"
           fi
           
-          npm publish "$tarball_path" \
+          # Force npm to ignore any lingering .npmrc files to trigger OIDC/Trusted Publishing
+          npm_config_userconfig=/dev/null npm publish "$tarball_path" \
             --access public \
             --tag "$TAG" \
             --registry https://registry.npmjs.org
