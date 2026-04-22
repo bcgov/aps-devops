@@ -30,12 +30,12 @@ runs:
   using: "composite"
   steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: "22"
         registry-url: "https://registry.npmjs.org/"
@@ -255,7 +255,6 @@ runs:
     - name: Publish to npmjs.org
       shell: bash
       env:
-        NODE_AUTH_TOKEN: ""
         NPM_CONFIG_PROVENANCE: "true"
       run: |
         set -euo pipefail
@@ -276,15 +275,8 @@ runs:
             TAG="dev"
           fi
           
-          # We specify the registry for the @bcgov scope explicitly to prevent redirection.
-          # Using the trailing slash on the registry URL is recommended for some npm versions.
-          npm publish "$tarball_path" \
-            --access public \
-            --tag "$TAG" \
-            --registry https://registry.npmjs.org \
-            --@bcgov:registry=https://registry.npmjs.org \
-            --provenance \
-            --loglevel verbose
+          # Rely on setup-node config and OIDC fallback
+          npm publish "$tarball_path" --access public --tag "$TAG" --provenance --loglevel verbose
 
         done < /tmp/publish-tarballs.txt
 
