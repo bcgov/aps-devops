@@ -42,6 +42,11 @@ runs:
 
     - name: Upgrade npm (OIDC support requires npm 11.5.1+)
       shell: bash
+      env:
+        # Clear these so the global install doesn't try to use the 
+        # temporary GITHUB_TOKEN config created by setup-node.
+        NODE_AUTH_TOKEN: ""
+        NPM_CONFIG_USERCONFIG: ""
       run: npm install -g npm@latest
 
     - name: Setup Yarn
@@ -260,6 +265,7 @@ runs:
       shell: bash
       env:
         NPM_CONFIG_PROVENANCE: "true"
+        NODE_AUTH_TOKEN: ""
       run: |
         set -euo pipefail
 
