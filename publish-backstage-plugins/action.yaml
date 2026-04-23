@@ -38,7 +38,6 @@ runs:
       uses: actions/setup-node@v6
       with:
         node-version: "22"
-        registry-url: "https://registry.npmjs.org/"
 
     - name: Setup Yarn
       shell: bash
@@ -169,6 +168,10 @@ runs:
       #env:
       #  NODE_AUTH_TOKEN: ${{ inputs.token }}
       run: |
+        # Ensure no existing auth token interferes with registry checks.
+        unset NODE_AUTH_TOKEN
+        unset NPM_CONFIG_USERCONFIG
+
         set -euo pipefail
 
         # Create temporary config for GitHub authentication
@@ -265,6 +268,11 @@ runs:
         else
           echo "OIDC environment detected."
         fi
+
+        # Ensure no existing auth token interferes with OIDC Trusted Publishing.
+        # This prevents npm from trying to use a GitHub token on the npmjs registry.
+        unset NODE_AUTH_TOKEN
+        unset NPM_CONFIG_USERCONFIG
 
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
