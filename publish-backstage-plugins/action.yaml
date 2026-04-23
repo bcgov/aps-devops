@@ -255,13 +255,6 @@ runs:
         # correctly falls back to OIDC Trusted Publishing.
         unset NODE_AUTH_TOKEN
 
-        # Diagnostic check for OIDC availability.
-        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-          echo "::error::ACTIONS_ID_TOKEN_REQUEST_TOKEN is missing. Ensure 'id-token: write' permission is set in the caller workflow job."
-        else
-          echo "OIDC environment detected."
-        fi
-
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
           echo "Publishing $package_name@$package_version to npmjs.org"
@@ -272,7 +265,7 @@ runs:
           fi
           
           # Rely on setup-node config and OIDC fallback
-          npm publish "$tarball_path" --access public --tag "$TAG" --provenance --loglevel verbose
+          npm publish "$tarball_path" --access public --tag "$TAG" --provenance
 
         done < /tmp/publish-tarballs.txt
 
