@@ -37,10 +37,12 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        # 24 is required for OIDC:
-        # https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#publishing-to-npm-with-trusted-publisher-oidc
-        node-version: "24" 
+        node-version: "22" 
         registry-url: "https://registry.npmjs.org"
+
+    - name: Upgrade npm (OIDC support requires npm 11.5.1+)
+      shell: bash
+      run: npm install -g npm@latest
 
     - name: Setup Yarn
       shell: bash
