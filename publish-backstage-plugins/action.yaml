@@ -176,13 +176,13 @@ runs:
 
     - name: Preflight check package versions
       shell: bash
-      #env:
-      #  NODE_AUTH_TOKEN: ${{ inputs.token }}
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.token }}
       run: |
         set -euo pipefail
 
         # Create temporary config for GitHub authentication
-        #echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+        echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
 
         any_conflicts=0
 
@@ -190,12 +190,11 @@ runs:
           echo ""
           echo "Checking $package_name@$package_version"
 
-          #if npm view "${package_name}@${package_version}" version \
-           # --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
-           # echo "ERROR: ${package_name}@${package_version} already exists in GitHub Packages"
-           # any_conflicts=1
-          #elif npm view "${package_name}@${package_version}" \
-          if npm view "${package_name}@${package_version}" \
+          if npm view "${package_name}@${package_version}" version \
+            --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "ERROR: ${package_name}@${package_version} already exists in GitHub Packages"
+            any_conflicts=1
+          elif npm view "${package_name}@${package_version}" \
             version >/dev/null 2>&1; then
             echo "ERROR: ${package_name}@${package_version} already exists in npmjs.org"
             any_conflicts=1
@@ -204,7 +203,7 @@ runs:
           fi
         done < /tmp/publish-plan.txt
 
-        #rm .npmrc
+        rm .npmrc
 
         if [ "$any_conflicts" -ne 0 ]; then
           echo ""
@@ -244,24 +243,6 @@ runs:
           echo "Packed: ${package_name}@${package_version} -> ${tarball_path}"
         done < /tmp/publish-tarballs.txt
 
-    # - name: Publish to GitHub Packages
-    #   shell: bash
-    #   env:
-    #     NODE_AUTH_TOKEN: ${{ inputs.token }}
-    #   run: |
-    #     set -euo pipefail
-
-    #     # Create temporary config for GitHub authentication
-    #     echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-
-    #     while IFS='|' read -r plugin_path package_name package_version tarball_path; do
-    #       echo ""
-    #       echo "Publishing $package_name@$package_version to GitHub"
-    #       npm publish "$tarball_path" --registry=https://npm.pkg.github.com
-    #     done < /tmp/publish-tarballs.txt
-
-    #     rm .npmrc
-
     - name: Publish to npmjs.org
       shell: bash
       env:
@@ -294,6 +275,24 @@ runs:
           npm publish "$tarball_path" --access public --tag "$TAG" --provenance --loglevel verbose
 
         done < /tmp/publish-tarballs.txt
+
+    - name: Publish to GitHub Packages
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        # Create temporary config for GitHub authentication
+        echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+
+        while IFS='|' read -r plugin_path package_name package_version tarball_path; do
+          echo ""
+          echo "Publishing $package_name@$package_version to GitHub"
+          npm publish "$tarball_path" --registry=https://npm.pkg.github.com
+        done < /tmp/publish-tarballs.txt
+
+        rm .npmrc
 
     - name: Finalize outputs
       id: finalize
