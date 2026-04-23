@@ -38,7 +38,6 @@ runs:
       uses: actions/setup-node@v6
       with:
         node-version: "22"
-        registry-url: "https://registry.npmjs.org/"
 
     - name: Setup Yarn
       shell: bash
@@ -256,19 +255,15 @@ runs:
       shell: bash
       env:
         NPM_CONFIG_PROVENANCE: "true"
-        NODE_AUTH_TOKEN: "" # Explicitly unset NODE_AUTH_TOKEN for this step to force OIDC.
       run: |
         set -euo pipefail
 
-        # Diagnostic check for OIDC availability
+        # Diagnostic check for OIDC availability.
         if [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
           echo "::error::ACTIONS_ID_TOKEN_REQUEST_TOKEN is missing. Ensure 'id-token: write' permission is set in the caller workflow job."
         else
           echo "OIDC environment detected."
         fi
-
-        # Explicitly remove any token auth for the registry to force OIDC token exchange.
-        npm config delete //registry.npmjs.org/:_authToken
 
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
