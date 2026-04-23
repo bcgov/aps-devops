@@ -115,6 +115,8 @@ runs:
 
     - name: Prepare plugins and create publish plan
       shell: bash
+      env:
+        COREPACK_ENABLE_PROJECT_SPEC: "0"
       run: |
         set -euo pipefail
 
@@ -138,8 +140,8 @@ runs:
           echo "Updating package.json for $plugin_path"
           (
             cd "$plugin_path"
-            # Use jq to update version and remove 'private' field in package.json for Yarn-managed projects
-            jq --arg VERSION "$RELEASE_VERSION" '.version = $VERSION | del(.private)' package.json > package.json.tmp && mv package.json.tmp package.json
+            npm pkg set version="$RELEASE_VERSION"
+            npm pkg delete private
           )
 
           echo "$plugin_path|$package_name|$RELEASE_VERSION" >> /tmp/publish-plan.txt
@@ -264,6 +266,7 @@ runs:
       shell: bash
       env:
         NPM_CONFIG_PROVENANCE: "true"
+        COREPACK_ENABLE_PROJECT_SPEC: "0"
       run: |
         set -euo pipefail
 
