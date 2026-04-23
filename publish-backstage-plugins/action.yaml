@@ -290,7 +290,13 @@ runs:
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
           echo "Publishing $package_name@$package_version to GitHub"
-          npm publish "$tarball_path" --registry=https://npm.pkg.github.com
+
+          TAG="latest"
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            TAG="dev"
+          fi
+
+          npm publish "$tarball_path" --registry=https://npm.pkg.github.com --tag "$TAG"
         done < /tmp/publish-tarballs.txt
 
         rm .npmrc
