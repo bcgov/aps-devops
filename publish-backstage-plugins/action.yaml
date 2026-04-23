@@ -40,7 +40,8 @@ runs:
         node-version: "22" 
         registry-url: "https://registry.npmjs.org"
 
-    - name: Upgrade npm (OIDC support requires npm 11.5.1+)
+    # OIDC requires npm 11.5.1+
+    - name: Upgrade npm
       shell: bash
       run: |
         unset NODE_AUTH_TOKEN NPM_CONFIG_USERCONFIG
@@ -137,8 +138,8 @@ runs:
           echo "Updating package.json for $plugin_path"
           (
             cd "$plugin_path"
-            npm pkg set version="$RELEASE_VERSION"
-            npm pkg delete private
+            # Use jq to update version and remove 'private' field in package.json for Yarn-managed projects
+            jq --arg VERSION "$RELEASE_VERSION" '.version = $VERSION | del(.private)' package.json > package.json.tmp && mv package.json.tmp package.json
           )
 
           echo "$plugin_path|$package_name|$RELEASE_VERSION" >> /tmp/publish-plan.txt
