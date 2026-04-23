@@ -256,6 +256,7 @@ runs:
       shell: bash
       env:
         NPM_CONFIG_PROVENANCE: "true"
+        NODE_AUTH_TOKEN: "" # Explicitly unset NODE_AUTH_TOKEN for this step to force OIDC.
       run: |
         set -euo pipefail
 
@@ -265,10 +266,6 @@ runs:
         else
           echo "OIDC environment detected."
         fi
-
-        # Ensure no existing auth token interferes with OIDC Trusted Publishing.
-        # setup-node adds a token entry to the config that can block OIDC fallback.
-        unset NODE_AUTH_TOKEN
 
         # Explicitly remove any token auth for the registry to force OIDC token exchange.
         npm config delete //registry.npmjs.org/:_authToken
