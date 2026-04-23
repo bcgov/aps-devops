@@ -37,7 +37,9 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: "22"
+        # 24 is required for OIDC:
+        # https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#publishing-to-npm-with-trusted-publisher-oidc
+        node-version: "24" 
         registry-url: "https://registry.npmjs.org"
 
     - name: Setup Yarn
