@@ -280,6 +280,7 @@ runs:
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.token }}
+        COREPACK_ENABLE_PROJECT_SPEC: "0"
       run: |
         set -euo pipefail
 
