@@ -15,21 +15,26 @@ output "aks_get_credentials" {
 
 
 output "kong_lb_ip" {
-  description = "Kong LoadBalancer public IP — clients connect here for mTLS"
+  description = "Kong public LoadBalancer IP — internet-facing, origin for Azure Front Door"
   value       = azurerm_public_ip.kong_lb.ip_address
 }
 
-output "kong_lb_fqdn" {
-  description = "Kong LoadBalancer FQDN (Azure DNS label) — use as CNAME target for edge_domain"
-  value       = azurerm_public_ip.kong_lb.fqdn
+output "afd_endpoint" {
+  description = "Azure Front Door endpoint hostname — public internet entry point with WAF"
+  value       = azurerm_cdn_frontdoor_endpoint.main.host_name
 }
 
 output "edge_domain" {
-  description = "SDX Edge virtual hostname — create a DNS CNAME pointing to kong_lb_fqdn"
+  description = "SDX Edge virtual hostname — create a DNS CNAME pointing to afd_endpoint"
   value       = local.edge_domain
 }
 
 output "helm_release_status" {
   description = "Status of the sdx-edge Helm release"
   value       = helm_release.sdx_edge.status
+}
+
+output "appgw_public_ip" {
+  description = "Application Gateway public IP — internet-facing WAF entry point"
+  value       = azurerm_public_ip.appgw.ip_address
 }

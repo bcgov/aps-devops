@@ -4,6 +4,16 @@ variable "resource_group_name" {
   default     = "sdx-edge-rg"
 }
 
+variable "vnet_name" {
+  description = "Name of the pre-provisioned VNet allocated by the BC Gov Landing Zone"
+  type        = string
+}
+
+variable "vnet_resource_group_name" {
+  description = "Resource group containing the Landing Zone VNet (may differ from resource_group_name)"
+  type        = string
+}
+
 variable "location" {
   description = "Azure region"
   type        = string
@@ -84,6 +94,86 @@ variable "https_proxy" {
   default     = ""
 }
 
+variable "appgw_sku" {
+  description = "Application Gateway SKU — WAF_v2 required for landing zone compliance"
+  type        = string
+  default     = "WAF_v2"
+}
+
+variable "appgw_ssl_cert_pfx" {
+  description = "Base64-encoded PFX certificate for AppGW HTTPS listener (leave empty to disable HTTPS frontend)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "appgw_ssl_cert_password" {
+  description = "Password for the AppGW PFX certificate"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "appgw_aca_subnet_cidr" {
+  description = "CIDR for the ACA Application Gateway subnet — must be within the Landing Zone VNet address space and not overlap existing subnets"
+  type        = string
+  default     = "10.46.8.64/28"
+}
+
+variable "appgw_capacity" {
+  description = "Application Gateway instance count"
+  type        = number
+  default     = 1
+}
+
+variable "aks_subnet_cidr" {
+  description = "CIDR for the AKS node/pod subnet — must be within the Landing Zone VNet address space"
+  type        = string
+  default     = "10.46.8.128/26"
+}
+
+variable "aca_subnet_cidr" {
+  description = "CIDR for the Container App Environment infrastructure subnet — /27 minimum, must have Microsoft.App/environments delegation"
+  type        = string
+  default     = "10.46.8.192/27"
+}
+
+variable "appgw_subnet_cidr" {
+  description = "CIDR for the Application Gateway subnet — must be within the Landing Zone VNet address space"
+  type        = string
+  default     = "10.46.8.96/28"
+}
+
+variable "pod_cidr" {
+  description = "Kubernetes pod CIDR for Azure CNI Overlay — must be within the BC Gov approved range 10.10.0.0/18"
+  type        = string
+  default     = "10.10.0.0/18"
+}
+
+variable "service_cidr" {
+  description = "Kubernetes service CIDR — must be within the BC Gov approved range 10.10.64.0/22"
+  type        = string
+  default     = "10.10.64.0/22"
+}
+
+variable "dns_service_ip" {
+  description = "IP address for the Kubernetes DNS service — must be within service_cidr"
+  type        = string
+  default     = "10.10.64.10"
+}
+
+variable "kong_node_port" {
+  description = "Fixed Kubernetes NodePort for Kong HTTPS — must be in range 30000-32767; used by the Terraform-managed Azure internal LB"
+  type        = number
+  default     = 30443
+}
+
+variable "kong_lb_private_ip" {
+  description = "Static private IP for the Kong internal LoadBalancer service — must be within aks_subnet_cidr and not used by any node or pod"
+  type        = string
+  default     = "10.46.8.180"
+}
+
 variable "tags" {
   description = "Tags applied to all resources"
   type        = map(string)
@@ -91,4 +181,10 @@ variable "tags" {
     project    = "sdx-edge"
     managed_by = "terraform"
   }
+}
+
+variable "ca_root" {
+  description = "PEM-encoded CA root certificate for validating SDX control plane TLS connections (leave empty to disable validation)"
+  type        = string
+  default     = ""
 }

@@ -4,6 +4,11 @@
 resource_group_name = "sdx-edge-rg"
 location            = "canadacentral"
 
+# BC Gov Landing Zone pre-provisions one VNet per Project Set — do not create a new one.
+# Find yours with: az network vnet list --output table
+vnet_name                = "REPLACE_ME"   # e.g. "Project_Set_Name-dev-vnet"
+vnet_resource_group_name = "REPLACE_ME"   # often the same as resource_group_name, or a separate network RG
+
 # AKS cluster
 cluster_name       = "sdx-edge-aks"
 node_count         = 2
@@ -28,6 +33,24 @@ mtls_required = true
 # Optional HTTP proxy (leave empty string to disable)
 https_proxy = ""
 
+
+# Subnet CIDRs — must be within the Landing Zone VNet address space.
+# Find your VNet range: az network vnet show --name <vnet> --resource-group <rg> --query addressSpace
+aks_subnet_cidr   = "REPLACE_ME"   # e.g. a /26 within your /24 allocation
+appgw_subnet_cidr = "REPLACE_ME"   # e.g. a /28 within your /24 allocation
+aca_subnet_cidr   = "REPLACE_ME"   # /27 minimum; delegated to Microsoft.App/environments
+
+# Kubernetes service/DNS CIDRs — must be in BC Gov approved range, must not overlap the VNet.
+pod_cidr       = "10.10.0.0/18"    # BC Gov approved range; used by Azure CNI Overlay
+service_cidr   = "10.10.64.0/22"   # BC Gov approved range
+dns_service_ip = "10.10.64.10"
+
+# Static private IP for the Kong internal LoadBalancer — must be within aks_subnet_cidr.
+kong_lb_private_ip = "REPLACE_ME"
+
+# Application Gateway sizing (WAF_v2 required by BC Gov Azure Landing Zone)
+appgw_sku      = "WAF_v2"
+appgw_capacity = 1
 
 tags = {
   project    = "sdx-edge"

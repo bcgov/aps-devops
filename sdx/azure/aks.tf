@@ -6,11 +6,15 @@ resource "azurerm_kubernetes_cluster" "main" {
   kubernetes_version  = var.kubernetes_version
   tags                = var.tags
 
+  image_cleaner_enabled        = true
+  image_cleaner_interval_hours = 48
+  azure_policy_enabled         = true
+
   default_node_pool {
     name           = "system"
     node_count     = var.node_count
     vm_size        = var.vm_size
-    vnet_subnet_id = azurerm_subnet.aks.id
+    vnet_subnet_id = azapi_resource.aks_subnet.id
 
     upgrade_settings {
       max_surge = "10%"
@@ -22,9 +26,13 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   network_profile {
-    network_plugin    = "azure"
-    network_policy    = "azure"
-    load_balancer_sku = "standard"
+    network_plugin      = "azure"
+    network_plugin_mode = "overlay"
+    network_policy      = "azure"
+    load_balancer_sku   = "standard"
+    pod_cidr            = var.pod_cidr
+    service_cidr        = var.service_cidr
+    dns_service_ip      = var.dns_service_ip
   }
 
   oidc_issuer_enabled = true
@@ -37,11 +45,20 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 }
 
-# Allow the AKS cloud controller manager to read/attach public IPs and manage
-# load balancer resources when reconciling LoadBalancer-type services
-resource "azurerm_role_assignment" "aks_network_contributor" {
-  scope                = azurerm_resource_group.main.id
-  role_definition_name = "Network Contributor"
-  principal_id         = azurerm_kubernetes_cluster.main.identity[0].principal_id
-}
+# AKS has two relevant identities:
+# - identity[0].principal_id: the cluster control plane identity
+# - kubelet_identity[0].object_id: used by the cloud controller manager for LB reconciliation
+# Both need Network Contributor on the VNet so the CCM can read/write subnets when
+# provisioning internal load balancers. The VNet is in a separate Landing Zone RG.
+# resource "azurerm_role_assignment" "aks_network_contributor" {
+#   scope                = data.azurerm_virtual_network.main.id
+#   role_definition_name = "Network Contributor"
+#   principal_id         = azurerm_kubernetes_cluster.main.identity[0].principal_id
+# }
+
+# resource "azurerm_role_assignment" "aks_kubelet_network_contributor" {
+#   scope                = data.azurerm_virtual_network.main.id
+#   role_definition_name = "Network Contributor"
+#   principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
+# }
 

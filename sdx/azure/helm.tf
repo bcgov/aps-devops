@@ -5,6 +5,8 @@ resource "helm_release" "sdx_edge" {
   namespace        = var.namespace
   create_namespace = true
 
+  timeout = 60
+
   # Core connectivity
   set {
     name  = "sdx_control_url"
@@ -44,9 +46,8 @@ resource "helm_release" "sdx_edge" {
     value = local.edge_domain
   }
 
-  # Embed the pre-allocated LB public IP as a SAN on the edge server certificate.
-  # The static IP is known before the Kubernetes service is created, avoiding
-  # a chicken-and-egg dependency.
+  # Embed the public LB IP as a SAN on the server cert so AFD can validate it
+  # when certificate_name_check_enabled = true (requires ca_root to be set).
   set {
     name  = "tls.server.ip"
     value = azurerm_public_ip.kong_lb.ip_address
@@ -65,42 +66,29 @@ resource "helm_release" "sdx_edge" {
   depends_on = [azurerm_kubernetes_cluster.main]
 }
 
-# L4 LoadBalancer service — TCP traffic reaches Kong unmodified, preserving
-# the full mTLS handshake between external clients and Kong.
-# Azure attaches the pre-allocated static IP via the azure-pip-name annotation
-# so the IP is stable and matches the SAN embedded in the edge TLS cert above.
+# NodePort service — the Terraform-managed Azure public LB (lb.tf) routes traffic
+# from azurerm_public_ip.kong_lb:443 to this fixed NodePort on each node, bypassing
+# the AKS cloud controller manager entirely (no VNet subnet permissions needed).
 resource "kubernetes_service_v1" "sdx_edge_lb" {
   metadata {
     name      = "${var.edge_id}-lb"
     namespace = var.namespace
-
-    annotations = {
-      # Bind the pre-allocated static public IP to this service
-      "service.beta.kubernetes.io/azure-pip-name"                     = azurerm_public_ip.kong_lb.name
-      "service.beta.kubernetes.io/azure-load-balancer-resource-group" = azurerm_resource_group.main.name
-      # TCP probe on 8443: marks the backend healthy as soon as Kong is listening,
-      # without waiting for TLS bootstrap (which can take minutes on first deploy)
-      "service.beta.kubernetes.io/azure-load-balancer-health-probe-port"     = "8443"
-      "service.beta.kubernetes.io/azure-load-balancer-health-probe-protocol" = "tcp"
-    }
   }
 
   spec {
-    type = "LoadBalancer"
+    type = "NodePort"
 
-    # Select the Kong proxy pods deployed by the helm chart.
-    # The instance label is sdx-edge-<release-name> per _helpers.tpl.
     selector = {
       "app.kubernetes.io/name"      = "sdx-edge"
       "app.kubernetes.io/component" = "kong"
       "app.kubernetes.io/instance"  = local.kong_svc_name
     }
 
-    # Port 443 → Kong TLS proxy (8443): carries mTLS client connections
     port {
       name        = "https"
       port        = 443
       target_port = 8443
+      node_port   = var.kong_node_port
       protocol    = "TCP"
     }
   }
