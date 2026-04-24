@@ -15,17 +15,12 @@ output "aks_get_credentials" {
 
 
 output "kong_lb_ip" {
-  description = "Kong public LoadBalancer IP — internet-facing, origin for Azure Front Door"
+  description = "Kong public LoadBalancer IP — internet-facing entry point"
   value       = azurerm_public_ip.kong_lb.ip_address
 }
 
-output "afd_endpoint" {
-  description = "Azure Front Door endpoint hostname — public internet entry point with WAF"
-  value       = azurerm_cdn_frontdoor_endpoint.main.host_name
-}
-
 output "edge_domain" {
-  description = "SDX Edge virtual hostname — create a DNS CNAME pointing to afd_endpoint"
+  description = "SDX Edge virtual hostname"
   value       = local.edge_domain
 }
 

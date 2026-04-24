@@ -14,31 +14,49 @@ resource "azurerm_container_app_environment" "main" {
   }
 }
 
-# Private Endpoint for the Container App Environment.
-# Per BC Gov Landing Zone guidance, private_dns_zone_group is intentionally omitted —
-# the central connectivity subscription automatically creates the DNS A record in the
-# centralized Private DNS Zone within ~10 minutes of the endpoint being provisioned.
-resource "azurerm_private_endpoint" "aca" {
-  name                = "${var.cluster_name}-aca-pe"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  subnet_id           = azapi_resource.aks_subnet.id
-  tags                = var.tags
+# azurerm_container_app_environment does not yet expose publicNetworkAccess, so patch
+# it via azapi before the private endpoint is created — Azure rejects the PE if public
+# access is still enabled.
+resource "azapi_update_resource" "aca_disable_public_access" {
+  type        = "Microsoft.App/managedEnvironments@2024-03-01"
+  resource_id = azurerm_container_app_environment.main.id
 
-  private_service_connection {
-    name                           = "${var.cluster_name}-aca-psc"
-    private_connection_resource_id = azurerm_container_app_environment.main.id
-    subresource_names              = ["managedEnvironments"]
-    is_manual_connection           = false
+  body = {
+    properties = {
+      publicNetworkAccess = "Disabled"
+    }
   }
 }
 
-resource "azurerm_container_app" "hello" {
-  name                         = "${var.cluster_name}-hello"
+# # Private Endpoint for the Container App Environment.
+# # Per BC Gov Landing Zone guidance, private_dns_zone_group is intentionally omitted —
+# # the central connectivity subscription automatically creates the DNS A record in the
+# # centralized Private DNS Zone within ~10 minutes of the endpoint being provisioned.
+# resource "azurerm_private_endpoint" "aca" {
+#   name                = "${var.cluster_name}-aca-pe"
+#   resource_group_name = azurerm_resource_group.main.name
+#   location            = azurerm_resource_group.main.location
+#   subnet_id           = azapi_resource.aks_subnet.id
+#   tags                = var.tags
+
+#   private_service_connection {
+#     name                           = "${var.cluster_name}-aca-psc"
+#     private_connection_resource_id = azurerm_container_app_environment.main.id
+#     subresource_names              = ["managedEnvironments"]
+#     is_manual_connection           = false
+#   }
+
+#   depends_on = [azapi_update_resource.aca_disable_public_access]
+# }
+
+resource "azurerm_container_app" "showme" {
+  name                         = "${var.cluster_name}-showme"
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
   revision_mode                = "Single"
   tags                         = var.tags
+
+  workload_profile_name = "Consumption"
 
   registry {
     server               = azurerm_container_registry.acr.login_server
@@ -53,8 +71,8 @@ resource "azurerm_container_app" "hello" {
 
   template {
     container {
-      name   = "hello"
-      image  = "${azurerm_container_registry.acr.login_server}/hello:latest"
+      name   = "showme"
+      image  = "${azurerm_container_registry.acr.login_server}/showme:latest"
       cpu    = 0.25
       memory = "0.5Gi"
     }
@@ -62,63 +80,18 @@ resource "azurerm_container_app" "hello" {
 
   ingress {
     external_enabled = true
-    target_port      = 80
+    target_port      = 8000
 
     traffic_weight {
       percentage      = 100
       latest_revision = true
     }
   }
-}
 
-# Separate AFD origin group for the hello world app.
-# Unlike the Kong origin group, this uses a plain HTTPS health probe with no
-# mTLS — useful for confirming AFD deployment works independently of Kong.
-resource "azurerm_cdn_frontdoor_origin_group" "hello" {
-  name                     = "hello"
-  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
-  session_affinity_enabled = false
-
-  load_balancing {
-    sample_size                        = 4
-    successful_samples_required        = 3
-    additional_latency_in_milliseconds = 50
-  }
-
-  health_probe {
-    path                = "/"
-    request_type        = "HEAD"
-    protocol            = "Https"
-    interval_in_seconds = 30
+  lifecycle {
+    ignore_changes = [
+      ingress[0].client_certificate_mode,
+    ]
   }
 }
 
-resource "azurerm_cdn_frontdoor_origin" "hello" {
-  name                          = "hello"
-  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.hello.id
-  enabled                       = true
-
-  host_name                      = azurerm_container_app.hello.ingress[0].fqdn
-  http_port                      = 80
-  https_port                     = 443
-  origin_host_header             = azurerm_container_app.hello.ingress[0].fqdn
-  priority                       = 1
-  weight                         = 1000
-  certificate_name_check_enabled = true
-}
-
-# Routes /hello and /hello/* to the container app.
-# More specific than the Kong route (/*) so AFD prefers this for /hello paths.
-resource "azurerm_cdn_frontdoor_route" "hello" {
-  name                          = "hello"
-  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
-  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.hello.id
-  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.hello.id]
-  enabled                       = true
-
-  forwarding_protocol    = "HttpsOnly"
-  https_redirect_enabled = true
-  patterns_to_match      = ["/hello", "/hello/*"]
-  supported_protocols    = ["Http", "Https"]
-  link_to_default_domain = true
-}

@@ -6,3 +6,4 @@ LOCAL.md
 .claude
 terraform.tfvars
 terraform.tfstate*
+_tmp

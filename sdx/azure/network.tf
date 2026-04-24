@@ -10,25 +10,11 @@ resource "azurerm_network_security_group" "aks" {
   location            = azurerm_resource_group.main.location
   tags                = var.tags
 
-  # AFD backend PoPs forward to the public Kong LB (443); the LB routes to this
-  # NodePort on each node. Source service tag covers all AFD backend address ranges.
-  security_rule {
-    name                       = "allow-nodeport-from-afd"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = tostring(var.kong_node_port)
-    source_address_prefix      = "AzureFrontDoor.Backend"
-    destination_address_prefix = "*"
-  }
-
   # AppGW routes directly to node private IPs on the NodePort, bypassing the
   # public Kong LB and avoiding UDR/hub-firewall routing for internal traffic.
   security_rule {
     name                       = "allow-nodeport-from-appgw"
-    priority                   = 110
+    priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
@@ -42,7 +28,7 @@ resource "azurerm_network_security_group" "aks" {
   # this rule must exist or the LB marks all backends unhealthy and drops traffic
   security_rule {
     name                       = "allow-azure-lb-probe"
-    priority                   = 120
+    priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
