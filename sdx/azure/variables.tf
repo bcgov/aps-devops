@@ -168,9 +168,3 @@ variable "tags" {
     managed_by = "terraform"
   }
 }
-
-variable "ca_root" {
-  description = "PEM-encoded CA root certificate for validating SDX control plane TLS connections (leave empty to disable validation)"
-  type        = string
-  default     = ""
-}

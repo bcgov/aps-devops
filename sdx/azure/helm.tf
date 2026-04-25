@@ -46,8 +46,7 @@ resource "helm_release" "sdx_edge" {
     value = local.edge_domain
   }
 
-  # Embed the public LB IP as a SAN on the server cert so AFD can validate it
-  # when certificate_name_check_enabled = true (requires ca_root to be set).
+  # Embed the public LB IP as a SAN on the server cert
   set {
     name  = "tls.server.ip"
     value = azurerm_public_ip.kong_lb.ip_address
