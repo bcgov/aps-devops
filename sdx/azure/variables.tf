@@ -100,20 +100,6 @@ variable "appgw_sku" {
   default     = "WAF_v2"
 }
 
-variable "appgw_ssl_cert_pfx" {
-  description = "Base64-encoded PFX certificate for AppGW HTTPS listener (leave empty to disable HTTPS frontend)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "appgw_ssl_cert_password" {
-  description = "Password for the AppGW PFX certificate"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "appgw_aca_subnet_cidr" {
   description = "CIDR for the ACA Application Gateway subnet — must be within the Landing Zone VNet address space and not overlap existing subnets"
   type        = string

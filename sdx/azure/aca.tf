@@ -1,58 +1,56 @@
-resource "azurerm_container_app_environment" "main" {
-  name                               = "${var.cluster_name}-cae"
-  resource_group_name                = azurerm_resource_group.main.name
-  location                           = azurerm_resource_group.main.location
-  infrastructure_subnet_id           = azapi_resource.aca_subnet.id
-  infrastructure_resource_group_name = "${var.cluster_name}-cae-infra-rg"
-  tags                               = var.tags
-
-  workload_profile {
-    maximum_count         = 0
-    minimum_count         = 0
-    name                  = "Consumption"
-    workload_profile_type = "Consumption"
-  }
-}
-
-# azurerm_container_app_environment does not yet expose publicNetworkAccess, so patch
-# it via azapi before the private endpoint is created — Azure rejects the PE if public
-# access is still enabled.
-resource "azapi_update_resource" "aca_disable_public_access" {
-  type        = "Microsoft.App/managedEnvironments@2024-03-01"
-  resource_id = azurerm_container_app_environment.main.id
+# azurerm_container_app_environment does not expose publicNetworkAccess, so we use
+# azapi_resource directly to set it at creation time — avoiding the race condition
+# where a separate azapi_update_resource patch would race with private endpoint creation.
+resource "azapi_resource" "aca_environment" {
+  type                      = "Microsoft.App/managedEnvironments@2025-07-01"
+  name                      = "${var.cluster_name}-cae"
+  parent_id                 = azurerm_resource_group.main.id
+  location                  = azurerm_resource_group.main.location
+  schema_validation_enabled = false
+  tags                      = var.tags
 
   body = {
     properties = {
-      publicNetworkAccess = "Disabled"
+      vnetConfiguration = {
+        infrastructureSubnetId = azapi_resource.aca_subnet.id
+      }
+      infrastructureResourceGroup = "${var.cluster_name}-cae-infra-rg"
+      publicNetworkAccess         = "Disabled"
+      workloadProfiles = [
+        {
+          name                = "Consumption"
+          workloadProfileType = "Consumption"
+        }
+      ]
     }
   }
+
+  response_export_values = ["properties.defaultDomain", "properties.staticIp"]
 }
 
-# # Private Endpoint for the Container App Environment.
-# # Per BC Gov Landing Zone guidance, private_dns_zone_group is intentionally omitted —
-# # the central connectivity subscription automatically creates the DNS A record in the
-# # centralized Private DNS Zone within ~10 minutes of the endpoint being provisioned.
-# resource "azurerm_private_endpoint" "aca" {
-#   name                = "${var.cluster_name}-aca-pe"
-#   resource_group_name = azurerm_resource_group.main.name
-#   location            = azurerm_resource_group.main.location
-#   subnet_id           = azapi_resource.aks_subnet.id
-#   tags                = var.tags
+# Private Endpoint for the Container App Environment.
+# Per BC Gov Landing Zone guidance, private_dns_zone_group is intentionally omitted —
+# the central connectivity subscription automatically creates the DNS A record in the
+# centralized Private DNS Zone within ~10 minutes of the endpoint being provisioned.
+resource "azurerm_private_endpoint" "aca" {
+  name                = "${var.cluster_name}-aca-pe"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  subnet_id           = azapi_resource.aks_subnet.id
+  tags                = var.tags
 
-#   private_service_connection {
-#     name                           = "${var.cluster_name}-aca-psc"
-#     private_connection_resource_id = azurerm_container_app_environment.main.id
-#     subresource_names              = ["managedEnvironments"]
-#     is_manual_connection           = false
-#   }
-
-#   depends_on = [azapi_update_resource.aca_disable_public_access]
-# }
+  private_service_connection {
+    name                           = "${var.cluster_name}-aca-psc"
+    private_connection_resource_id = azapi_resource.aca_environment.id
+    subresource_names              = ["managedEnvironments"]
+    is_manual_connection           = false
+  }
+}
 
 resource "azurerm_container_app" "showme" {
   name                         = "${var.cluster_name}-showme"
   resource_group_name          = azurerm_resource_group.main.name
-  container_app_environment_id = azurerm_container_app_environment.main.id
+  container_app_environment_id = azapi_resource.aca_environment.id
   revision_mode                = "Single"
   tags                         = var.tags
 

@@ -7,6 +7,28 @@ resource "azurerm_public_ip" "appgw" {
   tags                = var.tags
 }
 
+resource "azurerm_web_application_firewall_policy" "appgw" {
+  name                = "${var.cluster_name}-waf-policy"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  tags                = var.tags
+
+  policy_settings {
+    enabled                     = true
+    mode                        = "Prevention"
+    request_body_check          = true
+    max_request_body_size_in_kb = 128
+    file_upload_limit_in_mb     = 100
+  }
+
+  managed_rules {
+    managed_rule_set {
+      type    = "OWASP"
+      version = "3.2"
+    }
+  }
+}
+
 locals {
   appgw_name = "${var.cluster_name}-appgw"
   # Pre-computed ARM resource ID used to build sub-resource ID references
@@ -33,45 +55,18 @@ resource "azapi_resource" "appgw" {
         capacity = var.appgw_capacity
       }
 
+      # Required by BC Gov Landing Zone policy regardless of listener protocol.
       sslPolicy = {
         policyType = "Predefined"
         policyName = "AppGwSslPolicy20220101S"
       }
 
-      # WAF configuration is required by the WAF_v2 SKU. WAF inspection only
-      # applies to HTTP/HTTPS listeners — TCP listeners bypass it transparently.
-      webApplicationFirewallConfiguration = {
-        enabled        = true
-        firewallMode   = "Prevention"
-        ruleSetType    = "OWASP"
-        ruleSetVersion = "3.2"
+      # WAF policy is attached by reference; the inline webApplicationFirewallConfiguration
+      # block has been retired. WAF inspection applies to HTTP/HTTPS listeners only —
+      # TCP listeners bypass it transparently.
+      firewallPolicy = {
+        id = azurerm_web_application_firewall_policy.appgw.id
       }
-
-      # Trust the SDX CA so AppGW can validate Kong's self-signed backend cert.
-      # Only added when ca_root is provided; omitting it falls back to well-known CAs.
-      trustedRootCertificates = var.ca_root != "" ? [
-        {
-          name = "kong-ca"
-          properties = {
-            data = base64encode(var.ca_root)
-          }
-        }
-      ] : null
-
-      # Frontend TLS certificate for the HTTPS listener.
-      # Generate a self-signed PFX with:
-      #   openssl req -x509 -newkey rsa:2048 -keyout k.pem -out c.pem -days 365 -nodes -subj '/CN=<appgw-ip>'
-      #   openssl pkcs12 -export -out cert.pfx -inkey k.pem -in c.pem -passout pass:changeme
-      #   base64 -i cert.pfx | tr -d '\n'
-      sslCertificates = var.appgw_ssl_cert_pfx != "" ? [
-        {
-          name = "appgw-ssl"
-          properties = {
-            data     = var.appgw_ssl_cert_pfx
-            password = var.appgw_ssl_cert_password
-          }
-        }
-      ] : null
 
       gatewayIPConfigurations = [
         {
@@ -93,10 +88,6 @@ resource "azapi_resource" "appgw" {
 
       frontendPorts = [
         {
-          name       = "http"
-          properties = { port = 80 }
-        },
-        {
           name       = "https"
           properties = { port = 443 }
         }
@@ -113,94 +104,53 @@ resource "azapi_resource" "appgw" {
         }
       ]
 
-      backendHttpSettingsCollection = [
+      # L4 TCP backend settings — AppGW forwards raw bytes to Kong on the NodePort;
+      # Kong owns TLS termination and mTLS client certificate validation.
+      backendSettingsCollection = [
         {
           name = "tcp-settings"
           properties = {
-            port                           = 30443
-            protocol                       = "Https"
-            cookieBasedAffinity            = "Disabled"
-            requestTimeout                 = 60
-            pickHostNameFromBackendAddress = true
-            trustedRootCertificates = var.ca_root != "" ? [
-              { id = "${local.appgw_id}/trustedRootCertificates/kong-ca" }
-            ] : null
+            port     = var.kong_node_port
+            protocol = "Tcp"
+            timeout  = 60
           }
         }
       ]
 
-      httpListeners = concat(
-        [
-          {
-            name = "http-listener"
-            properties = {
-              frontendIPConfiguration = {
-                id = "${local.appgw_id}/frontendIPConfigurations/appgw-public-ip"
-              }
-              frontendPort = {
-                id = "${local.appgw_id}/frontendPorts/http"
-              }
-              protocol = "Http"
+      # L4 TCP listener — no TLS termination at AppGW; SNI passes through to Kong.
+      listeners = [
+        {
+          name = "tcp-listener"
+          properties = {
+            frontendIPConfiguration = {
+              id = "${local.appgw_id}/frontendIPConfigurations/appgw-public-ip"
             }
-          }
-        ],
-        var.appgw_ssl_cert_pfx != "" ? [
-          {
-            name = "https-listener"
-            properties = {
-              frontendIPConfiguration = {
-                id = "${local.appgw_id}/frontendIPConfigurations/appgw-public-ip"
-              }
-              frontendPort = {
-                id = "${local.appgw_id}/frontendPorts/https"
-              }
-              protocol      = "Https"
-              sslCertificate = {
-                id = "${local.appgw_id}/sslCertificates/appgw-ssl"
-              }
+            frontendPort = {
+              id = "${local.appgw_id}/frontendPorts/https"
             }
+            protocol = "Tcp"
           }
-        ] : []
-      )
+        }
+      ]
 
-      requestRoutingRules = concat(
-        [
-          {
-            name = "http-rule"
-            properties = {
-              ruleType = "Basic"
-              priority = 100
-              httpListener = {
-                id = "${local.appgw_id}/httpListeners/http-listener"
-              }
-              backendAddressPool = {
-                id = "${local.appgw_id}/backendAddressPools/kong-backend"
-              }
-              backendHttpSettings = {
-                id = "${local.appgw_id}/backendHttpSettingsCollection/tcp-settings"
-              }
+      routingRules = [
+        {
+          name = "tcp-rule"
+          properties = {
+            ruleType = "Basic"
+            priority = 100
+            listener = {
+              id = "${local.appgw_id}/listeners/tcp-listener"
+            }
+            backendAddressPool = {
+              id = "${local.appgw_id}/backendAddressPools/kong-backend"
+            }
+            backendSettings = {
+              id = "${local.appgw_id}/backendSettingsCollection/tcp-settings"
             }
           }
-        ],
-        var.appgw_ssl_cert_pfx != "" ? [
-          {
-            name = "https-rule"
-            properties = {
-              ruleType = "Basic"
-              priority = 110
-              httpListener = {
-                id = "${local.appgw_id}/httpListeners/https-listener"
-              }
-              backendAddressPool = {
-                id = "${local.appgw_id}/backendAddressPools/kong-backend"
-              }
-              backendHttpSettings = {
-                id = "${local.appgw_id}/backendHttpSettingsCollection/tcp-settings"
-              }
-            }
-          }
-        ] : []
-      )
+        }
+      ]
     }
   }
 

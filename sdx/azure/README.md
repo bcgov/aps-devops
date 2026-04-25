@@ -84,19 +84,23 @@ docker push acrmyapp.azurecr.io/showme:latest
 
 ```yaml
 subscription_id: 8e303ae8-ce14-4e85-9dc3-9d767a42dec8
-resource_group_name: sdx-edge-aks
+resource_group_name: sdx-edge-rg
 virtual_network_name: b9cee3-test-vwan-spoke
 subnet_name: appgw-subnet
 udr_name: sdx-edge-aks-appgw-udr
 routes: |-
-{     "name": "toInternet",     "addressPrefix": "0.0.0.0/0",     "nextHopType": "Internet",     "nextHopIpAddress": ""   },
-
-
-
-```
-
-```json
-{     "name": "toInternet",     "addressPrefix": "0.0.0.0/0",     "nextHopType": "Internet",     "nextHopIpAddress": ""   },
+  [
+    {
+      "name": "default-internet",
+      "addressPrefix": "0.0.0.0/0",
+      "nextHopType": "Internet"
+    },
+    {
+      "name": "bcgov-internal",
+      "addressPrefix": "142.34.0.0/16",
+      "nextHopType": "Internet"
+    }
+  ]
 ```
 
 ## Diagrams
@@ -339,100 +343,19 @@ curl -v --resolve ${DOMAIN}:443:${IP} \
   https://${DOMAIN}/sdx/0/LAB.MIN.CITZ.AZURE01.v1/v1/me
 ```
 
+```
+export IP=20.63.103.28
+export EDGE_ID="azure01"
+export DOMAIN="${EDGE_ID}.servers.sdx"
+
+curl -v --resolve ${DOMAIN}:443:${IP} \
+  -H "X-Client-Id:LAB.MIN.CITZ.SDG-FE" \
+  https://${DOMAIN}/sdx/0/LAB.MIN.CITZ.AZURE01.v1/v1/me
+
+```
+
 ## Cert Chain
 
 ```sh
 openssl s_client -connect sdx-edge-aks-hello.orangewater-f8b9c6ec.canadacentral.azurecontainerapps.io:443 -showcerts 2>/dev/null
-```
-
-## Inbound
-
-Looks like this gets added:
-
-```
- - resource "azurerm_network_security_group" "appgw_aca" {
-      - id                  = "/subscriptions/8e303ae8-ce14-4e85-9dc3-9d767a42dec8/resourceGroups/sdx-edge-rg/providers/Microsoft.Network/networkSecurityGroups/sdx-edge-aks-appgw-aca-nsg" -> null
-      - location            = "canadacentral" -> null
-      - name                = "sdx-edge-aks-appgw-aca-nsg" -> null
-      - resource_group_name = "sdx-edge-rg" -> null
-      - security_rule       = [
-          - {
-              - access                                     = "Allow"
-              - description                                = ""
-              - destination_address_prefix                 = "*"
-              - destination_address_prefixes               = []
-              - destination_application_security_group_ids = []
-              - destination_port_range                     = "*"
-              - destination_port_ranges                    = []
-              - direction                                  = "Inbound"
-              - name                                       = "allow-azure-lb-probe"
-              - priority                                   = 130
-              - protocol                                   = "Tcp"
-              - source_address_prefix                      = "AzureLoadBalancer"
-              - source_address_prefixes                    = []
-              - source_application_security_group_ids      = []
-              - source_port_range                          = "*"
-              - source_port_ranges                         = []
-            },
-          - {
-              - access                                     = "Allow"
-              - description                                = ""
-              - destination_address_prefix                 = "*"
-              - destination_address_prefixes               = []
-              - destination_application_security_group_ids = []
-              - destination_port_range                     = "443"
-              - destination_port_ranges                    = []
-              - direction                                  = "Inbound"
-              - name                                       = "allow-https-inbound"
-              - priority                                   = 110
-              - protocol                                   = "Tcp"
-              - source_address_prefix                      = "Internet"
-              - source_address_prefixes                    = []
-              - source_application_security_group_ids      = []
-              - source_port_range                          = "*"
-              - source_port_ranges                         = []
-            },
-          - {
-              - access                                     = "Allow"
-              - description                                = ""
-              - destination_address_prefix                 = "*"
-              - destination_address_prefixes               = []
-              - destination_application_security_group_ids = []
-              - destination_port_range                     = "65200-65535"
-              - destination_port_ranges                    = []
-              - direction                                  = "Inbound"
-              - name                                       = "allow-gateway-manager"
-              - priority                                   = 100
-              - protocol                                   = "Tcp"
-              - source_address_prefix                      = "GatewayManager"
-              - source_address_prefixes                    = []
-              - source_application_security_group_ids      = []
-              - source_port_range                          = "*"
-              - source_port_ranges                         = []
-            },
-          - {
-              - access                                     = "Allow"
-              - description                                = ""
-              - destination_address_prefix                 = "*"
-              - destination_address_prefixes               = []
-              - destination_application_security_group_ids = []
-              - destination_port_range                     = "80"
-              - destination_port_ranges                    = []
-              - direction                                  = "Inbound"
-              - name                                       = "allow-http-inbound"
-              - priority                                   = 120
-              - protocol                                   = "Tcp"
-              - source_address_prefix                      = "Internet"
-              - source_address_prefixes                    = []
-              - source_application_security_group_ids      = []
-              - source_port_range                          = "*"
-              - source_port_ranges                         = []
-            },
-        ] -> null
-      - tags                = {
-          - "environment" = "dev"
-          - "managed_by"  = "terraform"
-          - "project"     = "sdx-edge"
-        } -> null
-    }
 ```
