@@ -394,6 +394,7 @@ runs:
           for attempt in {1..3}; do
             echo "Attempt $attempt to update $NAME to $VERSION"
             if yarn up "$NAME@$VERSION" --mode=update-lockfile; then
+              echo "    Successfully updated"
               break
             fi
             if [ $attempt -lt 3 ]; then
