@@ -116,7 +116,7 @@ runs:
     - name: Prepare plugins and create publish plan
       shell: bash
       env:
-        COREPACK_ENABLE_PROJECT_SPEC: "0"
+        COREPACK_ENABLE_PROJECT_SPEC: "0" # Don't check if package manager corresponds to the one in package.json
       run: |
         set -euo pipefail
 
@@ -247,7 +247,7 @@ runs:
       shell: bash
       env:
         NPM_CONFIG_PROVENANCE: "true"
-        COREPACK_ENABLE_PROJECT_SPEC: "0"
+        COREPACK_ENABLE_PROJECT_SPEC: "0" # Don't check if package manager corresponds to the one in package.json
       run: |
         set -euo pipefail
 
@@ -273,7 +273,7 @@ runs:
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.token }}
-        COREPACK_ENABLE_PROJECT_SPEC: "0"
+        COREPACK_ENABLE_PROJECT_SPEC: "0" # Don't check if package manager corresponds to the one in package.json
       run: |
         set -euo pipefail
 
