@@ -329,6 +329,9 @@ The action will fail if:
 - A tarball is not created as expected
 - Publishing any package fails
 - If `dispatch_repo` and `dispatch_ssh_key` are provided, the `dispatch_repo` must have a `main` branch
+- This action publishes to npmjs.org and GitHub in separate steps. If the npmjs publish succeeds and the GitHub
+  fails, the registries will not have matching versions.
+- If publishing fails, the downstream repository update will be skipped
 
 ## Notes
 
