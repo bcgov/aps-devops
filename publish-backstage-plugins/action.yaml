@@ -395,7 +395,6 @@ runs:
           git clone --branch "main" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR"
           cd "$DISPATCH_DIR"
           git checkout -b "$D_BRANCH"
-          git push -u origin "$D_BRANCH"
         fi
         cd "$DISPATCH_DIR"
 
