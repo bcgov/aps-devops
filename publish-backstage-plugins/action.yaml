@@ -11,7 +11,8 @@ inputs:
     description: "Optional: SSH private key with access to the target repository"
     required: false
   dispatch_branch:
-    description: "Optional: The branch (ref) in the target repository to commit to. Defaults to 'main'."
+    description: "Optional: The branch (ref) in the target repository to commit to. If not specified, 
+      defaults to the current branch (or 'main' for unsupported branches)."
     required: false
 outputs:
   version:
@@ -357,9 +358,21 @@ runs:
         D_REPO: ${{ inputs.dispatch_repo }}
         D_SSH_KEY: ${{ inputs.dispatch_ssh_key }}
         D_PAYLOAD: ${{ steps.finalize.outputs.published_package_versions }}
-        D_BRANCH: ${{ inputs.dispatch_branch || 'main' }}
+        D_BRANCH: ${{ inputs.dispatch_branch}}
       run: |
         set -euo pipefail
+
+        # Determine D_BRANCH
+        if [[ -z "$D_BRANCH" ]]; then
+          CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
+          if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == feature/* ]]; then
+            D_BRANCH="$CURRENT_BRANCH"
+          else
+            # Default to 'main' for unsupported branches
+            D_BRANCH="main"
+          fi
+        fi
+
         echo "Updating dependencies in $D_REPO on ref $D_BRANCH"
 
         # Setup SSH authentication
@@ -373,9 +386,17 @@ runs:
         # Export GIT_SSH_COMMAND to use our custom SSH key
         export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/dispatch_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 
-        # Clone the dispatch repository
+        # Clone the dispatch repository (handle branch creation if needed)
         DISPATCH_DIR=$(mktemp -d)
-        git clone --branch "$D_BRANCH" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR"
+        if git clone --branch "$D_BRANCH" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR" 2>/dev/null; then
+          echo "Branch $D_BRANCH exists in downstream repo, cloned successfully"
+        else
+          echo "Branch $D_BRANCH does not exist in downstream repo, creating from main"
+          git clone --branch "main" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR"
+          cd "$DISPATCH_DIR"
+          git checkout -b "$D_BRANCH"
+          git push -u origin "$D_BRANCH"
+        fi
         cd "$DISPATCH_DIR"
 
         # Configure git user for commits
@@ -407,7 +428,7 @@ runs:
         # Commit and push
         if [[ -n $(git status --porcelain) ]]; then
           git add '**/package.json' yarn.lock
-          git commit -m "update plugins to version ${{ steps.finalize.outputs.version }}"
+          git commit -m "update plugins from ${{ github.repository }} to version ${{ steps.finalize.outputs.version }}"
           git push origin "$D_BRANCH"
           echo "status=updated" >> "$GITHUB_OUTPUT"
           {

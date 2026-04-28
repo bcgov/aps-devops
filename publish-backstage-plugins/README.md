@@ -81,7 +81,10 @@ To set up SSH authentication:
 
 ### `dispatch_branch`
 
-Optional. The branch (ref) in the target repository to commit to. Defaults to `main`.
+Optional. The branch (ref) in the target repository to commit to. If not specified, 
+it will be set based on the branch in the current repository:
+- for `main` or `feature/*` branches, use the same branch name (creating the `feature/*` branch if necessary)
+- otherwise, use `main`
 
 
 ## Outputs
@@ -325,6 +328,7 @@ The action will fail if:
 - A target package version already exists in either registry
 - A tarball is not created as expected
 - Publishing any package fails
+- If `dispatch_repo` and `dispatch_ssh_key` are provided, the `dispatch_repo` must have a `main` branch
 
 ## Notes
 
