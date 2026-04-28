@@ -455,4 +455,6 @@ runs:
     - name: Cleanup temp files
       if: ${{ always() }}
       shell: bash
-      run: rm -rf /tmp/plugin-*
+      run: |
+        rm -rf /tmp/plugin-*
+        rm .npmrc
