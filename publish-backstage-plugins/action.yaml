@@ -426,7 +426,10 @@ runs:
 
         # Commit and push
         if [[ -n $(git status --porcelain) ]]; then
-          git add '**/package.json' yarn.lock
+          git add '**/package.json'
+          if [ -f yarn.lock ]; then
+            git add yarn.lock
+          fi
           git commit -m "update plugins from ${{ github.repository }} to version ${{ steps.finalize.outputs.version }}"
           git push origin "$D_BRANCH"
           echo "status=updated" >> "$GITHUB_OUTPUT"
