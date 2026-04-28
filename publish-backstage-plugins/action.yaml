@@ -4,6 +4,16 @@ inputs:
   token:
     description: "GitHub token for authentication"
     required: true
+  dispatch_repo:
+    description: "Optional: The target repository to update (e.g., 'owner/repo-c')"
+    required: false
+  dispatch_ssh_key:
+    description: "Optional: SSH private key with access to the target repository"
+    required: false
+  dispatch_branch:
+    description: "Optional: The branch (ref) in the target repository to commit to. If not specified, 
+      defaults to the current branch (or 'main' for unsupported branches)."
+    required: false
 outputs:
   version:
     description: "The generated release version derived from the root package.json"
@@ -14,20 +24,30 @@ outputs:
   plugin_count:
     description: "Number of plugins published"
     value: ${{ steps.finalize.outputs.plugin_count }}
+  target_repo_status:
+    description: "The status of the downstream update ('updated', 'no-changes', or 'skipped')"
+    value: ${{ steps.dispatch.outputs.status || 'skipped' }}
 runs:
   using: "composite"
   steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: "22"
-        registry-url: "https://npm.pkg.github.com"
-        scope: "@bcgov"
+        node-version: "22" 
+        registry-url: "https://registry.npmjs.org"
+
+    # OIDC requires npm 11.5.1+
+    - name: Upgrade npm
+      shell: bash
+      run: |
+        unset NODE_AUTH_TOKEN NPM_CONFIG_USERCONFIG
+        corepack enable npm
+        corepack install -g npm@latest
 
     - name: Setup Yarn
       shell: bash
@@ -72,6 +92,7 @@ runs:
 
         echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
         echo "Release version: ${NEW_VERSION}"
+        
 
     - name: Discover plugins
       shell: bash
@@ -95,6 +116,8 @@ runs:
 
     - name: Prepare plugins and create publish plan
       shell: bash
+      env:
+        COREPACK_ENABLE_PROJECT_SPEC: "0" # Don't check if package manager corresponds to the one in package.json
       run: |
         set -euo pipefail
 
@@ -159,6 +182,9 @@ runs:
       run: |
         set -euo pipefail
 
+        # Create temporary config for GitHub authentication
+        echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+
         any_conflicts=0
 
         while IFS='|' read -r plugin_path package_name package_version; do
@@ -167,12 +193,18 @@ runs:
 
           if npm view "${package_name}@${package_version}" version \
             --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
-            echo "ERROR: ${package_name}@${package_version} already exists"
+            echo "ERROR: ${package_name}@${package_version} already exists in GitHub Packages"
+            any_conflicts=1
+          elif npm view "${package_name}@${package_version}" \
+            version >/dev/null 2>&1; then
+            echo "ERROR: ${package_name}@${package_version} already exists in npmjs.org"
             any_conflicts=1
           else
             echo "OK: ${package_name}@${package_version} does not exist yet"
           fi
         done < /tmp/publish-plan.txt
+
+        rm .npmrc
 
         if [ "$any_conflicts" -ne 0 ]; then
           echo ""
@@ -212,18 +244,56 @@ runs:
           echo "Packed: ${package_name}@${package_version} -> ${tarball_path}"
         done < /tmp/publish-tarballs.txt
 
-    - name: Publish all tarballs
+    - name: Publish to npmjs.org
       shell: bash
       env:
-        NODE_AUTH_TOKEN: ${{ inputs.token }}
+        NPM_CONFIG_PROVENANCE: "true"
+        COREPACK_ENABLE_PROJECT_SPEC: "0" # Don't check if package manager corresponds to the one in package.json
       run: |
         set -euo pipefail
 
+        # Ensure the environment variable is completely removed so npm 11+ 
+        # correctly falls back to OIDC Trusted Publishing.
+        unset NODE_AUTH_TOKEN
+
         while IFS='|' read -r plugin_path package_name package_version tarball_path; do
           echo ""
-          echo "Publishing $package_name@$package_version"
-          npm publish "$tarball_path" --registry=https://npm.pkg.github.com
+          echo "Publishing $package_name@$package_version to npmjs.org"
+          
+          TAG="latest"
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            TAG="dev"
+          fi
+          
+          # Rely on setup-node config and OIDC fallback
+          npm publish "$tarball_path" --access public --tag "$TAG" --provenance
+
         done < /tmp/publish-tarballs.txt
+
+    - name: Publish to GitHub Packages
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.token }}
+        COREPACK_ENABLE_PROJECT_SPEC: "0" # Don't check if package manager corresponds to the one in package.json
+      run: |
+        set -euo pipefail
+
+        # Create temporary config for GitHub authentication
+        echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+
+        while IFS='|' read -r plugin_path package_name package_version tarball_path; do
+          echo ""
+          echo "Publishing $package_name@$package_version to GitHub"
+
+          TAG="latest"
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            TAG="dev"
+          fi
+
+          npm publish "$tarball_path" --registry=https://npm.pkg.github.com --tag "$TAG"
+        done < /tmp/publish-tarballs.txt
+
+        rm .npmrc
 
     - name: Finalize outputs
       id: finalize
@@ -279,3 +349,110 @@ runs:
             echo ""
           done < /tmp/publish-tarballs.txt
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Dispatch via repository commit
+      if: ${{ inputs.dispatch_repo != '' && inputs.dispatch_ssh_key != '' && success() }}
+      id: dispatch
+      shell: bash
+      env:
+        D_REPO: ${{ inputs.dispatch_repo }}
+        D_SSH_KEY: ${{ inputs.dispatch_ssh_key }}
+        D_PAYLOAD: ${{ steps.finalize.outputs.published_package_versions }}
+        D_BRANCH: ${{ inputs.dispatch_branch}}
+      run: |
+        set -euo pipefail
+
+        # Determine D_BRANCH
+        if [[ -z "$D_BRANCH" ]]; then
+          CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
+          if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == feature/* ]]; then
+            D_BRANCH="$CURRENT_BRANCH"
+          else
+            # Default to 'main' for unsupported branches
+            D_BRANCH="main"
+          fi
+        fi
+
+        echo "Updating dependencies in $D_REPO on ref $D_BRANCH"
+
+        # Setup SSH authentication
+        mkdir -p "$HOME/.ssh"
+        echo "$D_SSH_KEY" > "$HOME/.ssh/dispatch_key"
+        chmod 600 "$HOME/.ssh/dispatch_key"
+ 
+        # Add GitHub to known hosts
+        ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+
+        # Export GIT_SSH_COMMAND to use our custom SSH key
+        export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/dispatch_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+        # Clone the dispatch repository (handle branch creation if needed)
+        DISPATCH_DIR=$(mktemp -d)
+        if git clone --branch "$D_BRANCH" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR" 2>/dev/null; then
+          echo "Branch $D_BRANCH exists in downstream repo, cloned successfully"
+        else
+          echo "Branch $D_BRANCH does not exist in downstream repo, creating from main"
+          git clone --branch "main" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR"
+          cd "$DISPATCH_DIR"
+          git checkout -b "$D_BRANCH"
+          git push -u origin "$D_BRANCH"
+        fi
+        cd "$DISPATCH_DIR"
+
+        # Configure git user for commits
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+        # Update dependencies using the published versions
+        while IFS= read -r pkg; do
+          NAME=$(echo "$pkg" | jq -r '.name')
+          VERSION=$(echo "$pkg" | jq -r '.version')
+          echo "Updating $NAME to $VERSION"
+
+          yarn cache clean
+
+           # Retry logic to handle npm propagation lag
+          for attempt in {1..3}; do
+            echo "Attempt $attempt to update $NAME to $VERSION"
+            if yarn up "$NAME@$VERSION" --mode=update-lockfile; then
+              echo "    Successfully updated"
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "    Update attempt $attempt failed, waiting 5 seconds..."
+              sleep 5
+            fi
+          done
+        done < <(echo "$D_PAYLOAD" | jq -c '.[]')
+
+        # Commit and push
+        if [[ -n $(git status --porcelain) ]]; then
+          git add '**/package.json' yarn.lock
+          git commit -m "update plugins from ${{ github.repository }} to version ${{ steps.finalize.outputs.version }}"
+          git push origin "$D_BRANCH"
+          echo "status=updated" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Downstream Repository Update"
+            echo ""
+            echo "Successfully updated target repository: \`${D_REPO}\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "No changes detected in target repository."
+          echo "status=no-changes" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Downstream Repository Update"
+            echo ""
+            echo "No changes required for target repository: \`${D_REPO}\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+        
+        # Cleanup
+        cd /
+        rm -rf "$DISPATCH_DIR"
+
+    - name: Cleanup temp files
+      if: ${{ always() }}
+      shell: bash
+      run: rm -rf /tmp/plugin-*
