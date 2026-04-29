@@ -395,7 +395,6 @@ runs:
           git clone --branch "main" --depth 1 "git@github.com:${D_REPO}.git" "$DISPATCH_DIR"
           cd "$DISPATCH_DIR"
           git checkout -b "$D_BRANCH"
-          git push -u origin "$D_BRANCH"
         fi
         cd "$DISPATCH_DIR"
 
@@ -427,7 +426,10 @@ runs:
 
         # Commit and push
         if [[ -n $(git status --porcelain) ]]; then
-          git add '**/package.json' yarn.lock
+          git add '**/package.json'
+          if [ -f yarn.lock ]; then
+            git add yarn.lock
+          fi
           git commit -m "update plugins from ${{ github.repository }} to version ${{ steps.finalize.outputs.version }}"
           git push origin "$D_BRANCH"
           echo "status=updated" >> "$GITHUB_OUTPUT"
@@ -455,4 +457,6 @@ runs:
     - name: Cleanup temp files
       if: ${{ always() }}
       shell: bash
-      run: rm -rf /tmp/plugin-*
+      run: |
+        rm -rf /tmp/plugin-*
+        rm .npmrc
