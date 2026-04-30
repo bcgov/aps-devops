@@ -1,3 +1,4 @@
+{{ if .Values.use_openshift_resources }}
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -18,3 +19,4 @@ spec:
   tls:
     termination: passthrough
   wildcardPolicy: None
+{{ end }}

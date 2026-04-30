@@ -95,7 +95,7 @@ spec:
             secretName: {{ include "sdx-edge.fullname" . }}-client
         - name: sdx-ca
           secret:
-            secretName: sdx-edge-ca
+            secretName: sdx-public-ca
 
       dnsPolicy: ClusterFirst
   strategy:

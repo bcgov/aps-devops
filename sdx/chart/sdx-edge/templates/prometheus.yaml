@@ -41,6 +41,7 @@ spec:
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65534
       containers:
         - resources:
             limits:
@@ -70,6 +71,11 @@ spec:
             - containerPort: 9090
               protocol: TCP
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: config-volume
               mountPath: /etc/config
