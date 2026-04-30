@@ -15,7 +15,7 @@ Bootstrap will initially fail, but retrieve the public ip from `kong_lb_ip`.
 ```sh
 terraform apply -target azurerm_public_ip.kong_lb
 
-export IP="20.63.46.159"
+export IP="20.63.103.28"
 export EDGE_ID="azure01"
 export DOMAIN="${EDGE_ID}.servers.sdx"
 

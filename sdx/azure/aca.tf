@@ -45,6 +45,12 @@ resource "azurerm_private_endpoint" "aca" {
     subresource_names              = ["managedEnvironments"]
     is_manual_connection           = false
   }
+
+  lifecycle {
+    ignore_changes = [
+      private_dns_zone_group,
+    ]
+  }
 }
 
 resource "azurerm_container_app" "showme" {
@@ -68,6 +74,9 @@ resource "azurerm_container_app" "showme" {
   }
 
   template {
+    min_replicas = 1
+    max_replicas = 1
+
     container {
       name   = "showme"
       image  = "${azurerm_container_registry.acr.login_server}/showme:latest"

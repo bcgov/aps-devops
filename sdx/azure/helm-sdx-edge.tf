@@ -49,7 +49,7 @@ resource "helm_release" "sdx_edge" {
   # Embed the public LB IP as a SAN on the server cert
   set {
     name  = "tls.server.ip"
-    value = azurerm_public_ip.kong_lb.ip_address
+    value = azurerm_public_ip.appgw.ip_address
   }
 
   set {
