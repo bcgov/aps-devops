@@ -5,8 +5,8 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd trust-registry r2
-RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
+RUN echo upd trust-registry r2 opal
+RUN git clone -b opal https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
   && (cd plugins/jwt-keycloak && luarocks make) \
