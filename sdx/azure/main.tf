@@ -2,10 +2,14 @@ module "sdx_edge_server" {
   source = "./sdx_edge_server"
 
   edge_id             = var.edge_id
+  namespace           = var.namespace
   sdx_bootstrap_token = var.sdx_bootstrap_token
   sdx_control_url     = var.sdx_control_url
   client_ca_url       = var.client_ca_url
   sdx_aggregator_url  = var.sdx_aggregator_url
+  mtls_required       = var.mtls_required
+  https_proxy         = var.https_proxy
+  kong_node_port      = var.kong_node_port
   appgw_public_ip     = module.sdx_edge_infra.appgw_public_ip
 }
 
@@ -23,7 +27,12 @@ module "sdx_edge_infra" {
   vm_size                  = var.vm_size
   aks_subnet_cidr          = var.aks_subnet_cidr
   appgw_subnet_cidr        = var.appgw_subnet_cidr
+  appgw_sku                = var.appgw_sku
+  appgw_capacity           = var.appgw_capacity
   pod_cidr                 = var.pod_cidr
+  service_cidr             = var.service_cidr
+  dns_service_ip           = var.dns_service_ip
+  kong_node_port           = var.kong_node_port
 }
 
 module "app_showme" {

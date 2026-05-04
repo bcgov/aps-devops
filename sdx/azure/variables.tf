@@ -100,12 +100,6 @@ variable "appgw_sku" {
   default     = "WAF_v2"
 }
 
-variable "appgw_aca_subnet_cidr" {
-  description = "CIDR for the ACA Application Gateway subnet — must be within the Landing Zone VNet address space and not overlap existing subnets"
-  type        = string
-  default     = "10.46.8.64/28"
-}
-
 variable "appgw_capacity" {
   description = "Application Gateway instance count"
   type        = number

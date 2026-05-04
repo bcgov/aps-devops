@@ -1,395 +1,228 @@
-# Edge Server in Azure
+# SDX Edge — Azure Terraform
 
-![alt text](./sdx_edge_architecture.png)
+Deploys a BC Gov Landing Zone-compliant SDX Edge gateway on Azure. The gateway exposes API traffic through a WAF-protected Application Gateway with L4 TCP passthrough for end-to-end mTLS, backed by an AKS-hosted Kong proxy.
 
-## Deployment
-
-### Terraform
-
-See PROMPT.md
-
-### Prepare bootstrap token
-
-Bootstrap will initially fail, but retrieve the public ip from `kong_lb_ip`.
-
-```sh
-terraform apply -target azurerm_public_ip.kong_lb
-
-export IP="20.63.103.28"
-export EDGE_ID="azure01"
-export DOMAIN="${EDGE_ID}.servers.sdx"
-
-step ca token $DOMAIN \
-  --san $DOMAIN \
-  --san $IP > token
-```
-
-### AKS Admin
-
-```sh
-az aks get-credentials --resource-group sdx-edge-rg --name sdx-edge-aks
-
-kubectl create serviceaccount admin --namespace default
-
-kubectl create clusterrolebinding admin \
-  --clusterrole=cluster-admin \
-  --serviceaccount=default:admin
-
-kubectl -n default create token admin
+## Architecture
 
 ```
-
-### AKS Dashboard
-
-```sh
-helm repo add kubernetes-dashboard https://github.io
-
-helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
-
-kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
-
+Internet
+    │
+    ▼
+┌─────────────────────────┐
+│  Azure Application       │  WAF_v2 SKU — OWASP 3.2 rules
+│  Gateway (public IP)     │  TCP passthrough, port 443 (no TLS termination)
+└────────────┬────────────┘
+             │ TCP :443
+             ▼
+┌─────────────────────────┐
+│  AKS Node Pool          │  NodePort 30443
+│  (Kong container)       │  Kong terminates mTLS, validates client certs
+└────────────┬────────────┘
+             │ mTLS :8443
+             ▼
+         SDX Aggregator / Control Plane
+         (BC Gov API Platform)
 ```
 
-> Check logs
+The Azure Load Balancer in `lb.tf` is a second public entry point at port 443 → NodePort 30443, providing a redundant path or alternative when AppGW is not used.
 
-### Verify Edge Server
+Both the Application Gateway backend pool and the Load Balancer backend pool are populated at apply time via `local-exec` provisioners that query the AKS VMSS for current node IPs. Re-run `terraform apply` after node scaling or upgrades to refresh these pools.
 
-Successful terraform completion produces output like:
+### Module layout
 
-```sh
-aks_cluster_name = "sdx-edge-aks"
-aks_get_credentials = "az aks get-credentials --resource-group sdx-edge-rg --name sdx-edge-aks"
-edge_domain = "azure01.servers.sdx"
-helm_release_status = "deployed"
-kong_lb_ip = "20.63.46.159"
-resource_group_name = "sdx-edge-rg"
+```
+azure/
+├── main.tf                  # Module wiring
+├── variables.tf             # Root-level inputs
+├── outputs.tf               # Root-level outputs
+├── providers.tf             # Provider declarations
+├── lb.tf                    # Azure LB + public IP for Kong
+├── move.tf                  # Terraform state migration blocks
+├── terraform.tfvars.example # Variable template
+│
+├── sdx_edge_infra/          # AKS cluster, subnets, NSGs, Application Gateway
+├── sdx_edge_server/         # sdx-edge Helm chart + Kong NodePort service
+└── app_showme/              # Sample Container App (ACR + ACA environment + showme app)
 ```
 
-Run the following to check connectivity to the SDX Edge Server:
+### Networking constraints (BC Gov Landing Zone)
 
-```sh
-curl -v -k --resolve ${DOMAIN}:443:${IP} \
-  https://${DOMAIN}
+The VNet is **pre-provisioned** by the BC Gov Landing Zone — teams cannot create VNets. All subnets must be carved from the VNet address space allocated to your Project Set. NSGs are created atomically with their subnets using `azapi_resource` to satisfy the Landing Zone policy that blocks subnet creation without an NSG.
+
+Private DNS resolution for the Container App private endpoint is managed by the central connectivity subscription — no `private_dns_zone_group` block is needed and the record appears within ~10 minutes of endpoint creation.
+
+---
+
+## Prerequisites
+
+| Tool | Minimum version |
+|------|----------------|
+| Terraform | >= 1.5 |
+| Azure CLI (`az`) | Current stable |
+| Helm | >= 3 (used by Terraform provider, not directly) |
+| `kubectl` | Current stable (for post-deploy verification) |
+
+You must be authenticated to Azure before running Terraform:
+
+```bash
+az login
+az account set --subscription <subscription-id>
 ```
 
-## Simple image
+The service principal or user identity running Terraform requires:
+- **Contributor** on the target subscription (or resource group scope after creation)
+- **Network Contributor** on the Landing Zone VNet resource group (to create subnets)
 
-```sh
-az acr login --name acrmyapp
-docker build --platform linux/amd64 -t acrmyapp.azurecr.io/showme:latest oci/showme
-docker push acrmyapp.azurecr.io/showme:latest
+---
+
+## Quick start
+
+```bash
+# 1. Copy and fill in variables
+cp terraform.tfvars.example terraform.tfvars
+$EDITOR terraform.tfvars
+
+# 2. Initialise providers
+terraform init
+
+# 3. Review the plan
+terraform plan
+
+# 4. Deploy (~15–20 minutes)
+terraform apply
+
+# 5. Configure kubectl
+$(terraform output -raw aks_get_credentials)
 ```
 
-## UDR Request for internet facing
+---
 
-```yaml
-subscription_id: 8e303ae8-ce14-4e85-9dc3-9d767a42dec8
-resource_group_name: sdx-edge-rg
-virtual_network_name: b9cee3-test-vwan-spoke
-subnet_name: appgw-subnet
-udr_name: sdx-edge-aks-appgw-udr
-routes: |-
-  [
-    {
-      "name": "default-internet",
-      "addressPrefix": "0.0.0.0/0",
-      "nextHopType": "Internet"
-    },
-    {
-      "name": "bcgov-internal",
-      "addressPrefix": "142.34.0.0/16",
-      "nextHopType": "Internet"
-    }
-  ]
-```
+## Variables
 
-## Diagrams
+### Azure placement
 
-```text
-can you create an architecture diagram as a PNG based on the terraform resources that were created using Azure icons, VNet + subnet layout and ingress flow down to pod-level detail
-```
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `resource_group_name` | string | `"sdx-edge-rg"` | Name of the resource group to create |
+| `location` | string | `"canadacentral"` | Azure region |
+| `tags` | map(string) | `{project="sdx-edge", managed_by="terraform"}` | Tags applied to all resources |
 
-````text
-can you update gen_diagram.py and use the terraform.tfstate and the .tf files in this folder to generate a png describing the architecture in a network view and one in
-  a logical service view, and one in a resource-based view.  Use Azure icons where possible.
-─--
+### Landing Zone VNet
 
-## BC Gov Landing Zone
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `vnet_name` | string | — | Name of the pre-provisioned Landing Zone VNet |
+| `vnet_resource_group_name` | string | — | Resource group containing the Landing Zone VNet |
 
-### Application Gateway Health
+### AKS cluster
 
-Wait for "Succeeded"
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `cluster_name` | string | `"sdx-edge-aks"` | AKS cluster name, also used as resource prefix |
+| `node_count` | number | `2` | Initial node pool size |
+| `vm_size` | string | `"Standard_D2s_v3"` | Node VM size |
+| `kubernetes_version` | string | `null` | Kubernetes version (`null` = latest stable) |
 
-```sh
-az network application-gateway show \
-    --resource-group sdx-edge-rg \
-    --name sdx-edge-aks-appgw \
-    --query "{state:provisioningState,opState:operationalState}" -o table
-````
+### SDX Edge identity
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `edge_id` | string | `"my-edge"` | Edge identifier; becomes the Helm release name and the virtual hostname `<edge_id>.servers.sdx` |
+| `namespace` | string | `"sdx-edge"` | Kubernetes namespace for the Helm release |
+| `sdx_bootstrap_token` | string | — | **Sensitive.** One-time token for TLS certificate issuance |
+
+### SDX control plane endpoints
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `sdx_control_url` | string | `"sdx-cluster-api-gov-bc-ca.dev.api.gov.bc.ca:443"` | Control plane host:port |
+| `client_ca_url` | string | `"https://sdx-ca-api-gov-bc-ca.dev.api.gov.bc.ca"` | Certificate authority endpoint |
+| `sdx_aggregator_url` | string | `"gwaggregator-api-gov-bc-ca.dev.api.gov.bc.ca"` | Aggregator service endpoint |
+
+### Network CIDRs
+
+All CIDRs must fall within the address space of the pre-provisioned Landing Zone VNet and must not overlap each other.
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `aks_subnet_cidr` | string | `"10.46.8.128/26"` | AKS node subnet |
+| `appgw_subnet_cidr` | string | `"10.46.8.96/28"` | Application Gateway subnet |
+| `aca_subnet_cidr` | string | `"10.46.8.192/27"` | Container App Environment subnet — /27 minimum |
+| `pod_cidr` | string | `"10.10.0.0/18"` | Azure CNI Overlay pod CIDR — BC Gov approved range |
+| `service_cidr` | string | `"10.10.64.0/22"` | Kubernetes service CIDR — BC Gov approved range |
+| `dns_service_ip` | string | `"10.10.64.10"` | Kubernetes DNS IP — must be within `service_cidr` |
+
+### Application Gateway
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `appgw_sku` | string | `"WAF_v2"` | SKU — `WAF_v2` required by BC Gov Landing Zone policy |
+| `appgw_capacity` | number | `1` | Instance count |
+
+### Kong / mTLS
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `kong_node_port` | number | `30443` | Kubernetes NodePort for Kong HTTPS (30000–32767) |
+| `kong_lb_private_ip` | string | `"10.46.8.180"` | Static private IP for Kong internal LB — must be within `aks_subnet_cidr` |
+| `mtls_required` | bool | `true` | Enforce mutual TLS on client connections |
+| `https_proxy` | string | `""` | Outbound HTTP proxy URL (empty = disabled) |
+
+---
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| `resource_group_name` | Resource group containing all deployed resources |
+| `aks_cluster_name` | AKS cluster name |
+| `aks_get_credentials` | `az aks get-credentials` command to configure `kubectl` |
+| `appgw_public_ip` | Application Gateway public IP (WAF entry point) |
+| `kong_lb_ip` | Kong Load Balancer public IP (alternate entry point) |
+| `edge_domain` | SDX Edge virtual hostname (`<edge_id>.servers.sdx`) |
+| `helm_release_status` | Status of the sdx-edge Helm release |
+| `acr_login_server` | Container Registry hostname for the ShowMe app |
+| `aca_default_domain` | Container App Environment default domain |
+
+---
+
+## Modules
+
+### `sdx_edge_infra`
+
+Provisions the shared infrastructure: resource group, AKS cluster, subnets with NSGs, and the WAF v2 Application Gateway.
+
+The Application Gateway is created via `azapi_resource` rather than `azurerm_application_gateway` because the azurerm provider does not support the TCP protocol listener type required for L4 passthrough.
+
+After cluster creation a `local-exec` provisioner queries the AKS VMSS and populates the AppGW backend pool with node private IPs. Re-run `terraform apply` after any node pool change.
+
+### `sdx_edge_server`
+
+Deploys the `oci://ghcr.io/bcgov/aps-devops/sdx-edge` Helm chart into the AKS cluster and creates a NodePort service that maps port 443 → container port 8443 at NodePort 30443. The Helm values embed the AppGW public IP as a SAN on the Kong TLS certificate so that connections from the AppGW backend pass certificate validation.
+
+### `app_showme`
+
+Deploys a sample Container App to demonstrate Landing Zone-compliant ACA deployment. See [`app_showme/README.md`](app_showme/README.md) for details on the infrastructure and the ShowMe application.
+
+---
 
 ## Troubleshooting
 
-### Application Gateway (with LB)
+**Backend pool is empty after apply**
 
-UDR caveat (may require BC Gov service request): This is the same issue that originally blocked AppGW. AppGW is in a Landing Zone subnet — if a UDR routes outbound traffic through the hub firewall, AppGW's packets to the Kong public IP (20.63.99.116) will hit that firewall. The firewall needs a rule permitting appgw-subnet kong-pip:443. This is outside what Terraform can control; it requires a BC Gov networking request.
+The `local-exec` provisioners that populate the AppGW and LB backend pools run as part of `terraform apply`. If the pools are empty after deployment, verify that:
+- `az` CLI is authenticated and targeting the correct subscription
+- The AKS VMSS exists in the node resource group (`az vmss list --resource-group <node-rg>`)
+- Re-run `terraform apply` — the provisioners will re-sync node IPs
 
-### Application Gateway (with Node backend pools)
+**AppGW health probes failing**
 
-Note: This is a workaround to avoid raising a UDR. Still time out.
+Confirm the AKS NSG allows inbound TCP from the AppGW subnet CIDR on NodePort 30443. The NSG rule `allow-appgw-to-kong` covers this but verify the source address prefix matches your `appgw_subnet_cidr`.
 
-Set the App Gateway backend pool nodes to the nodes from AKS.
+**kubectl cannot reach the cluster**
 
-- App Gateway backend state : Make sure it is "provisioned"
+Run `$(terraform output -raw aks_get_credentials)` to refresh credentials. If the cluster uses private API server, ensure you are on an approved network or VPN.
 
-### Global CDN Front Door
+**ACA private endpoint DNS not resolving**
 
-Traffic is blocked.
-
-## Appendix
-
-```sh
-az network application-gateway show \
-  --name sdx-edge-aks-appgw \
-  --resource-group sdx-edge-rg \
-  --query "{state:operationalState, provisioning:provisioningState}"
-
-
-  az network vnet subnet list \
-    --vnet-name b9cee3-test-vwan-spoke \
-    --resource-group b9cee3-test-networking \
-    --query "[].{name:name, routeTable:routeTable.id}" \
-    --output table
-
-az provider show --namespace Microsoft.Network \
-    --query "resourceTypes[?resourceType=='applicationGateways'].apiVersions[]" \
-    --output table
-
-
- az network lb address-pool address list \
-     --resource-group sdx-edge-rg \
-        --lb-name sdx-edge-aks-kong-lb \
-        --pool-name kong-nodes \
-    -o table
-
-az afd origin show \
-    --resource-group sdx-edge-rg \
-    --profile-name sdx-edge-aks-afd \
-    --origin-group-name kong \
-    --origin-name kong \
-    --query "deploymentStatus"
-
-
-
-```
-
-```sh
-KONG_IP=$(az network public-ip show \
-  --resource-group sdx-edge-rg \
-  --name sdx-edge-aks-kong-pip \
-  --query ipAddress -o tsv)
-
-RG=sdx-edge-rg
-PROFILE=sdx-edge-aks-afd
-
-for cmd in \
- "afd profile show --profile-name $PROFILE" \
-  "afd endpoint show --profile-name $PROFILE --endpoint-name sdx-edge-aks-ep" \
-  "afd origin-group show --profile-name $PROFILE --origin-group-name kong" \
-  "afd origin show --profile-name $PROFILE --origin-group-name kong --origin-name kong" \
-  "afd route show --profile-name $PROFILE --endpoint-name sdx-edge-aks-ep --route-name kong" \
-  "afd security-policy show --profile-name $PROFILE --security-policy-name sdx-edge-aks-sec"; do
-  echo -n "$cmd → "
-az $cmd --resource-group $RG --query deploymentStatus -o tsv
-done
-
-```
-
-```sh
-az monitor activity-log list \
-  --resource-group sdx-edge-rg \
-  --offset 24h \
-  --query "[?contains(resourceId,'frontdoor') || contains(resourceId,'afd')].{status:status.value, op:operationName.value, msg:properties.statusMessage}" \
-  -o table 2>/dev/null | head -40
-
-
-terraform apply \
-    -replace=azurerm_public_ip.kong_lb \
-    -replace=azurerm_lb.kong  \
-    -replace=azurerm_cdn_frontdoor_route.kong \
-    -replace=azurerm_cdn_frontdoor_origin.kong
-```
-
-Origin health
-
-```sh
-az afd origin show \
-    --resource-group sdx-edge-rg \
-    --profile-name sdx-edge-aks-afd \
-    --origin-group-name kong \
-    --origin-name kong \
-    --query "{deployment:deploymentStatus,enabled:enabledState}" -o table
-
-
- az network public-ip show \
-    --resource-group sdx-edge-rg \
-    --name sdx-edge-aks-kong-pip \
-    --query "{ip:ipAddress,fqdn:dnsSettings.fqdn}" -o table
-
-```
-
-```sh
-
-
-
-RG=sdx-edge-rg
-P=sdx-edge-aks-afd
-
-alias afd="az afd"
-
-az configure --defaults group=$RG
-
-for r in \
-  "afd profile show --profile-name $P" \
-  "afd endpoint show --profile-name $P --endpoint-name sdx-edge-aks-ep" \
-  "afd origin-group show --profile-name $P --origin-group-name kong" \
-  "afd security-policy show --profile-name $P --security-policy-name sdx-edge-aks-sec"; do \
-  echo "$r: $(az $r --resource-group $RG --query deploymentStatus -o tsv)"
-done
-```
-
-```sh
-terraform apply \
-  -replace=azurerm_cdn_frontdoor_profile.main \
-  -replace=azurerm_cdn_frontdoor_firewall_policy.main \
-  -replace=azurerm_cdn_frontdoor_endpoint.main \
-  -replace=azurerm_cdn_frontdoor_origin_group.kong \
-  -replace=azurerm_cdn_frontdoor_origin.kong \
-  -replace=azurerm_cdn_frontdoor_route.kong \
-  -replace=azurerm_cdn_frontdoor_security_policy.main
-```
-
-```sh
-az network lb probe show \
-    --resource-group sdx-edge-rg \
-    --lb-name sdx-edge-aks-kong-lb \
-    --name kong-nodeport-tcp
-```
-
-```sh
-az network application-gateway address-pool update \
-  --gateway-name "sdx-edge-aks-appgw" \
-  --resource-group "sdx-edge-rg" \
-  --name "kong-backend" \
-  --servers 10.46.8.133,10.46.8.132
-
-```
-
-### App Gateway backend state
-
-```sh
-az network application-gateway show \
-    --resource-group sdx-edge-rg \
-    --name sdx-edge-aks-appgw \
-    --query "{provisioning:provisioningState,operational:operationalState,backends:backendAddressPools[0].backendAddresses}" \
-    -o json
-
-az afd endpoint show \
-    --resource-group sdx-edge-rg \
-    --profile-name sdx-edge-aks-afd \
-    --endpoint-name sdx-edge-aks-ep \
-    --query deploymentStatus -o tsv
-
-az afd origin-group list \
-    --resource-group sdx-edge-rg \
-    --profile-name sdx-edge-aks-afd \
-    --query deploymentStatus -o tsv
-```
-
-```sh
-az network application-gateway show \
-    --resource-group sdx-edge-rg \
-    --name sdx-edge-aks-appgw \
-    --query "{state:provisioningState,opState:operationalState}" -o table
-
-az policy state list \
-    --resource-group sdx-edge-rg \
-    --query "[?complianceState=='NonCompliant'].{policy:policyDefinitionName,resource:resourceId}" \
-    -o table
-```
-
-## PFX FILE
-
-```sh
-openssl pkcs12 -export -out cert.pfx -inkey key.pem -in cert.pem
-
-CERT=$(base64 -i cert.pfx | tr -d '\n')
-```
-
-## Testing SDX Edge Server routing
-
-Run from inside AKS
-
-```sh
-# service cluster IP
-export IP=10.10.67.65
-export EDGE_ID="azure01"
-export DOMAIN="${EDGE_ID}.servers.sdx"
-
-curl -v --resolve ${DOMAIN}:443:${IP} \
-  --cacert /etc/secrets/sdx-edge-ca/ca.crt \
-  --cert /etc/secrets/sdx-edge-client-cert/tls.crt \
-  --key /etc/secrets/sdx-edge-client-cert/tls.key \
-  -H "X-Client-Id:LAB.MIN.CITZ.SDG-FE" \
-  https://${DOMAIN}/sdx/0/LAB.MIN.CITZ.AZURE01.v1/v1/me
-```
-
-```
-export IP=20.63.103.28
-export EDGE_ID="azure01"
-export DOMAIN="${EDGE_ID}.servers.sdx"
-
-curl -v --resolve ${DOMAIN}:443:${IP} \
-  -H "X-Client-Id:LAB.MIN.CITZ.SDG-FE" \
-  https://${DOMAIN}/sdx/0/LAB.MIN.CITZ.AZURE01.v1/v1/me
-
-```
-
-## Cert Chain
-
-```sh
-openssl s_client -connect sdx-edge-aks-hello.orangewater-f8b9c6ec.canadacentral.azurecontainerapps.io:443 -showcerts 2>/dev/null
-```
-
-## Security Advisories
-
-### CVE-2026-31431
-
-https://portal.azure.com/#view/Microsoft_Azure_Health/DetailsPage.ReactView/fromDeeplink~/false/index~/0/selectedEventSummary~/%7B%22trackingId%22%3A%224Y6C-C0G%22%2C%22scope%22%3A%22Subscription%22%2C%22impactedSubscriptions%22%3A%5B%228e303ae8-ce14-4e85-9dc3-9d767a42dec8%22%5D%2C%22eventType%22%3A%22SecurityAdvisory%22%2C%22impactStartTime%22%3A%22Thu%20Apr%2030%202026%2017%3A00%3A01%20GMT-0700%20(Pacific%20Daylight%20Time)%22%2C%22isEventSensitive%22%3Afalse%7D/trackingId/4Y6C-C0G/impactedSubs~/%5B%228e303ae8-ce14-4e85-9dc3-9d767a42dec8%22%5D/scope/Subscription/eventType/SecurityAdvisory/impactStartTime/Thu%20Apr%2030%202026%2017%3A00%3A01%20GMT-0700%20(Pacific%20Daylight%20Time)
-
-On each affected Linux node pool:
-
-- If running a node image older than 202604.24.0: Upgrade the node image:
-
-```sh
-az aks nodepool list --resource-group sdx-edge-rg --cluster-name sdx-edge-aks
-
-az aks nodepool upgrade --resource-group sdx-edge-rg --cluster-name sdx-edge-aks --name system --node-image-only
-```
-
-- If already on 202604.24.0: No upgrade target exists. Apply the self-service mitigation DaemonSet from the AKS advisory for immediate, non-disruptive protection.
-
-**CVE-2026-31431 Mitigation:**
-
-- Before upgrade: `nodeImageVersion=AKSUbuntu-2204gen2containerd-202604.13.0`
-
-```sh
-az aks nodepool list --resource-group sdx-edge-rg --cluster-name sdx-edge-aks
-```
-
-- Perform upgrade (RollingUpgradeCreatingSurgeNodes)
-
-```sh
-az aks nodepool upgrade --resource-group sdx-edge-rg --cluster-name sdx-edge-aks --name system --node-image-only
-```
-
-- After upgrade: `nodeImageVersion=AKSUbuntu-2204gen2containerd-202604.24.0`
+The BC Gov connectivity subscription creates the DNS A record automatically. Wait up to 10 minutes after the private endpoint is provisioned, then verify with `nslookup <aca_default_domain>` from within the VNet.
