@@ -1,3 +1,8 @@
+locals {
+  edge_domain   = "${var.edge_id}.servers.sdx"
+  kong_svc_name = "sdx-edge-${var.edge_id}"
+}
+
 resource "helm_release" "sdx_edge" {
   name             = var.edge_id
   chart            = "oci://ghcr.io/bcgov/aps-devops/sdx-edge"
@@ -49,7 +54,7 @@ resource "helm_release" "sdx_edge" {
   # Embed the public LB IP as a SAN on the server cert
   set {
     name  = "tls.server.ip"
-    value = azurerm_public_ip.appgw.ip_address
+    value = var.appgw_public_ip
   }
 
   set {
@@ -62,8 +67,8 @@ resource "helm_release" "sdx_edge" {
     value = "false"
   }
 
-  depends_on = [azurerm_kubernetes_cluster.main]
 }
+
 
 # NodePort service — the Terraform-managed Azure public LB (lb.tf) routes traffic
 # from azurerm_public_ip.kong_lb:443 to this fixed NodePort on each node, bypassing

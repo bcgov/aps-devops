@@ -1,7 +1,13 @@
+# The VNet is pre-provisioned by the BC Gov Landing Zone — teams cannot create VNets.
+data "azurerm_virtual_network" "main" {
+  name                = var.vnet_name
+  resource_group_name = var.vnet_resource_group_name
+}
+
 resource "azurerm_public_ip" "kong_lb" {
   name                = "${var.cluster_name}-kong-pip"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  resource_group_name = module.sdx_edge_infra.resource_group_name
+  location            = module.sdx_edge_infra.resource_group_location
   allocation_method   = "Static"
   sku                 = "Standard"
   domain_name_label   = "${var.cluster_name}-kong"
@@ -10,8 +16,8 @@ resource "azurerm_public_ip" "kong_lb" {
 
 resource "azurerm_lb" "kong" {
   name                = "${var.cluster_name}-kong-lb"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  resource_group_name = module.sdx_edge_infra.resource_group_name
+  location            = module.sdx_edge_infra.resource_group_location
   sku                 = "Standard"
   tags                = var.tags
 
@@ -51,7 +57,7 @@ resource "azurerm_lb_rule" "kong" {
 resource "terraform_data" "kong_lb_backends" {
   triggers_replace = [
     azurerm_lb_backend_address_pool.kong.id,
-    azurerm_kubernetes_cluster.main.id,
+    module.sdx_edge_infra.aks_cluster_id,
   ]
 
   provisioner "local-exec" {
@@ -60,7 +66,7 @@ resource "terraform_data" "kong_lb_backends" {
 
       NODE_RG=$(az aks show \
         --name "${var.cluster_name}" \
-        --resource-group "${azurerm_resource_group.main.name}" \
+        --resource-group "${module.sdx_edge_infra.resource_group_name}" \
         --query nodeResourceGroup -o tsv)
 
       VMSS_NAME=$(az vmss list \
@@ -69,14 +75,14 @@ resource "terraform_data" "kong_lb_backends" {
 
       # Remove stale backend addresses before re-adding
       EXISTING=$(az network lb address-pool address list \
-        --resource-group "${azurerm_resource_group.main.name}" \
+        --resource-group "${module.sdx_edge_infra.resource_group_name}" \
         --lb-name "${azurerm_lb.kong.name}" \
         --pool-name "${azurerm_lb_backend_address_pool.kong.name}" \
         --query "[].name" -o tsv 2>/dev/null || true)
 
       for ADDR in $EXISTING; do
         az network lb address-pool address remove \
-          --resource-group "${azurerm_resource_group.main.name}" \
+          --resource-group "${module.sdx_edge_infra.resource_group_name}" \
           --lb-name "${azurerm_lb.kong.name}" \
           --pool-name "${azurerm_lb_backend_address_pool.kong.name}" \
           --name "$ADDR"
@@ -89,7 +95,7 @@ resource "terraform_data" "kong_lb_backends" {
 
       for IP in $NODE_IPS; do
         az network lb address-pool address add \
-          --resource-group "${azurerm_resource_group.main.name}" \
+          --resource-group "${module.sdx_edge_infra.resource_group_name}" \
           --lb-name "${azurerm_lb.kong.name}" \
           --pool-name "${azurerm_lb_backend_address_pool.kong.name}" \
           --name "node-$(echo $IP | tr '.' '-')" \

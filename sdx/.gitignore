@@ -5,5 +5,6 @@ LOCAL.md
 .terraform*
 .claude
 terraform.tfvars
+terraform.tfvars.aksauto
 terraform.tfstate*
 _tmp

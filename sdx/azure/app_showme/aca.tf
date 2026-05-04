@@ -4,8 +4,8 @@
 resource "azapi_resource" "aca_environment" {
   type                      = "Microsoft.App/managedEnvironments@2025-07-01"
   name                      = "${var.cluster_name}-cae"
-  parent_id                 = azurerm_resource_group.main.id
-  location                  = azurerm_resource_group.main.location
+  parent_id                 = var.resource_group_id
+  location                  = var.resource_group_location
   schema_validation_enabled = false
   tags                      = var.tags
 
@@ -34,9 +34,9 @@ resource "azapi_resource" "aca_environment" {
 # centralized Private DNS Zone within ~10 minutes of the endpoint being provisioned.
 resource "azurerm_private_endpoint" "aca" {
   name                = "${var.cluster_name}-aca-pe"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  subnet_id           = azapi_resource.aks_subnet.id
+  resource_group_name = var.resource_group_name
+  location            = var.resource_group_location
+  subnet_id           = var.aks_subnet_id
   tags                = var.tags
 
   private_service_connection {
@@ -55,7 +55,7 @@ resource "azurerm_private_endpoint" "aca" {
 
 resource "azurerm_container_app" "showme" {
   name                         = "${var.cluster_name}-showme"
-  resource_group_name          = azurerm_resource_group.main.name
+  resource_group_name          = var.resource_group_name
   container_app_environment_id = azapi_resource.aca_environment.id
   revision_mode                = "Single"
   tags                         = var.tags
@@ -101,4 +101,3 @@ resource "azurerm_container_app" "showme" {
     ]
   }
 }
-

@@ -359,3 +359,37 @@ curl -v --resolve ${DOMAIN}:443:${IP} \
 ```sh
 openssl s_client -connect sdx-edge-aks-hello.orangewater-f8b9c6ec.canadacentral.azurecontainerapps.io:443 -showcerts 2>/dev/null
 ```
+
+## Security Advisories
+
+### CVE-2026-31431
+
+https://portal.azure.com/#view/Microsoft_Azure_Health/DetailsPage.ReactView/fromDeeplink~/false/index~/0/selectedEventSummary~/%7B%22trackingId%22%3A%224Y6C-C0G%22%2C%22scope%22%3A%22Subscription%22%2C%22impactedSubscriptions%22%3A%5B%228e303ae8-ce14-4e85-9dc3-9d767a42dec8%22%5D%2C%22eventType%22%3A%22SecurityAdvisory%22%2C%22impactStartTime%22%3A%22Thu%20Apr%2030%202026%2017%3A00%3A01%20GMT-0700%20(Pacific%20Daylight%20Time)%22%2C%22isEventSensitive%22%3Afalse%7D/trackingId/4Y6C-C0G/impactedSubs~/%5B%228e303ae8-ce14-4e85-9dc3-9d767a42dec8%22%5D/scope/Subscription/eventType/SecurityAdvisory/impactStartTime/Thu%20Apr%2030%202026%2017%3A00%3A01%20GMT-0700%20(Pacific%20Daylight%20Time)
+
+On each affected Linux node pool:
+
+- If running a node image older than 202604.24.0: Upgrade the node image:
+
+```sh
+az aks nodepool list --resource-group sdx-edge-rg --cluster-name sdx-edge-aks
+
+az aks nodepool upgrade --resource-group sdx-edge-rg --cluster-name sdx-edge-aks --name system --node-image-only
+```
+
+- If already on 202604.24.0: No upgrade target exists. Apply the self-service mitigation DaemonSet from the AKS advisory for immediate, non-disruptive protection.
+
+**CVE-2026-31431 Mitigation:**
+
+- Before upgrade: `nodeImageVersion=AKSUbuntu-2204gen2containerd-202604.13.0`
+
+```sh
+az aks nodepool list --resource-group sdx-edge-rg --cluster-name sdx-edge-aks
+```
+
+- Perform upgrade (RollingUpgradeCreatingSurgeNodes)
+
+```sh
+az aks nodepool upgrade --resource-group sdx-edge-rg --cluster-name sdx-edge-aks --name system --node-image-only
+```
+
+- After upgrade: `nodeImageVersion=AKSUbuntu-2204gen2containerd-202604.24.0`

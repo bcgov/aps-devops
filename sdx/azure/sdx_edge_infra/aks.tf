@@ -10,6 +10,9 @@ resource "azurerm_kubernetes_cluster" "main" {
   image_cleaner_interval_hours = 48
   azure_policy_enabled         = true
 
+  # Default NodeImage
+  # node_os_upgrade_channel = "NodeImage"
+
   default_node_pool {
     name           = "system"
     node_count     = var.node_count
