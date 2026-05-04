@@ -1,6 +1,6 @@
 # SDX Edge — Azure Terraform
 
-Deploys a BC Gov Landing Zone-compliant SDX Edge gateway on Azure. The gateway exposes API traffic through a WAF-protected Application Gateway with L4 TCP passthrough for end-to-end mTLS, backed by an AKS-hosted Kong proxy.
+Deploys a BC Gov Landing Zone-compliant SDX Edge gateway on Azure. The gateway uses an Application Gateway (WAF_v2 SKU, required by Landing Zone policy) configured purely as an L4 TCP passthrough — WAF inspection is not active because TCP listeners bypass the WAF engine. End-to-end mTLS is preserved from client to Kong, which terminates TLS and validates client certificates.
 
 ## Architecture
 
@@ -9,8 +9,8 @@ Internet
     │
     ▼
 ┌─────────────────────────┐
-│  Azure Application       │  WAF_v2 SKU — OWASP 3.2 rules
-│  Gateway (public IP)     │  TCP passthrough, port 443 (no TLS termination)
+│  Azure Application       │  WAF_v2 SKU (required by Landing Zone policy)
+│  Gateway (public IP)     │  L4 TCP passthrough, port 443 — WAF not active*
 └────────────┬────────────┘
              │ TCP :443
              ▼
@@ -25,6 +25,8 @@ Internet
 ```
 
 The Application Gateway backend pool is populated at apply time via a `local-exec` provisioner that queries the AKS VMSS for current node IPs. Re-run `terraform apply` after node scaling or upgrades to refresh the pool.
+
+> **WAF note:** The WAF_v2 SKU is provisioned because BC Gov Landing Zone policy requires it, but the WAF engine does not inspect traffic. TCP listeners (used for L4 passthrough) are not processed by the WAF rule set — only HTTP/HTTPS listeners are. mTLS enforcement is handled entirely by Kong.
 
 ### Module layout
 
@@ -173,7 +175,7 @@ All CIDRs must fall within the address space of the pre-provisioned Landing Zone
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `appgw_sku` | string | `"WAF_v2"` | SKU — `WAF_v2` required by BC Gov Landing Zone policy |
+| `appgw_sku` | string | `"WAF_v2"` | SKU — `WAF_v2` required by BC Gov Landing Zone policy; WAF inspection is not active (TCP listeners bypass the WAF engine) |
 | `appgw_capacity` | number | `1` | Instance count |
 
 ### Kong / mTLS
@@ -193,7 +195,7 @@ All CIDRs must fall within the address space of the pre-provisioned Landing Zone
 | `resource_group_name` | Resource group containing all deployed resources |
 | `aks_cluster_name` | AKS cluster name |
 | `aks_get_credentials` | `az aks get-credentials` command to configure `kubectl` |
-| `appgw_public_ip` | Application Gateway public IP (WAF entry point) |
+| `appgw_public_ip` | Application Gateway public IP (L4 TCP passthrough entry point; WAF not active) |
 | `edge_domain` | SDX Edge virtual hostname (`<edge_id>.servers.sdx`) |
 | `helm_release_status` | Status of the sdx-edge Helm release |
 | `acr_login_server` | Container Registry hostname for the ShowMe app |
@@ -205,7 +207,7 @@ All CIDRs must fall within the address space of the pre-provisioned Landing Zone
 
 ### `sdx_edge_infra`
 
-Provisions the shared infrastructure: resource group, AKS cluster, subnets with NSGs, and the WAF v2 Application Gateway.
+Provisions the shared infrastructure: resource group, AKS cluster, subnets with NSGs, and the Application Gateway (WAF_v2 SKU). The gateway is configured as a pure L4 TCP passthrough — no WAF policy is attached and no HTTP/HTTPS listeners are created, so the WAF engine is not invoked.
 
 The Application Gateway is created via `azapi_resource` rather than `azurerm_application_gateway` because the azurerm provider does not support the TCP protocol listener type required for L4 passthrough.
 
