@@ -14,11 +14,6 @@ output "aks_get_credentials" {
 }
 
 
-output "kong_lb_ip" {
-  description = "Kong public LoadBalancer IP — internet-facing entry point"
-  value       = azurerm_public_ip.kong_lb.ip_address
-}
-
 output "edge_domain" {
   description = "SDX Edge virtual hostname"
   value       = module.sdx_edge_server.edge_domain

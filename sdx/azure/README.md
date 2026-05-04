@@ -24,9 +24,7 @@ Internet
          (BC Gov API Platform)
 ```
 
-The Azure Load Balancer in `lb.tf` is a second public entry point at port 443 → NodePort 30443, providing a redundant path or alternative when AppGW is not used.
-
-Both the Application Gateway backend pool and the Load Balancer backend pool are populated at apply time via `local-exec` provisioners that query the AKS VMSS for current node IPs. Re-run `terraform apply` after node scaling or upgrades to refresh these pools.
+The Application Gateway backend pool is populated at apply time via a `local-exec` provisioner that queries the AKS VMSS for current node IPs. Re-run `terraform apply` after node scaling or upgrades to refresh the pool.
 
 ### Module layout
 
@@ -36,7 +34,6 @@ azure/
 ├── variables.tf             # Root-level inputs
 ├── outputs.tf               # Root-level outputs
 ├── providers.tf             # Provider declarations
-├── lb.tf                    # Azure LB + public IP for Kong
 ├── move.tf                  # Terraform state migration blocks
 ├── terraform.tfvars.example # Variable template
 │
@@ -50,6 +47,26 @@ azure/
 The VNet is **pre-provisioned** by the BC Gov Landing Zone — teams cannot create VNets. All subnets must be carved from the VNet address space allocated to your Project Set. NSGs are created atomically with their subnets using `azapi_resource` to satisfy the Landing Zone policy that blocks subnet creation without an NSG.
 
 Private DNS resolution for the Container App private endpoint is managed by the central connectivity subscription — no `private_dns_zone_group` block is needed and the record appears within ~10 minutes of endpoint creation.
+
+#### Application Gateway UDR (service request required)
+
+The Application Gateway subnet requires a User Defined Route (UDR) to reach the internet. This **cannot be done via Terraform** — it requires a service request to the BC Gov platform services team.
+
+The platform team will create a route table attached to the `appgw-subnet` with the following routes:
+
+| Route name | Address prefix | Next hop |
+|------------|---------------|----------|
+| `default-internet` | `0.0.0.0/0` | Internet |
+| `bcgov-internal` | `142.34.0.0/16` | Internet |
+
+Without these routes, AppGW cannot reach its public IP for management traffic and inbound HTTPS will time out. Raise the ticket **before** running `terraform apply` so the UDR is in place by the time the gateway comes up.
+
+The UDR request should specify:
+- **Subscription:** your Project Set subscription ID
+- **Resource group:** the resource group containing the AppGW (e.g. `sdx-edge-rg`)
+- **VNet / subnet:** `<vnet-name>/appgw-subnet`
+- **UDR name:** `<cluster_name>-appgw-udr` (e.g. `sdx-edge-aks-appgw-udr`)
+- **Routes:** as shown in the table above
 
 ---
 
@@ -164,7 +181,6 @@ All CIDRs must fall within the address space of the pre-provisioned Landing Zone
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `kong_node_port` | number | `30443` | Kubernetes NodePort for Kong HTTPS (30000–32767) |
-| `kong_lb_private_ip` | string | `"10.46.8.180"` | Static private IP for Kong internal LB — must be within `aks_subnet_cidr` |
 | `mtls_required` | bool | `true` | Enforce mutual TLS on client connections |
 | `https_proxy` | string | `""` | Outbound HTTP proxy URL (empty = disabled) |
 
@@ -178,7 +194,6 @@ All CIDRs must fall within the address space of the pre-provisioned Landing Zone
 | `aks_cluster_name` | AKS cluster name |
 | `aks_get_credentials` | `az aks get-credentials` command to configure `kubectl` |
 | `appgw_public_ip` | Application Gateway public IP (WAF entry point) |
-| `kong_lb_ip` | Kong Load Balancer public IP (alternate entry point) |
 | `edge_domain` | SDX Edge virtual hostname (`<edge_id>.servers.sdx`) |
 | `helm_release_status` | Status of the sdx-edge Helm release |
 | `acr_login_server` | Container Registry hostname for the ShowMe app |
@@ -210,7 +225,7 @@ Deploys a sample Container App to demonstrate Landing Zone-compliant ACA deploym
 
 **Backend pool is empty after apply**
 
-The `local-exec` provisioners that populate the AppGW and LB backend pools run as part of `terraform apply`. If the pools are empty after deployment, verify that:
+The `local-exec` provisioner that populates the AppGW backend pool runs as part of `terraform apply`. If the pool is empty after deployment, verify that:
 - `az` CLI is authenticated and targeting the correct subscription
 - The AKS VMSS exists in the node resource group (`az vmss list --resource-group <node-rg>`)
 - Re-run `terraform apply` — the provisioners will re-sync node IPs

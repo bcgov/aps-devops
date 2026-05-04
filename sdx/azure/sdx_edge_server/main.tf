@@ -51,7 +51,7 @@ resource "helm_release" "sdx_edge" {
     value = local.edge_domain
   }
 
-  # Embed the public LB IP as a SAN on the server cert
+  # Embed the AppGW public IP as a SAN on the server cert
   set {
     name  = "tls.server.ip"
     value = var.appgw_public_ip
@@ -70,9 +70,8 @@ resource "helm_release" "sdx_edge" {
 }
 
 
-# NodePort service — the Terraform-managed Azure public LB (lb.tf) routes traffic
-# from azurerm_public_ip.kong_lb:443 to this fixed NodePort on each node, bypassing
-# the AKS cloud controller manager entirely (no VNet subnet permissions needed).
+# NodePort service — the Application Gateway routes traffic to this fixed NodePort
+# on each AKS node, bypassing the AKS cloud controller manager entirely.
 resource "kubernetes_service_v1" "sdx_edge_lb" {
   metadata {
     name      = "${var.edge_id}-lb"

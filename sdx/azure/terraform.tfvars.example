@@ -45,9 +45,6 @@ pod_cidr       = "10.10.0.0/18"    # BC Gov approved range; used by Azure CNI Ov
 service_cidr   = "10.10.64.0/22"   # BC Gov approved range
 dns_service_ip = "10.10.64.10"
 
-# Static private IP for the Kong internal LoadBalancer — must be within aks_subnet_cidr.
-kong_lb_private_ip = "REPLACE_ME"
-
 # Application Gateway sizing (WAF_v2 required by BC Gov Azure Landing Zone)
 appgw_sku      = "WAF_v2"
 appgw_capacity = 1

@@ -143,15 +143,9 @@ variable "dns_service_ip" {
 }
 
 variable "kong_node_port" {
-  description = "Fixed Kubernetes NodePort for Kong HTTPS — must be in range 30000-32767; used by the Terraform-managed Azure internal LB"
+  description = "Fixed Kubernetes NodePort for Kong HTTPS — must be in range 30000-32767; used by the Application Gateway backend"
   type        = number
   default     = 30443
-}
-
-variable "kong_lb_private_ip" {
-  description = "Static private IP for the Kong internal LoadBalancer service — must be within aks_subnet_cidr and not used by any node or pod"
-  type        = string
-  default     = "10.46.8.180"
 }
 
 variable "tags" {

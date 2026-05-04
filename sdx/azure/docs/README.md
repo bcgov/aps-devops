@@ -10,11 +10,9 @@ See PROMPT.md
 
 ### Prepare bootstrap token
 
-Bootstrap will initially fail, but retrieve the public ip from `kong_lb_ip`.
+Bootstrap will initially fail. Retrieve the AppGW public IP from the `appgw_public_ip` output.
 
 ```sh
-terraform apply -target azurerm_public_ip.kong_lb
-
 export IP="20.63.103.28"
 export EDGE_ID="azure01"
 export DOMAIN="${EDGE_ID}.servers.sdx"
@@ -59,9 +57,9 @@ Successful terraform completion produces output like:
 ```sh
 aks_cluster_name = "sdx-edge-aks"
 aks_get_credentials = "az aks get-credentials --resource-group sdx-edge-rg --name sdx-edge-aks"
+appgw_public_ip = "20.63.46.159"
 edge_domain = "azure01.servers.sdx"
 helm_release_status = "deployed"
-kong_lb_ip = "20.63.46.159"
 resource_group_name = "sdx-edge-rg"
 ```
 
@@ -165,12 +163,6 @@ az provider show --namespace Microsoft.Network \
     --output table
 
 
- az network lb address-pool address list \
-     --resource-group sdx-edge-rg \
-        --lb-name sdx-edge-aks-kong-lb \
-        --pool-name kong-nodes \
-    -o table
-
 az afd origin show \
     --resource-group sdx-edge-rg \
     --profile-name sdx-edge-aks-afd \
@@ -213,8 +205,6 @@ az monitor activity-log list \
 
 
 terraform apply \
-    -replace=azurerm_public_ip.kong_lb \
-    -replace=azurerm_lb.kong  \
     -replace=azurerm_cdn_frontdoor_route.kong \
     -replace=azurerm_cdn_frontdoor_origin.kong
 ```
@@ -266,13 +256,6 @@ terraform apply \
   -replace=azurerm_cdn_frontdoor_origin.kong \
   -replace=azurerm_cdn_frontdoor_route.kong \
   -replace=azurerm_cdn_frontdoor_security_policy.main
-```
-
-```sh
-az network lb probe show \
-    --resource-group sdx-edge-rg \
-    --lb-name sdx-edge-aks-kong-lb \
-    --name kong-nodeport-tcp
 ```
 
 ```sh

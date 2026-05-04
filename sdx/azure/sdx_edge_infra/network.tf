@@ -10,8 +10,7 @@ resource "azurerm_network_security_group" "aks" {
   location            = azurerm_resource_group.main.location
   tags                = var.tags
 
-  # AppGW routes directly to node private IPs on the NodePort, bypassing the
-  # public Kong LB and avoiding UDR/hub-firewall routing for internal traffic.
+  # AppGW routes directly to node private IPs on the NodePort.
   security_rule {
     name                       = "allow-nodeport-from-appgw"
     priority                   = 100
@@ -24,8 +23,7 @@ resource "azurerm_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
-  # Azure Load Balancer health probes originate from 168.63.129.16;
-  # this rule must exist or the LB marks all backends unhealthy and drops traffic
+  # Azure health probes originate from 168.63.129.16 — required for the AKS implicit Standard LB.
   security_rule {
     name                       = "allow-azure-lb-probe"
     priority                   = 110
