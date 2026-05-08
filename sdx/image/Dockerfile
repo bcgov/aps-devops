@@ -5,7 +5,7 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd trust-registry r2 opal trust-kms upds
+RUN echo upd trust-registry r2 opal trust-kms upd2
 RUN git clone -b opal https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
   && (cd plugins/dpop && luarocks make) \
