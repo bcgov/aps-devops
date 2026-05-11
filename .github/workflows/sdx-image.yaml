@@ -56,3 +56,5 @@ jobs:
         push: true
         tags: ${{ env.REGISTRY }}/bcgov/aps-devops/${{env.DOCKER_ITEM}}:${{env.PREFIX}}${{
           steps.slug.outputs.sha8 }}
+        build-args: |
+          APP_VERSION=${{env.PREFIX}}${{steps.slug.outputs.sha8 }}        
