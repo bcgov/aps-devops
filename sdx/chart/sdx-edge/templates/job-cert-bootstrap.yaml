@@ -1,11 +1,11 @@
 # Cert Bootstrap Job
 # - This job is used to register a new TLS certificate for Kong
 # - It runs a container that executes the certificate sign script
-{{ if .Values.tls.client.bootstrap.token }}
+{{ if .Values.bootstrap.tls.token }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{ include "sdx-edge.fullname" . }}-boot-{{ sha256sum .Values.tls.client.bootstrap.token | trunc 8 }}"
+  name: "{{ include "sdx-edge.fullname" . }}-boot-{{ sha256sum .Values.bootstrap.tls.token | trunc 8 }}"
   labels:
     app.kubernetes.io/name: sdx-edge
     app.kubernetes.io/component: job-cert-bootstrap
@@ -85,13 +85,15 @@ spec:
                   generic sdx-edge-ca \
                   --from-file=ca.crt=./roots.pem | kubectl apply -f -
 {{- end }}
+{{- if .Values.kong.enabled }}
                 kubectl rollout restart deployment $EDGE_NAME
+{{- end }}
 
           env:
             - name: CN
-              value: "{{ .Values.tls.client.cn }}"
+              value: "{{ .Values.bootstrap.tls.cn }}"
             - name: IP
-              value: "{{ .Values.tls.server.ip }}"
+              value: "{{ .Values.bootstrap.tls.ip }}"
             - name: EDGE_NAME
               value: "{{ include "sdx-edge.fullname" . }}"
             - name: CLIENT_CA_URL

@@ -39,9 +39,9 @@ spec:
       terminationGracePeriodSeconds: 300
       serviceAccountName: sdx-prometheus
       automountServiceAccountToken: true
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
+      securityContext: {}
+        # runAsNonRoot: true
+        # runAsUser: 65534
       containers:
         - resources:
             limits:

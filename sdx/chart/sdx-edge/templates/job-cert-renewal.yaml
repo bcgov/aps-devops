@@ -78,6 +78,7 @@ spec:
                       --key=./tls.key | kubectl apply -f -
 
                     kubectl rollout restart deployment $EDGE_NAME
+                    kubectl rollout restart deployment sdx-fluentbit
 
               env:
                 - name: EDGE_NAME

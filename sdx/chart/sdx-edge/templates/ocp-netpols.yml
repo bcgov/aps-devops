@@ -1,4 +1,6 @@
 {{ if .Values.use_openshift_resources }}
+
+{{ if .Values.kong.enabled }}
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
@@ -19,6 +21,7 @@ spec:
         port: 8443
   policyTypes:
     - Ingress
+{{ end }}
 
 {{ if .Values.shared.fluentbit.enabled }}
 ---
@@ -59,4 +62,5 @@ spec:
   policyTypes:
     - Ingress
 {{ end }}
+
 {{ end }}

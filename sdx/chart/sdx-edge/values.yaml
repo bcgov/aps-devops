@@ -1,7 +1,7 @@
 name: example
 
 image:
-  tag: 3.9-57ca71e3
+  tag: 3.9-21984e88
 
 hpa:
   minReplicas: 1
@@ -24,16 +24,18 @@ https_proxy: ""
 
 use_openshift_resources: true
 
-tls:
-  client:
-    bootstrap:
-      token: ""
+kong:
+  enabled: true
+
+bootstrap:
+  tls:
+    token: ""
     cn: "example.com"
 
-  # Added as a SAN to the edge certificate
-  server:
+    # Added as a SAN to the edge certificate
     ip: ""
 
+tls:
   # C=GB, O=Sectigo Limited, CN=Sectigo Public Server Authentication CA DV R36
   # C=GB, O=Sectigo Limited, CN=Sectigo Public Server Authentication Root R46
   # C=US, ST=New Jersey, L=Jersey City, O=The USERTRUST Network, CN=USERTrust RSA Certification Authority
@@ -48,6 +50,7 @@ tls:
   # C = US, O = Microsoft Corporation, CN = Microsoft TLS RSA Root G2
   # C = US, O = DigiCert Inc, OU = www.digicert.com, CN = DigiCert Global Root G2
   # C=US, O=Microsoft Corporation, CN=Microsoft Azure RSA TLS Issuing CA 07
+  # CN=GTS Root R4, O=Google Trust Services LLC, C=US
 
   public_ca: |-
     -----BEGIN CERTIFICATE-----
@@ -453,6 +456,19 @@ tls:
     D1x42VSusQuRGtuSxLhzBNBeJtyD//2u7wY2uLYpgK0o3X0iIJmwpt7Ovp6Bs4tI
     E/peia+Qcdk9Qsr+1VgCGA==
     -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIICCTCCAY6gAwIBAgINAgPlwGjvYxqccpBQUjAKBggqhkjOPQQDAzBHMQswCQYD
+    VQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzEUMBIG
+    A1UEAxMLR1RTIFJvb3QgUjQwHhcNMTYwNjIyMDAwMDAwWhcNMzYwNjIyMDAwMDAw
+    WjBHMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2Vz
+    IExMQzEUMBIGA1UEAxMLR1RTIFJvb3QgUjQwdjAQBgcqhkjOPQIBBgUrgQQAIgNi
+    AATzdHOnaItgrkO4NcWBMHtLSZ37wWHO5t5GvWvVYRg1rkDdc/eJkTBa6zzuhXyi
+    QHY7qca4R9gq55KRanPpsXI5nymfopjTX15YhmUPoYRlBtHci8nHc8iMai/lxKvR
+    HYqjQjBAMA4GA1UdDwEB/wQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQW
+    BBSATNbrdP9JNqPV2Py1PsVq8JQdjDAKBggqhkjOPQQDAwNpADBmAjEA6ED/g94D
+    9J+uHXqnLrmvT/aDHQ4thQEd0dlq7A/Cr8deVl5c1RxYIigL9zC2L7F8AjEA8GE8
+    p/SgguMh1YQdc4acLa/KNJvxn7kjNuK8YAOdgLOaVsjh4rsUecrNIdSUtUlD
+    -----END CERTIFICATE-----
 
 nginx_conf: |-
   set $session_storage             shm;
@@ -476,3 +492,30 @@ aws:
   access_key_id:
   # AWS_SECRET_ACCESS_KEY
   secret_access_key:
+
+opal:
+  openshift:
+    enabled: true
+    securityContext: {}
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+
+  server:
+    enabled: false
+
+  client:
+    token: ""
+    enabled: false
+    extraEnv:
+      OPAL_DATA_TOPICS: "policy_data,tenant_data"
+      OPAL_SERVER_URL: "https://opal-api-gov-bc-ca.dev.api.gov.bc.ca"
+      OPAL_SERVER_WS_URL: "wss://opal-api-gov-bc-ca.dev.api.gov.bc.ca"
+
+    serverUrl: "https://opal-api-gov-bc-ca.dev.api.gov.bc.ca"
+    secrets:
+      - opal-client
+
+  image:
+    client:
+      tag: "0.9.5"

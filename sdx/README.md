@@ -30,62 +30,68 @@ Deploys a Kong Gateway data plane node configured for secure data exchange opera
 
 > `TOKEN` is a one-time-use token for calling the CA to get a new certificate for mTLS and signing
 
-```sh
+````sh
 export TOKEN="<TOKEN>"
 export IP="<INTERNET_FACING_IP]"
 export EDGE_ID="<EDGE NAME>"
 export DOMAIN="${EDGE_ID}.servers.sdx"
 
+# bootsrap and kong
 helm upgrade --install ${EDGE_ID} \
-  --set tls.client.bootstrap.token=${TOKEN} \
-  --set tls.server.ip=${IP} \
-  --set tls.client.cn=${DOMAIN} \
-  --set route.host=${DOMAIN} \
+  --set bootstrap.tls.token=${TOKEN} \
+  --set bootstrap.tls.ip=${IP} \
+  --set bootstrap.tls.cn=${DOMAIN} \
   oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.1.0
-```
+
+# Optional OPAL client
+
+```sh
+  --set opal.client.enabled=true \
+  --set opal.client.token=${OPAL_TOKEN} \
+````
 
 #### Development
 
 ```sh
 helm package sdx-edge
-helm push sdx-edge-0.1.0.tgz oci://ghcr.io/bcgov/aps-devops
+helm push sdx-edge-0.2.0.tgz oci://ghcr.io/bcgov/aps-devops
 ```
 
 #### Configuration
 
 The following table lists the configurable parameters in `values.yaml`:
 
-| Parameter                    | Description                                                    | Default                                                                 |
-| ---------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `name`                       | Release name identifier                                        | `example`                                                               |
-| `image.tag`                  | Container image tag                                            | `3.9-37f68b55`                                                          |
-| `hpa.minReplicas`            | Minimum number of pod replicas                                 | `1`                                                                     |
-| `hpa.maxReplicas`            | Maximum number of pod replicas                                 | `1`                                                                     |
-| `route.host`                 | Edge server hostname for external routing                      | `example.servers.sdx`                                                   |
-| `sdx_control_url`            | Control plane URL for hybrid deployment (format: `host:port`)  | `gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443`                     |
-| `client_ca_url`              | Certificate authority endpoint for client certificate issuance | `https://ca-1d4461-prod.apps.silver.devops.gov.bc.ca`                   |
-| `sdx_aggregator_url`         | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
-| `mtls_required`              | Enable/disable mutual TLS requirement                          | `true`                                                                  |
-| `https_proxy`                | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
-| `tls.client.bootstrap.token` | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
-| `tls.client.cn`              | Common Name for client certificate                             | `example.com`                                                           |
-| `tls.server.ip`              | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
-| `tls.public_ca`              | PEM-encoded public CA certificates for trust chain             | (includes Sectigo, USERTrust, SDX, APS, Amazon, Let's Encrypt root CAs) |
-| `nginx_conf`                 | Custom nginx configuration snippet                             | Session storage and secret configuration                                |
-| `shared.rbac`                | Enable RBAC resources                                          | `true`                                                                  |
-| `shared.ca_secret`           | Create CA secret resource                                      | `true`                                                                  |
-| `shared.fluentbit.enabled`   | Enable Fluent Bit sidecar for log forwarding                   | `true`                                                                  |
-| `shared.prometheus.enabled`  | Enable Prometheus metrics collection                           | `true`                                                                  |
-| `aws.enabled`                | Enable AWS integration                                         | `false`                                                                 |
-| `aws.region`                 | AWS region for services                                        | `us-west-2`                                                             |
-| `aws.access_key_id`          | AWS access key ID for authentication                           | `""` (empty)                                                            |
-| `aws.secret_access_key`      | AWS secret access key for authentication                       | `""` (empty)                                                            |
+| Parameter                   | Description                                                    | Default                                                                 |
+| --------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `name`                      | Release name identifier                                        | `example`                                                               |
+| `image.tag`                 | Container image tag                                            | `3.9-37f68b55`                                                          |
+| `hpa.minReplicas`           | Minimum number of pod replicas                                 | `1`                                                                     |
+| `hpa.maxReplicas`           | Maximum number of pod replicas                                 | `1`                                                                     |
+| `route.host`                | Edge server hostname for external routing                      | `example.servers.sdx`                                                   |
+| `sdx_control_url`           | Control plane URL for hybrid deployment (format: `host:port`)  | `gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443`                     |
+| `client_ca_url`             | Certificate authority endpoint for client certificate issuance | `https://ca-1d4461-prod.apps.silver.devops.gov.bc.ca`                   |
+| `sdx_aggregator_url`        | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
+| `mtls_required`             | Enable/disable mutual TLS requirement                          | `true`                                                                  |
+| `https_proxy`               | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
+| `bootstrap.tls.token`       | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
+| `tls.client.cn`             | Common Name for client certificate                             | `example.com`                                                           |
+| `tls.server.ip`             | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
+| `tls.public_ca`             | PEM-encoded public CA certificates for trust chain             | (includes Sectigo, USERTrust, SDX, APS, Amazon, Let's Encrypt root CAs) |
+| `nginx_conf`                | Custom nginx configuration snippet                             | Session storage and secret configuration                                |
+| `shared.rbac`               | Enable RBAC resources                                          | `true`                                                                  |
+| `shared.ca_secret`          | Create CA secret resource                                      | `true`                                                                  |
+| `shared.fluentbit.enabled`  | Enable Fluent Bit sidecar for log forwarding                   | `true`                                                                  |
+| `shared.prometheus.enabled` | Enable Prometheus metrics collection                           | `true`                                                                  |
+| `aws.enabled`               | Enable AWS integration                                         | `false`                                                                 |
+| `aws.region`                | AWS region for services                                        | `us-west-2`                                                             |
+| `aws.access_key_id`         | AWS access key ID for authentication                           | `""` (empty)                                                            |
+| `aws.secret_access_key`     | AWS secret access key for authentication                       | `""` (empty)                                                            |
 
 **Required Values:**
 
 The following values must be set during installation:
 
-- `tls.client.bootstrap.token` - Required for certificate bootstrapping
+- `bootstrap.tls.token` - Required for certificate bootstrapping
 - `route.host` - Required for proper external routing
 
 **Example Override:**
