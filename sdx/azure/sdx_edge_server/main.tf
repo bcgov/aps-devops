@@ -6,7 +6,7 @@ locals {
 resource "helm_release" "sdx_edge" {
   name             = var.edge_id
   chart            = "oci://ghcr.io/bcgov/aps-devops/sdx-edge"
-  version          = "0.1.0"
+  version          = var.chart_version
   namespace        = var.namespace
   create_namespace = true
 

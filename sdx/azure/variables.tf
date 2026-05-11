@@ -58,6 +58,12 @@ variable "namespace" {
   default     = "sdx-edge"
 }
 
+variable "sdx_edge_chart_version" {
+  description = "Version of the sdx-edge Helm chart to deploy"
+  type        = string
+  default     = "0.2.0"
+}
+
 variable "sdx_bootstrap_token" {
   description = "One-time bootstrap token for TLS certificate issuance from the CA"
   type        = string

@@ -36,6 +36,12 @@ variable "kubernetes_version" {
   default     = null
 }
 
+variable "private_dns_zone_id" {
+  description = "Private DNS zone ID for the AKS private cluster API server. Use 'System' to let AKS manage the zone, 'None' for BYO DNS, or provide a specific zone resource ID for a shared BC Gov DNS zone."
+  type        = string
+  default     = "System"
+}
+
 variable "node_count" {
   description = "Initial number of nodes in the default node pool."
   type        = number

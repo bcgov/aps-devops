@@ -6,6 +6,10 @@ resource "azurerm_kubernetes_cluster" "main" {
   kubernetes_version  = var.kubernetes_version
   tags                = var.tags
 
+  # private_cluster_enabled             = true
+  # private_dns_zone_id                 = var.private_dns_zone_id
+  # private_cluster_public_fqdn_enabled = false
+
   image_cleaner_enabled        = true
   image_cleaner_interval_hours = 48
   azure_policy_enabled         = true

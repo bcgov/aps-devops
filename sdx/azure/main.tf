@@ -1,18 +1,3 @@
-module "sdx_edge_server" {
-  source = "./sdx_edge_server"
-
-  edge_id             = var.edge_id
-  namespace           = var.namespace
-  sdx_bootstrap_token = var.sdx_bootstrap_token
-  sdx_control_url     = var.sdx_control_url
-  client_ca_url       = var.client_ca_url
-  sdx_aggregator_url  = var.sdx_aggregator_url
-  mtls_required       = var.mtls_required
-  https_proxy         = var.https_proxy
-  kong_node_port      = var.kong_node_port
-  appgw_public_ip     = module.sdx_edge_infra.appgw_public_ip
-}
-
 module "sdx_edge_infra" {
   source = "./sdx_edge_infra"
 
@@ -35,6 +20,24 @@ module "sdx_edge_infra" {
   kong_node_port           = var.kong_node_port
 }
 
+module "sdx_edge_server" {
+  source = "./sdx_edge_server"
+
+  edge_id             = var.edge_id
+  namespace           = var.namespace
+  chart_version       = var.sdx_edge_chart_version
+  sdx_bootstrap_token = var.sdx_bootstrap_token
+  sdx_control_url     = var.sdx_control_url
+  client_ca_url       = var.client_ca_url
+  sdx_aggregator_url  = var.sdx_aggregator_url
+  mtls_required       = var.mtls_required
+  https_proxy         = var.https_proxy
+  kong_node_port      = var.kong_node_port
+  appgw_public_ip     = module.sdx_edge_infra.appgw_public_ip
+
+  depends_on = [module.sdx_edge_infra]
+}
+
 module "app_showme" {
   source = "./app_showme"
 
@@ -47,4 +50,6 @@ module "app_showme" {
   resource_group_name      = module.sdx_edge_infra.resource_group_name
   resource_group_location  = module.sdx_edge_infra.resource_group_location
   aks_subnet_id            = module.sdx_edge_infra.aks_subnet_id
+
+  depends_on = [module.sdx_edge_infra]
 }
