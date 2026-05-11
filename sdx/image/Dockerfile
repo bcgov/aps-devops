@@ -1,6 +1,9 @@
 ARG KONG_VERSION="3.9.1"
 FROM docker.io/kong:${KONG_VERSION}
 
+ARG APP_VERSION
+ENV APP_VERSION=${APP_VERSION}
+
 USER root
 
 RUN apt-get update && apt-get -y install unzip curl
@@ -114,7 +117,7 @@ ENV KONG_CLIENT_SSL_CERT_KEY="/etc/secrets/sdx-edge-client-cert/tls.key"
 
 # Make the env var available for using in custom plugins
 # NOTE env KONG_CLIENT_SSL_CERT;env KONG_CLIENT_SSL_CERT_KEY only temporary until we add token exchange plugin
-ENV KONG_NGINX_MAIN_ENV="KONG_SIGNING_CERT;env KONG_SIGNING_CERT_KEY;env AWS_ACCESS_KEY_ID;env AWS_SECRET_ACCESS_KEY;env AWS_REGION;env KONG_CLIENT_SSL_CERT;env KONG_CLIENT_SSL_CERT_KEY"
+ENV KONG_NGINX_MAIN_ENV="KONG_SIGNING_CERT;env KONG_SIGNING_CERT_KEY;env APP_VERSION;env AWS_ACCESS_KEY_ID;env AWS_SECRET_ACCESS_KEY;env AWS_REGION;env KONG_CLIENT_SSL_CERT;env KONG_CLIENT_SSL_CERT_KEY"
 
 # Client certificate to present when proxying to upstream services
 ENV KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE="/etc/secrets/sdx-edge-client-cert/tls.crt"
