@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/component: kong
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     runtime-group: "{{ include "sdx-edge.fullname" . }}"
+    {{ include "sdx-edge.labels" . | nindent 4 }}
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -32,6 +33,7 @@ spec:
         app.kubernetes.io/component: kong
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
         runtime-group: "{{ include "sdx-edge.fullname" . }}"
+        {{ include "sdx-edge.labels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       
@@ -47,7 +49,7 @@ spec:
 
       initContainers:
       - name: clear-stale-pid
-        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Values.image.tag }}
+        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -64,7 +66,7 @@ spec:
           mountPath: /tmp
       containers:
       - name: "proxy"
-        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Values.image.tag }}
+        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
         imagePullPolicy: IfNotPresent
         env:
         - name: KONG_CLUSTER_DP_LABELS
