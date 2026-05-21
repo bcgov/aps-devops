@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: sdx-edge
     app.kubernetes.io/component: kong
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-    data-plane: "{{ include "sdx-edge.fullname" . }}"
+    runtime-group: "{{ include "sdx-edge.fullname" . }}"
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -31,7 +31,7 @@ spec:
         app.kubernetes.io/name: sdx-edge
         app.kubernetes.io/component: kong
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-        data-plane: "{{ include "sdx-edge.fullname" . }}"
+        runtime-group: "{{ include "sdx-edge.fullname" . }}"
     spec:
       automountServiceAccountToken: false
       
@@ -68,7 +68,7 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: KONG_CLUSTER_DP_LABELS
-          value: "data-plane:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
+          value: "runtime-group:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
         - name: KONG_CLUSTER_CONTROL_PLANE
           value: {{ .Values.sdx_control_url | quote }}
         - name: KONG_NGINX_PROXY_SSL_VERIFY_CLIENT
@@ -195,7 +195,7 @@ metadata:
   labels:
     app.kubernetes.io/name: kong
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-    data-plane: "{{ include "sdx-edge.fullname" . }}"
+    runtime-group: "{{ include "sdx-edge.fullname" . }}"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

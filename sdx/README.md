@@ -6,7 +6,7 @@ A Kubernetes deployment for running SDX (Secure Data Exchange) Edge Servers as h
 
 ### Helm Chart (`chart/sdx-edge`)
 
-**Chart Version:** 0.1.0
+**Chart Version:** 0.3.0
 **App Version:** 3.9.1
 
 Deploys a Kong Gateway data plane node configured for secure data exchange operations. The chart includes:
@@ -86,6 +86,9 @@ The following table lists the configurable parameters in `values.yaml`:
 | `aws.region`                | AWS region for services                                        | `us-west-2`                                                             |
 | `aws.access_key_id`         | AWS access key ID for authentication                           | `""` (empty)                                                            |
 | `aws.secret_access_key`     | AWS secret access key for authentication                       | `""` (empty)                                                            |
+| `prom_remote_write.url`     | Prometheus `remote_write` endpoint (Gold). Empty = disabled.   | `""` (disabled)                                                         |
+| `prom_remote_write.external_labels` | Extra labels added to every series before remote_write | `{ datacenter: edge }`                                                  |
+| `prom_remote_write.queue_config`    | Prometheus `remote_write` queue tuning                 | `{ max_samples_per_send: 1000, capacity: 10000, max_shards: 30 }`       |
 
 **Required Values:**
 
@@ -190,9 +193,31 @@ docker build -t sdx-edge:3.9.1 .
 
 ## Monitoring
 
-- Prometheus metrics exposed on `/metrics` endpoint
+- Prometheus metrics exposed on `/metrics` endpoint, forwarded to central Prometheus instance via `remote_write` protocol.
 - Fluent Bit forwards logs to configured aggregator
 - Status endpoint available on port 8100 for health checks
+
+### Shipping metrics to a central Prometheus
+
+When `prom_remote_write.url` is set, the in-cluster `sdx-prometheus-server`
+StatefulSet ships every series it scrapes (Kong on 8100, fluentbit on 2021)
+to the configured remote endpoint via the Prometheus `remote_write` protocol.
+
+- Authentication: mTLS, reusing the same edge client certificate (`{release}-client` secret) and `sdx-public-ca` CA that fluentbit uses to ship logs to the SDX log aggregator.
+- Identifying labels: Kong metrics include `dataplane` (from the edge pod label `data_plane`). Keys in `prom_remote_write.external_labels` (default `datacenter=edge`) are added to every series on remote_write.
+- Default queue tuning is suitable for a single low/medium-traffic edge; tune `prom_remote_write.queue_config` for busier edges. See [Prometheus remote_write tuning](https://prometheus.io/docs/practices/remote_write/).
+
+Note: only the helm release that owns `shared.prometheus.enabled=true` in a
+namespace (e.g. `share0` in `b8840c-dev`) needs this flag — releases that
+re-use the shared Prometheus inherit it automatically.
+
+Example:
+
+```sh
+helm upgrade --install share0 \
+  --set prom_remote_write.url=https://gw-metrics-aggregator-api-gov-bc-ca.dev.api.gov.bc.ca/api/v1/write \
+  oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.3.0
+```
 
 ## License
 
