@@ -487,13 +487,6 @@ shared:
 
 # Ship the Edge Prometheus time series to a remote Prometheus (e.g. on Gold)
 # via the Prometheus remote_write protocol.
-#
-# When `url` is empty (the default) no remote_write block is rendered, so this
-# is a no-op on existing installs. The remote endpoint is expected to require
-# mutual TLS using the same edge client certificate that fluentbit already uses
-# to ship logs to the SDX log aggregator.
-#
-# APS-4401 — Kong (Edge) -> Edge Prometheus -> Prometheus (Gold)
 prom_remote_write:
   url: ""
 
@@ -501,7 +494,7 @@ prom_remote_write:
   tls:
     enabled: true
 
-  # Per-edge identity automatically added in the `dataplane` label.
+  # Per-edge identity automatically added in the `runtimegroup` label.
   # Optional extra labels added to every series before remote_write (e.g. datacenter).
   external_labels:
     datacenter: edge
