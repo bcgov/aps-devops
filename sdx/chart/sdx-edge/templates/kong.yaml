@@ -7,7 +7,8 @@ metadata:
     app.kubernetes.io/name: sdx-edge
     app.kubernetes.io/component: kong
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-    data-plane: "{{ include "sdx-edge.fullname" . }}"
+    runtime-group: "{{ include "sdx-edge.fullname" . }}"
+    {{ include "sdx-edge.labels" . | nindent 4 }}
 spec:
   revisionHistoryLimit: 10
   selector:
@@ -31,7 +32,8 @@ spec:
         app.kubernetes.io/name: sdx-edge
         app.kubernetes.io/component: kong
         app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-        data-plane: "{{ include "sdx-edge.fullname" . }}"
+        runtime-group: "{{ include "sdx-edge.fullname" . }}"
+        {{ include "sdx-edge.labels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       
@@ -47,7 +49,7 @@ spec:
 
       initContainers:
       - name: clear-stale-pid
-        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Values.image.tag }}
+        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -64,11 +66,11 @@ spec:
           mountPath: /tmp
       containers:
       - name: "proxy"
-        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Values.image.tag }}
+        image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
         imagePullPolicy: IfNotPresent
         env:
         - name: KONG_CLUSTER_DP_LABELS
-          value: "data-plane:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
+          value: "runtime-group:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
         - name: KONG_CLUSTER_CONTROL_PLANE
           value: {{ .Values.sdx_control_url | quote }}
         - name: KONG_NGINX_PROXY_SSL_VERIFY_CLIENT
@@ -195,7 +197,7 @@ metadata:
   labels:
     app.kubernetes.io/name: kong
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
-    data-plane: "{{ include "sdx-edge.fullname" . }}"
+    runtime-group: "{{ include "sdx-edge.fullname" . }}"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

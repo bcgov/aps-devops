@@ -81,6 +81,14 @@ spec:
               mountPath: /etc/config
             - name: storage-volume
               mountPath: /data
+            {{- if and .Values.prom_remote_write.url .Values.prom_remote_write.tls.enabled }}
+            - name: sdx-edge-client-cert
+              mountPath: /etc/secrets/sdx-edge-client-cert
+              readOnly: true
+            - name: sdx-ca
+              mountPath: /etc/secrets/sdx-ca
+              readOnly: true
+            {{- end }}
           terminationMessagePolicy: File
           image: 'quay.io/prometheus/prometheus:v2.48.1'
           args:
@@ -98,6 +106,14 @@ spec:
             defaultMode: 420
         - name: storage-volume
           emptyDir: {}
+        {{- if and .Values.prom_remote_write.url .Values.prom_remote_write.tls.enabled }}
+        - name: sdx-edge-client-cert
+          secret:
+            secretName: {{ include "sdx-edge.fullname" . }}-client
+        - name: sdx-ca
+          secret:
+            secretName: sdx-public-ca
+        {{- end }}
       dnsPolicy: ClusterFirst
   podManagementPolicy: OrderedReady
   updateStrategy:
@@ -127,11 +143,32 @@ data:
       evaluation_interval: 5s
       scrape_interval: 15s
       scrape_timeout: 4s
+      {{- if .Values.prom_remote_write.url }}
+      external_labels:
+        {{- range $k, $v := .Values.prom_remote_write.external_labels }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+      {{- end }}
     rule_files:
     - /etc/config/recording_rules.yml
     - /etc/config/alerting_rules.yml
     - /etc/config/rules
     - /etc/config/alerts
+    {{- if .Values.prom_remote_write.url }}
+    remote_write:
+    - url: {{ .Values.prom_remote_write.url | quote }}
+      {{- if .Values.prom_remote_write.tls.enabled }}
+      tls_config:
+        ca_file: /etc/secrets/sdx-ca/ca.crt
+        cert_file: /etc/secrets/sdx-edge-client-cert/tls.crt
+        key_file: /etc/secrets/sdx-edge-client-cert/tls.key
+        insecure_skip_verify: false
+      {{- end }}
+      {{- with .Values.prom_remote_write.queue_config }}
+      queue_config:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
     scrape_configs:
     - job_name: kubernetes-kong
       kubernetes_sd_configs:
@@ -157,8 +194,8 @@ data:
         target_label: instance
       - action: replace
         source_labels:
-        - __meta_kubernetes_pod_label_data_plane
-        target_label: dataplane
+        - __meta_kubernetes_pod_label_runtime_group
+        target_label: runtimegroup
 
     - job_name: kubernetes-fluentd
       kubernetes_sd_configs:

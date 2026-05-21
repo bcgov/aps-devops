@@ -77,8 +77,12 @@ spec:
                       --cert=./tls.crt \
                       --key=./tls.key | kubectl apply -f -
 
+{{- if .Values.kong.enabled }}
                     kubectl rollout restart deployment $EDGE_NAME
+{{- end }}
+{{- if .Values.shared.fluentbit.enabled }}
                     kubectl rollout restart deployment sdx-fluentbit
+{{- end }}
 
               env:
                 - name: EDGE_NAME
