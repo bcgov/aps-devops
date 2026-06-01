@@ -42,6 +42,18 @@ variable "private_dns_zone_id" {
   default     = "System"
 }
 
+variable "tenant_id" {
+  description = "Entra ID (Azure AD) tenant ID for AKS-managed AAD integration. Defaults to the current subscription's tenant when null."
+  type        = string
+  default     = null
+}
+
+variable "admin_group_object_ids" {
+  description = "Entra ID group object IDs granted cluster-admin via AKS-managed AAD. Required when local accounts are disabled to avoid lockout."
+  type        = list(string)
+  default     = []
+}
+
 variable "node_count" {
   description = "Initial number of nodes in the default node pool."
   type        = number

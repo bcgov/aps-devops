@@ -14,6 +14,26 @@ resource "azurerm_kubernetes_cluster" "main" {
   image_cleaner_interval_hours = 48
   azure_policy_enabled         = true
 
+  # Require Entra ID sign-in; no static local cluster-admin kubeconfig.
+  # Depends on the azure_active_directory_role_based_access_control block below —
+  # admin_group_object_ids must be set or you will be locked out.
+  local_account_disabled = true
+
+  # OIDC issuer + Workload Identity so pods federate to Entra ID without stored secrets.
+  workload_identity_enabled = true
+
+  # Key Vault CSI driver (Secrets Store) for secret handling.
+  key_vault_secrets_provider {
+    secret_rotation_enabled = true
+  }
+
+  # Entra ID authentication via AKS-managed AAD, with Azure RBAC for Kubernetes authorization.
+  azure_active_directory_role_based_access_control {
+    tenant_id              = var.tenant_id
+    admin_group_object_ids = var.admin_group_object_ids
+    azure_rbac_enabled     = true
+  }
+
   # Default NodeImage
   # node_os_upgrade_channel = "NodeImage"
 
@@ -35,11 +55,20 @@ resource "azurerm_kubernetes_cluster" "main" {
   network_profile {
     network_plugin      = "azure"
     network_plugin_mode = "overlay"
-    network_policy      = "azure"
-    load_balancer_sku   = "standard"
-    pod_cidr            = var.pod_cidr
-    service_cidr        = var.service_cidr
-    dns_service_ip      = var.dns_service_ip
+    # Cilium dataplane: eBPF-based policy enforcement and network visibility.
+    network_data_plane = "cilium"
+    network_policy     = "cilium"
+    load_balancer_sku  = "standard"
+    pod_cidr           = var.pod_cidr
+    service_cidr       = var.service_cidr
+    dns_service_ip     = var.dns_service_ip
+
+    # Advanced Container Networking Services (ACNS): observability + security
+    # (FQDN/L7 policies, micro-segmentation). Requires the Cilium dataplane.
+    advanced_networking {
+      observability_enabled = true
+      security_enabled      = true
+    }
   }
 
   oidc_issuer_enabled = true

@@ -18,6 +18,7 @@ module "sdx_edge_infra" {
   service_cidr             = var.service_cidr
   dns_service_ip           = var.dns_service_ip
   kong_node_port           = var.kong_node_port
+  admin_group_object_ids   = var.admin_group_object_ids
 }
 
 module "sdx_edge_server" {

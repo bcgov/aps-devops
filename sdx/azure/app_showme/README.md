@@ -6,13 +6,13 @@ A minimal reference application demonstrating how to deploy a containerised work
 
 ### Resources created
 
-| Resource | Name pattern | Purpose |
-|----------|-------------|---------|
-| Azure Container Registry | `acrmyapp` | Stores the ShowMe container image |
-| ACA subnet + NSG | `<cluster_name>-aca-snet` | Infrastructure subnet with `Microsoft.App/environments` delegation |
-| Container App Environment | `<cluster_name>-cae` | Shared runtime environment (Consumption workload profile) |
-| Private Endpoint | `<cluster_name>-aca-pe` | Places ACA environment on the private VNet |
-| Container App | `<cluster_name>-showme` | Runs the ShowMe application |
+| Resource                  | Name pattern              | Purpose                                                            |
+| ------------------------- | ------------------------- | ------------------------------------------------------------------ |
+| Azure Container Registry  | `acrmyapp`                | Stores the ShowMe container image                                  |
+| ACA subnet + NSG          | `<cluster_name>-aca-snet` | Infrastructure subnet with `Microsoft.App/environments` delegation |
+| Container App Environment | `<cluster_name>-cae`      | Shared runtime environment (Consumption workload profile)          |
+| Private Endpoint          | `<cluster_name>-aca-pe`   | Places ACA environment on the private VNet                         |
+| Container App             | `<cluster_name>-showme`   | Runs the ShowMe application                                        |
 
 ### Network design
 
@@ -43,17 +43,19 @@ The ACA subnet requires the `Microsoft.App/environments` service delegation. Thi
 
 ### Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/v1/me` | Returns JWT claims from `Authorization: Bearer <token>`, or `{"user":"anonymous"}` if unauthenticated |
+| Method | Path     | Description                                                                                           |
+| ------ | -------- | ----------------------------------------------------------------------------------------------------- |
+| `GET`  | `/v1/me` | Returns JWT claims from `Authorization: Bearer <token>`, or `{"user":"anonymous"}` if unauthenticated |
 
 **Unauthenticated:**
+
 ```bash
 curl https://<aca-domain>/v1/me
 # {"user":"anonymous"}
 ```
 
 **Authenticated:**
+
 ```bash
 curl -H "Authorization: Bearer <jwt>" https://<aca-domain>/v1/me
 # {"sub":"user@example.com","aud":"...","iat":...,"exp":...}
@@ -63,13 +65,13 @@ The server only decodes the JWT payload — it does **not** verify the signature
 
 ### Runtime
 
-| Property | Value |
-|----------|-------|
-| Runtime | Deno 2.7.10 |
-| Port | 8000 |
-| CPU | 0.25 vCPU |
-| Memory | 0.5 GiB |
-| Replicas | 1 |
+| Property | Value       |
+| -------- | ----------- |
+| Runtime  | Deno 2.7.10 |
+| Port     | 8000        |
+| CPU      | 0.25 vCPU   |
+| Memory   | 0.5 GiB     |
+| Replicas | 1           |
 
 ---
 
@@ -91,7 +93,7 @@ ACR=$(terraform -chdir=.. output -raw acr_login_server)
 az acr login --name "${ACR%%.*}"
 
 # Build from the oci/showme directory
-docker build -t "${ACR}/showme:latest" oci/showme/
+docker build -t "${ACR}/showme:latest" --platform linux/amd64 oci/showme/
 
 # Push to ACR
 docker push "${ACR}/showme:latest"
@@ -153,21 +155,21 @@ nslookup $(terraform output -raw aca_default_domain)
 
 These variables are passed from the root module — they are not set directly.
 
-| Name | Description |
-|------|-------------|
-| `cluster_name` | Name prefix for all resources in this module |
-| `tags` | Tags applied to all resources |
-| `vnet_name` | Pre-provisioned Landing Zone VNet name |
-| `vnet_resource_group_name` | Resource group containing the Landing Zone VNet |
-| `aca_subnet_cidr` | CIDR for the ACA infrastructure subnet — /27 minimum |
-| `resource_group_id` | Shared resource group ID (from `sdx_edge_infra`) |
-| `resource_group_name` | Shared resource group name (from `sdx_edge_infra`) |
-| `resource_group_location` | Azure region (from `sdx_edge_infra`) |
-| `aks_subnet_id` | AKS subnet ID — private endpoint is placed here |
+| Name                       | Description                                          |
+| -------------------------- | ---------------------------------------------------- |
+| `cluster_name`             | Name prefix for all resources in this module         |
+| `tags`                     | Tags applied to all resources                        |
+| `vnet_name`                | Pre-provisioned Landing Zone VNet name               |
+| `vnet_resource_group_name` | Resource group containing the Landing Zone VNet      |
+| `aca_subnet_cidr`          | CIDR for the ACA infrastructure subnet — /27 minimum |
+| `resource_group_id`        | Shared resource group ID (from `sdx_edge_infra`)     |
+| `resource_group_name`      | Shared resource group name (from `sdx_edge_infra`)   |
+| `resource_group_location`  | Azure region (from `sdx_edge_infra`)                 |
+| `aks_subnet_id`            | AKS subnet ID — private endpoint is placed here      |
 
 ## Module outputs
 
-| Name | Description |
-|------|-------------|
-| `acr_login_server` | Container Registry hostname (`<name>.azurecr.io`) |
-| `aca_default_domain` | Default domain of the Container App Environment |
+| Name                 | Description                                       |
+| -------------------- | ------------------------------------------------- |
+| `acr_login_server`   | Container Registry hostname (`<name>.azurecr.io`) |
+| `aca_default_domain` | Default domain of the Container App Environment   |

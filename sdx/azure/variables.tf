@@ -4,6 +4,23 @@ variable "resource_group_name" {
   default     = "sdx-edge-rg"
 }
 
+variable "kubelogin_login_mode" {
+  description = <<-EOT
+    kubelogin login mode used by the kubernetes/helm providers to obtain an Entra ID
+    token for the AKS API server. Use "azurecli" for interactive operators (relies on
+    `az login`), "spn" for CI with a service principal (AAD_SERVICE_PRINCIPAL_CLIENT_ID /
+    AAD_SERVICE_PRINCIPAL_CLIENT_SECRET env vars), "workloadidentity" for pods/runners
+    using federated identity, or "msi" for managed identity on an Azure VM.
+  EOT
+  type        = string
+  default     = "azurecli"
+
+  validation {
+    condition     = contains(["azurecli", "spn", "workloadidentity", "msi"], var.kubelogin_login_mode)
+    error_message = "kubelogin_login_mode must be one of: azurecli, spn, workloadidentity, msi."
+  }
+}
+
 variable "vnet_name" {
   description = "Name of the pre-provisioned VNet allocated by the BC Gov Landing Zone"
   type        = string
@@ -42,6 +59,12 @@ variable "kubernetes_version" {
   description = "Kubernetes version for AKS"
   type        = string
   default     = null
+}
+
+variable "admin_group_object_ids" {
+  description = "List of Azure AD group object IDs to grant cluster admin permissions (e.g. BC Gov Admins)"
+  type        = list(string)
+  default     = []
 }
 
 # SDX Edge deployment variables
