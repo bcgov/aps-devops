@@ -72,7 +72,7 @@ spec:
         - name: KONG_CLUSTER_DP_LABELS
           value: "runtime-group:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
         - name: KONG_CLUSTER_CONTROL_PLANE
-          value: {{ .Values.sdx_control_url | quote }}
+          value: {{ index .Values.sdx_control_url_by_env .Values.environment | quote }}
         - name: KONG_NGINX_PROXY_SSL_VERIFY_CLIENT
           value: "{{- if .Values.mtls_required }}on{{- else }}optional{{- end }}"
         - name: KONG_NGINX_PROXY_SSL_VERIFY_DEPTH
