@@ -45,9 +45,9 @@ client_ca_url_by_env:
 sdx_aggregator_url_by_env:
   apsdev: gwaggregator-api-gov-bc-ca.dev.api.gov.bc.ca
   apstst: gwaggregator-api-gov-bc-ca.test.api.gov.bc.ca
-  dev: gwaggregator-api.dev.api.gov.bc.ca
-  test: gwaggregator-api.test.api.gov.bc.ca
-  prod: gwaggregator-api.api.gov.bc.ca
+  dev: gwaggregator.api.gov.bc.ca
+  test: gwaggregator.api.gov.bc.ca
+  prod: gwaggregator.api.gov.bc.ca
 
 # Ship the Edge Prometheus time series to a remote Prometheus (e.g. on Gold)
 # via the Prometheus remote_write protocol.
@@ -55,9 +55,9 @@ prom_remote_write:
   url_by_env:
     apsdev: "https://gw-metrics-aggregator-api-gov-bc-ca.dev.api.gov.bc.ca/api/v1/write"
     apstst: "https://gw-metrics-aggregator-api-gov-bc-ca.test.api.gov.bc.ca/api/v1/write"
-    dev: "https://gw-metrics-aggregator.dev.api.gov.bc.ca/api/v1/write"
-    test: "https://gw-metrics-aggregator.test.api.gov.bc.ca/api/v1/write"
-    prod: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
+    dev: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
+    test: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
+    prod: "https://gw-metrics-aggregator.gov.bc.ca/api/v1/write"
 
   # mTLS to Gold gwmetricsaggregator (same client cert material as Fluent Bit → gwaggregator)
   tls:
@@ -93,6 +93,7 @@ tls:
   # C = US, O = DigiCert Inc, OU = www.digicert.com, CN = DigiCert Global Root G2
   # C=US, O=Microsoft Corporation, CN=Microsoft Azure RSA TLS Issuing CA 07
   # CN=GTS Root R4, O=Google Trust Services LLC, C=US
+  # CN=CSBC Secure Data Exchange APSDEV Root CA
   # CN=CSBC Secure Data Exchange APSTST Root CA
 
   public_ca: |-
@@ -276,6 +277,37 @@ tls:
     LVTkoKTKqncf5ZzgH50dCxssjmvpSnAgSWszYcpUJ4xkE0aMWYGKF7hwVa6rFhcQ
     qyvLcKFjZmoXKkTMiooNDjaH7KZy95p8AEQ+ASa1F4xfERbM+X/aAV/xYc2iiKg5
     Lw==
+    -----END CERTIFICATE-----
+
+    -----BEGIN CERTIFICATE-----
+    MIIFDTCCAvWgAwIBAgIUBtu//jcAnW4HHseg+jx1IKnsvN4wDQYJKoZIhvcNAQEL
+    BQAwFjEUMBIGA1UEAwwLYXBzX3Jvb3RfY2EwHhcNMjQwODA4MjIyNTUyWhcNMzQw
+    ODA2MjIyNTUyWjAWMRQwEgYDVQQDDAthcHNfcm9vdF9jYTCCAiIwDQYJKoZIhvcN
+    AQEBBQADggIPADCCAgoCggIBAPoyfQ9NCowEA/Jf23CAQWiJFwl22I4J1PEYj8ZH
+    M+q1w9VDwlHzEL7hoe3jXzZKzkv9x5iDv4Qsq4DykfeKsS5qA5aCCFPD2F9T7FxF
+    jmsjEMzUB7elZi9qNp5Zzlfa6BJ/TBUCZiuIPkWtscMMdHsZZrGmMGRBA9g+8LOX
+    CCeKrK2FDMBMCvqjbFduHXyXVUAfJoBs+4B1m5TVlK4EzuzEm6ofmzvoax+whs/v
+    RdYLTcuLneAfirUo5dgV1Gj/0FU16RC0XshSV9F5/N8rP23Yf8o+mlQp4c8JUfrV
+    uU9U3QT7r52ndLZZFDMh8QNq8SN3jMz0FGID7EnctTmxhONjZCUzgXvvQoOnb3B6
+    h7ff+xOnGZFtIMH6/LOVtqYZdiPe79uOEIehyf7Y6LEkVuVglEMsZfCyqnZR0ADQ
+    1odZSFm3pW5+XcZw/20Pv/C29q4Tp+MlrwKqZLwv5rz0uZHldrvYGjOt6RENoWV+
+    o69B9DvRKFYyLdM1xCVmcjHjxMa14a4s12WhWXgs4Fr2E0c1lmi215uY9Xp4aUjs
+    eEcyu7aikBqAKAlHDCMD5FvjPog/kKnnnxrYvJo9Fr54axwArMBqDL8BSMA8wqSy
+    Y1llg6BHIXLh4C1m2rsdGHCTG/cbP8laQKMZNQ2VcgBFlk7An1uXIoLU7p5R9qpg
+    ttolAgMBAAGjUzBRMB0GA1UdDgQWBBShGaEE9JiMtk+dHPj68G2sviLGSzAfBgNV
+    HSMEGDAWgBShGaEE9JiMtk+dHPj68G2sviLGSzAPBgNVHRMBAf8EBTADAQH/MA0G
+    CSqGSIb3DQEBCwUAA4ICAQAPZnxpXNAN7IWcy+/U0Q4CQJom8uqVqoaxnzR8KE6B
+    ZdLPWAB+4gXknk5HerNjTrhy3j+YQPWn5C3uWBHIgrh28R1beUbkI3PXzDA5qHxP
+    EUak6pEC+YcCuUzEzt9vpKfNRUyoxaNskJUygq7hLfpaE+Ynnot0MSX8qBBzo2vQ
+    sEEVE8U6U2WGIM6mMRfgfFHtXnC9t8YiuwpUp8I+rQ3yjMb/dlUVJq6iDPzG9Pd/
+    vUOh1u/tOc6QLzG2is80PNWHKgdJF+CgOEo+wOW0qgBL61f/kcxqOLV+C33jKsmP
+    pYstO2G13F1DjWcthFJR1UgKm0M9UF028cWg06E5ooClLQP0b7KUZF+lKmBpAW8z
+    y9BlRZetl+byQYpT4kKBkm39zbF/BhOtgF7gMjcyWeH6wEU6ASoNXUVa+NJewfo0
+    RNvZUfgwLBz9ZI1cdJ5IyGmOHUjUg7UIYFPCwiXUqWaRchpXyAgf9Q4XVPQ/2EMn
+    mqdx0089oiDTUHGPoZAK07EqkZF/RVlpPf6oXplX33aaA2BcnTfn5KWYqkPbIRK3
+    I3HX1A0oqnOlj6Qd/W7IuRP2R3Tl6csDszl5W3Kp1acWTzVmxp3XjM28acdNQSQY
+    kFGZkc6lWKxgshlcx6pMDUV0/VRPHhZSs4XPZtlwJyhkYhWzJ89bmBPy1NElRfXL
+    Qw==
     -----END CERTIFICATE-----
 
     -----BEGIN CERTIFICATE-----
@@ -542,6 +574,17 @@ tls:
     BBSATNbrdP9JNqPV2Py1PsVq8JQdjDAKBggqhkjOPQQDAwNpADBmAjEA6ED/g94D
     9J+uHXqnLrmvT/aDHQ4thQEd0dlq7A/Cr8deVl5c1RxYIigL9zC2L7F8AjEA8GE8
     p/SgguMh1YQdc4acLa/KNJvxn7kjNuK8YAOdgLOaVsjh4rsUecrNIdSUtUlD
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIBqjCCAVCgAwIBAgIRAI3BHflWsjnEBBXQhnXlrU0wCgYIKoZIzj0EAwIwMzEx
+    MC8GA1UEAxMoQ1NCQyBTZWN1cmUgRGF0YSBFeGNoYW5nZSBBUFNERVYgUm9vdCBD
+    QTAeFw0yNjA3MTQyMjM0NDNaFw0zNjA3MTEyMjM0NDNaMDMxMTAvBgNVBAMTKENT
+    QkMgU2VjdXJlIERhdGEgRXhjaGFuZ2UgQVBTREVWIFJvb3QgQ0EwWTATBgcqhkjO
+    PQIBBggqhkjOPQMBBwNCAAT3fREidT49ylfL98Jz/gqg14mYbWuFoNbzZTtlDBRQ
+    Hht/eYdslqPMw+tl9hj5iUp7txUkvxiJ8cD4QYo8wEGao0UwQzAOBgNVHQ8BAf8E
+    BAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBAjAdBgNVHQ4EFgQUcnu/nZeXRbqZUJHX
+    m6ov4twX+EwwCgYIKoZIzj0EAwIDSAAwRQIhAP3Ww5hDkKHkw0lGPydde+qzubsB
+    BJmHfaEuyPOwxanVAiB07x+//wi4ee/A57ddr3651Hf6QfHOoNE9NUTBefhZwg==
     -----END CERTIFICATE-----
     -----BEGIN CERTIFICATE-----
     MIIBqjCCAVCgAwIBAgIRAOx+wUXYgyRY9VGzArB7V+swCgYIKoZIzj0EAwIwMzEx
