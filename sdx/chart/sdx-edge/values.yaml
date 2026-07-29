@@ -613,6 +613,28 @@ shared:
   prometheus:
     enabled: true
 
+# Ship the Edge Prometheus time series to a remote Prometheus (e.g. on Gold)
+# via the Prometheus remote_write protocol.
+prom_remote_write:
+  url: "https://gw-metrics-aggregator-api-gov-bc-ca.dev.api.gov.bc.ca/api/v1/write"
+
+  # mTLS to Gold gwmetricsaggregator (same client cert material as Fluent Bit → gwaggregator)
+  tls:
+    enabled: true
+
+  # Per-edge identity automatically added in the `runtimegroup` label.
+  # Optional extra labels added to every series before remote_write (e.g. datacenter).
+  external_labels:
+    datacenter: edge
+
+  # Prometheus remote_write queue tuning. Defaults are conservative and aimed
+  # at a single edge with low-to-moderate traffic; tune up for busy edges.
+  # See https://prometheus.io/docs/practices/remote_write/
+  queue_config:
+    max_samples_per_send: 1000
+    capacity: 10000
+    max_shards: 30
+
 aws:
   enabled: false
   region: us-west-2
