@@ -6,7 +6,7 @@ A Kubernetes deployment for running SDX (Secure Data Exchange) Edge Servers as h
 
 ### Helm Chart (`chart/sdx-edge`)
 
-**Chart Version:** 0.3.3
+**Chart Version:** 0.3.4
 **App Version:** 3.9.1
 
 Deploys a Kong Gateway data plane node configured for secure data exchange operations. The chart includes:
@@ -54,41 +54,41 @@ helm upgrade --install ${EDGE_ID} \
 
 ```sh
 helm package sdx-edge
-helm push sdx-edge-0.2.0.tgz oci://ghcr.io/bcgov/aps-devops
+helm push sdx-edge-0.3.4.tgz oci://ghcr.io/bcgov/aps-devops
 ```
 
 #### Configuration
 
 The following table lists the configurable parameters in `values.yaml`:
 
-| Parameter                   | Description                                                    | Default                                                                 |
-| --------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `name`                      | Release name identifier                                        | `example`                                                               |
-| `image.tag`                 | Container image tag                                            | `3.9-37f68b55`                                                          |
-| `hpa.minReplicas`           | Minimum number of pod replicas                                 | `1`                                                                     |
-| `hpa.maxReplicas`           | Maximum number of pod replicas                                 | `1`                                                                     |
-| `route.host`                | Edge server hostname for external routing                      | `example.servers.sdx`                                                   |
-| `sdx_control_url`           | Control plane URL for hybrid deployment (format: `host:port`)  | `gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443`                     |
-| `client_ca_url`             | Certificate authority endpoint for client certificate issuance | `https://ca-1d4461-prod.apps.silver.devops.gov.bc.ca`                   |
-| `sdx_aggregator_url`        | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
-| `mtls_required`             | Enable/disable mutual TLS requirement                          | `true`                                                                  |
-| `https_proxy`               | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
-| `bootstrap.tls.token`       | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
-| `tls.client.cn`             | Common Name for client certificate                             | `example.com`                                                           |
-| `tls.server.ip`             | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
-| `tls.public_ca`             | PEM-encoded public CA certificates for trust chain             | (includes Sectigo, USERTrust, SDX, APS, Amazon, Let's Encrypt root CAs) |
-| `nginx_conf`                | Custom nginx configuration snippet                             | Session storage and secret configuration                                |
-| `shared.rbac`               | Enable RBAC resources                                          | `true`                                                                  |
-| `shared.ca_secret`          | Create CA secret resource                                      | `true`                                                                  |
-| `shared.fluentbit.enabled`  | Enable Fluent Bit sidecar for log forwarding                   | `true`                                                                  |
-| `shared.prometheus.enabled` | Enable Prometheus metrics collection                           | `true`                                                                  |
-| `aws.enabled`               | Enable AWS integration                                         | `false`                                                                 |
-| `aws.region`                | AWS region for services                                        | `us-west-2`                                                             |
-| `aws.access_key_id`         | AWS access key ID for authentication                           | `""` (empty)                                                            |
-| `aws.secret_access_key`     | AWS secret access key for authentication                       | `""` (empty)                                                            |
-| `prom_remote_write.url`     | Prometheus `remote_write` endpoint (Gold). Empty = disabled.   | `""` (disabled)                                                         |
-| `prom_remote_write.external_labels` | Extra labels added to every series before remote_write | `{ datacenter: edge }`                                                  |
-| `prom_remote_write.queue_config`    | Prometheus `remote_write` queue tuning                 | `{ max_samples_per_send: 1000, capacity: 10000, max_shards: 30 }`       |
+| Parameter                           | Description                                                    | Default                                                                 |
+| ----------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `name`                              | Release name identifier                                        | `example`                                                               |
+| `image.tag`                         | Container image tag                                            | `3.9-37f68b55`                                                          |
+| `hpa.minReplicas`                   | Minimum number of pod replicas                                 | `1`                                                                     |
+| `hpa.maxReplicas`                   | Maximum number of pod replicas                                 | `1`                                                                     |
+| `route.host`                        | Edge server hostname for external routing                      | `example.servers.sdx`                                                   |
+| `sdx_control_url`                   | Control plane URL for hybrid deployment (format: `host:port`)  | `gwcluster-api-gov-bc-ca-lab.dev.api.gov.bc.ca:443`                     |
+| `client_ca_url`                     | Certificate authority endpoint for client certificate issuance | `https://ca-1d4461-prod.apps.silver.devops.gov.bc.ca`                   |
+| `sdx_aggregator_url`                | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
+| `mtls_required`                     | Enable/disable mutual TLS requirement                          | `true`                                                                  |
+| `https_proxy`                       | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
+| `bootstrap.tls.token`               | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
+| `tls.client.cn`                     | Common Name for client certificate                             | `example.com`                                                           |
+| `tls.server.ip`                     | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
+| `tls.public_ca`                     | PEM-encoded public CA certificates for trust chain             | (includes Sectigo, USERTrust, SDX, APS, Amazon, Let's Encrypt root CAs) |
+| `nginx_conf`                        | Custom nginx configuration snippet                             | Session storage and secret configuration                                |
+| `shared.rbac`                       | Enable RBAC resources                                          | `true`                                                                  |
+| `shared.ca_secret`                  | Create CA secret resource                                      | `true`                                                                  |
+| `shared.fluentbit.enabled`          | Enable Fluent Bit sidecar for log forwarding                   | `true`                                                                  |
+| `shared.prometheus.enabled`         | Enable Prometheus metrics collection                           | `true`                                                                  |
+| `aws.enabled`                       | Enable AWS integration                                         | `false`                                                                 |
+| `aws.region`                        | AWS region for services                                        | `us-west-2`                                                             |
+| `aws.access_key_id`                 | AWS access key ID for authentication                           | `""` (empty)                                                            |
+| `aws.secret_access_key`             | AWS secret access key for authentication                       | `""` (empty)                                                            |
+| `prom_remote_write.url`             | Prometheus `remote_write` endpoint (Gold). Empty = disabled.   | `""` (disabled)                                                         |
+| `prom_remote_write.external_labels` | Extra labels added to every series before remote_write         | `{ datacenter: edge }`                                                  |
+| `prom_remote_write.queue_config`    | Prometheus `remote_write` queue tuning                         | `{ max_samples_per_send: 1000, capacity: 10000, max_shards: 30 }`       |
 
 **Required Values:**
 
@@ -216,7 +216,7 @@ Example:
 ```sh
 helm upgrade --install share0 \
   --set prom_remote_write.url=https://gw-metrics-aggregator-api-gov-bc-ca.dev.api.gov.bc.ca/api/v1/write \
-  oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.3.3
+  oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.3.4
 ```
 
 ## License

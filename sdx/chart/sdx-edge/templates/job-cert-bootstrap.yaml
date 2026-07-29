@@ -97,7 +97,7 @@ spec:
             - name: EDGE_NAME
               value: "{{ include "sdx-edge.fullname" . }}"
             - name: CLIENT_CA_URL
-              value: "{{ .Values.client_ca_url }}"
+              value: "{{ index .Values.client_ca_url_by_env .Values.environment }}"
             - name: HTTPS_PROXY
               value: "{{ .Values.https_proxy }}"
             - name: NO_PROXY

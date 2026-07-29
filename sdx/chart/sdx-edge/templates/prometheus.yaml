@@ -81,7 +81,7 @@ spec:
               mountPath: /etc/config
             - name: storage-volume
               mountPath: /data
-            {{- if and .Values.prom_remote_write.url .Values.prom_remote_write.tls.enabled }}
+            {{- if and (index .Values.prom_remote_write.url_by_env .Values.environment) .Values.prom_remote_write.tls.enabled }}
             - name: sdx-edge-client-cert
               mountPath: /etc/secrets/sdx-edge-client-cert
               readOnly: true
@@ -106,7 +106,7 @@ spec:
             defaultMode: 420
         - name: storage-volume
           emptyDir: {}
-        {{- if and .Values.prom_remote_write.url .Values.prom_remote_write.tls.enabled }}
+        {{- if and (index .Values.prom_remote_write.url_by_env .Values.environment) .Values.prom_remote_write.tls.enabled }}
         - name: sdx-edge-client-cert
           secret:
             secretName: {{ include "sdx-edge.fullname" . }}-client
@@ -143,7 +143,7 @@ data:
       evaluation_interval: 5s
       scrape_interval: 15s
       scrape_timeout: 4s
-      {{- if .Values.prom_remote_write.url }}
+      {{- if (index .Values.prom_remote_write.url_by_env .Values.environment) }}
       external_labels:
         {{- range $k, $v := .Values.prom_remote_write.external_labels }}
         {{ $k }}: {{ $v | quote }}
@@ -154,9 +154,9 @@ data:
     - /etc/config/alerting_rules.yml
     - /etc/config/rules
     - /etc/config/alerts
-    {{- if .Values.prom_remote_write.url }}
+    {{- if (index .Values.prom_remote_write.url_by_env .Values.environment) }}
     remote_write:
-    - url: {{ .Values.prom_remote_write.url | quote }}
+    - url: {{ (index .Values.prom_remote_write.url_by_env .Values.environment) | quote }}
       {{- if .Values.prom_remote_write.tls.enabled }}
       tls_config:
         ca_file: /etc/secrets/sdx-ca/ca.crt
