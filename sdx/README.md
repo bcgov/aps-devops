@@ -216,7 +216,7 @@ Example:
 ```sh
 helm upgrade --install share0 \
   --set prom_remote_write.url=https://gw-metrics-aggregator-api-gov-bc-ca.dev.api.gov.bc.ca/api/v1/write \
-  oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.3.4
+  oci://ghcr.io/bcgov/aps-devops/sdx-edge:0.3.5
 ```
 
 ## License

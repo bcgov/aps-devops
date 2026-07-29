@@ -613,11 +613,6 @@ shared:
   prometheus:
     enabled: true
 
-# Ship the Edge Prometheus time series to a remote Prometheus (e.g. on Gold)
-# via the Prometheus remote_write protocol.
-prom_remote_write:
-  url: "https://gw-metrics-aggregator-api-gov-bc-ca.dev.api.gov.bc.ca/api/v1/write"
-
   # mTLS to Gold gwmetricsaggregator (same client cert material as Fluent Bit → gwaggregator)
   tls:
     enabled: true
