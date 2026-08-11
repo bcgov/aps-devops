@@ -1,0 +1,7 @@
+queries:
+  - name: service_code
+    description: HTTP requests by service and status code (increment minute)
+    query: "sum(increase(kong_http_requests_total{}[2m]) != 0) by (service,code) != 0"
+  - name: konglog_service_code
+    description: Fluentd prom lines by service and status code (increment minute)
+    query: 'sum(increase(konglog_service_consumer_counter{service=~"sdx.*"}[2m]) != 0) by (service,status)'

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:react@18"
+  },
+  "imports": {
+    "react": "npm:react@18",
+    "react/jsx-runtime": "npm:react@18/jsx-runtime",
+    "react-dom/server": "npm:react-dom@18/server",
+    "@std/yaml": "jsr:@std/yaml",
+    "marked": "npm:marked@12",
+    "oauth4webapi": "npm:oauth4webapi@^2.17.0",
+    "unzipper": "npm:unzipper@^0.12.5"
+  }
+}
