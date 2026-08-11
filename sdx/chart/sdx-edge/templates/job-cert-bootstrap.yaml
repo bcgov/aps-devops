@@ -98,10 +98,12 @@ spec:
               value: "{{ include "sdx-edge.fullname" . }}"
             - name: CLIENT_CA_URL
               value: "{{ index .Values.client_ca_url_by_env .Values.environment }}"
+            {{- if .Values.https_proxy }}
             - name: HTTPS_PROXY
               value: "{{ .Values.https_proxy }}"
             - name: NO_PROXY
               value: ".cluster.local,.svc,10.91.0.0/16,10.93.0.0/16,172.30.0.0/16,127.0.0.1,localhost,.gov.bc.ca"
+            {{- end }}
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: working-dir

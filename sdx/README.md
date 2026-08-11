@@ -54,7 +54,7 @@ helm upgrade --install ${EDGE_ID} \
 
 ```sh
 helm package sdx-edge
-helm push sdx-edge-0.3.4.tgz oci://ghcr.io/bcgov/aps-devops
+helm push sdx-edge-0.3.5.tgz oci://ghcr.io/bcgov/aps-devops
 ```
 
 #### Configuration

@@ -21,7 +21,7 @@ spec:
     spec:
       parallelism: 1
       completions: 1
-      backoffLimit: 0
+      backoffLimit: 3
       manualSelector: false
       ttlSecondsAfterFinished: 604800 # 7 days
       template:
@@ -120,7 +120,7 @@ spec:
                 secretName: sdx-edge-ca
           dnsPolicy: ClusterFirst
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 6
 ---
 {{ if .Values.shared.rbac }}
 kind: ServiceAccount
