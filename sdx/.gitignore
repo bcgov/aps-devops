@@ -8,3 +8,9 @@ LOCAL.md
 **/public/app.js*
 **/public/assets/**
 **/public/fonts/**
+.terraform*
+.claude
+terraform.tfvars
+terraform.tfvars.aksauto
+terraform.tfstate*
+_tmp
