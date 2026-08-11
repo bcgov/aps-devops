@@ -21,7 +21,7 @@ spec:
     spec:
       parallelism: 1
       completions: 1
-      backoffLimit: 0
+      backoffLimit: 3
       manualSelector: false
       ttlSecondsAfterFinished: 604800 # 7 days
       template:
@@ -77,13 +77,18 @@ spec:
                       --cert=./tls.crt \
                       --key=./tls.key | kubectl apply -f -
 
+{{- if .Values.kong.enabled }}
                     kubectl rollout restart deployment $EDGE_NAME
+{{- end }}
+{{- if .Values.shared.fluentbit.enabled }}
+                    kubectl rollout restart deployment sdx-fluentbit
+{{- end }}
 
               env:
                 - name: EDGE_NAME
                   value: "{{ include "sdx-edge.fullname" . }}"
                 - name: CLIENT_CA_URL
-                  value: "{{ .Values.client_ca_url }}"
+                  value: "{{ index .Values.client_ca_url_by_env .Values.environment }}"
                 - name: HTTPS_PROXY
                   value: "{{ .Values.https_proxy }}"
                 - name: NO_PROXY
@@ -115,7 +120,7 @@ spec:
                 secretName: sdx-edge-ca
           dnsPolicy: ClusterFirst
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 6
 ---
 {{ if .Values.shared.rbac }}
 kind: ServiceAccount

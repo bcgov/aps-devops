@@ -146,9 +146,9 @@ data:
 
         - name: http
           match: "*"
-          host: {{ .Values.sdx_aggregator_url }}
+          host: {{ index .Values.sdx_aggregator_url_by_env .Values.environment }}
           port: 443
-          tls.vhost: {{ .Values.sdx_aggregator_url }}
+          tls.vhost: {{ index .Values.sdx_aggregator_url_by_env .Values.environment }}
           format: json
           tls: on
           tls.verify: off
@@ -169,7 +169,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: fluentd-aggregator
+  name: sdx-log-aggregator
   labels:
     app.kubernetes.io/name: sdx-edge
     app.kubernetes.io/component: fluentbit
