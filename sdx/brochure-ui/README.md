@@ -61,6 +61,27 @@
 deno run --allow-net --allow-read --allow-env --allow-write main.ts
 ```
 
+### Docker
+
+Build the production image:
+
+```sh
+docker build -t sdx-brochure-ui .
+```
+
+Run it — `config.yaml` is intentionally not baked into the image (it's
+environment-specific and gitignored), so mount one over `/app/config.yaml`
+at run time:
+
+```sh
+docker run --rm -p 5500:5500 \
+  -v "$(pwd)/config-dev.yaml:/app/config.yaml:ro" \
+  sdx-brochure-ui
+```
+
+The app listens on port `5500` by default; override with `-e PORT=xxxx`
+(and adjust `-p` to match).
+
 ## Deployment
 
 ```sh
