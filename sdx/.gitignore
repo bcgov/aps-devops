@@ -3,3 +3,9 @@
 *.ca-bundle
 LOCAL.md
 *.tgz
+.terraform*
+.claude
+terraform.tfvars
+terraform.tfvars.aksauto
+terraform.tfstate*
+_tmp
