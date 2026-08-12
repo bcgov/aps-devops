@@ -83,8 +83,8 @@ permissions:
 
 env:
   GPT_MODEL: gpt-5.5
-  CLAUDE_REVIEW_MODEL: claude-opus-5
-  CLAUDE_IMPLEMENT_MODEL: claude-opus-5
+  CLAUDE_REVIEW_MODEL: claude-sonnet-5
+  CLAUDE_IMPLEMENT_MODEL: claude-sonnet-5
 
 jobs:
   prepare:
