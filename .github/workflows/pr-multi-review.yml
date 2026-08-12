@@ -1,0 +1,280 @@
+name: Multi-Model PR Review
+
+# Reviews an open PR with GPT and Claude in parallel (both follow the shared
+# `.claude/skills/review-response-format` contract so their findings merge cleanly; Grok is left
+# out for now — add a review-grok job mirroring review-gpt/review-claude, plus an XAI_API_KEY
+# secret, to bring it back), then has
+# Claude Code triage the combined findings, bundle fixes into up to 3 `task/*` branches (each
+# touching < 10 files), open a PR per bundle against the reviewed PR's branch, and post a summary
+# comment on the original PR. See `.claude/skills/pr-review-process` for the full
+# triage/bundling/reporting procedure Claude follows.
+#
+# Can be run two ways:
+#   1. Directly in this repo, via workflow_dispatch (Actions tab > Multi-Model PR Review > Run).
+#   2. As a reusable workflow called from another repo's own workflow, to review PRs over there:
+#
+#        name: Review PR
+#        on:
+#          workflow_dispatch:
+#            inputs:
+#              pr_number:
+#                required: true
+#                type: string
+#        jobs:
+#          review:
+#            uses: bcgov/aps-devops/.github/workflows/pr-multi-review.yml@main
+#            with:
+#              pr_number: ${{ inputs.pr_number }}
+#            secrets: inherit
+#            permissions:
+#              contents: write
+#              pull-requests: write
+#              issues: write
+#
+#      The shared scripts and skills are pulled from *this* repo (bcgov/aps-devops) at whatever
+#      ref the caller pinned on its `uses:` line (`@main` above), so the calling repo only needs
+#      the one small wrapper workflow above — nothing else copied over. This relies on
+#      bcgov/aps-devops staying public; if it's ever made private, callers will additionally need
+#      to supply a token with read access to it (see the "Checkout shared" steps below).
+#
+# One-time setup required:
+#   - Secrets ANTHROPIC_API_KEY, OPENAI_API_KEY, available either as repo/org secrets (direct
+#     workflow_dispatch use) or passed via `secrets: inherit` / explicit mapping from the calling
+#     repo (reusable-workflow use).
+#   - Settings > Actions > General > Workflow permissions on whichever repo is being reviewed:
+#       "Allow GitHub Actions to create and approve pull requests" must be enabled, since the
+#       final job pushes task/* branches and opens PRs using the default GITHUB_TOKEN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+      OPENAI_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  GPT_MODEL: gpt-5.5
+  CLAUDE_REVIEW_MODEL: claude-opus-5
+  CLAUDE_IMPLEMENT_MODEL: claude-opus-5
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      head_branch: ${{ steps.meta.outputs.head_branch }}
+      base_branch: ${{ steps.meta.outputs.base_branch }}
+      pr_title: ${{ steps.meta.outputs.pr_title }}
+      pr_url: ${{ steps.meta.outputs.pr_url }}
+      source_repo: ${{ steps.source.outputs.repo }}
+      source_ref: ${{ steps.source.outputs.ref }}
+    steps:
+      - name: Resolve this workflow's own repo/ref
+        # github.workflow_ref always points at the reusable workflow itself (not the caller), in
+        # the form {owner}/{repo}/{path}@{ref} — use it to fetch the shared scripts/skills from
+        # the exact version of this repo the caller pinned, whether that's a same-repo
+        # workflow_dispatch run or a cross-repo workflow_call.
+        id: source
+        run: |
+          set -euo pipefail
+          ref_full="${{ github.workflow_ref }}"
+          ref="${ref_full##*@}"
+          repo_and_path="${ref_full%@*}"
+          repo="${repo_and_path%%/.github/workflows/*}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - name: Resolve PR metadata and diff
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          data=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json baseRefName,headRefName,title,url)
+          echo "head_branch=$(echo "$data" | jq -r .headRefName)" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$(echo "$data" | jq -r .baseRefName)" >> "$GITHUB_OUTPUT"
+          {
+            echo "pr_title<<EOF"
+            echo "$data" | jq -r .title
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "pr_url=$(echo "$data" | jq -r .url)" >> "$GITHUB_OUTPUT"
+          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr-diff
+          path: pr.diff
+          retention-days: 1
+
+  review-gpt:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared scripts and skill (workflow's own repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ needs.prepare.outputs.source_ref }}
+          sparse-checkout: |
+            .github/scripts
+            .claude/skills/review-response-format
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-diff
+      - name: Call GPT
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node .github/scripts/call-review-model.mjs \
+            --provider gpt \
+            --diff-file pr.diff \
+            --skill-file .claude/skills/review-response-format/SKILL.md \
+            --pr-number "${{ inputs.pr_number }}" \
+            --pr-title "${{ needs.prepare.outputs.pr_title }}" \
+            --out gpt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: review-gpt
+          path: gpt.json
+          retention-days: 1
+
+  review-claude:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared scripts and skill (workflow's own repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ needs.prepare.outputs.source_ref }}
+          sparse-checkout: |
+            .github/scripts
+            .claude/skills/review-response-format
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-diff
+      - name: Call Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node .github/scripts/call-review-model.mjs \
+            --provider claude \
+            --diff-file pr.diff \
+            --skill-file .claude/skills/review-response-format/SKILL.md \
+            --pr-number "${{ inputs.pr_number }}" \
+            --pr-title "${{ needs.prepare.outputs.pr_title }}" \
+            --out claude.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: review-claude
+          path: claude.json
+          retention-days: 1
+
+  synthesize-and-implement:
+    needs: [prepare, review-gpt, review-claude]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout PR branch (repo being reviewed)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.head_branch }}
+          fetch-depth: 0
+
+      - name: Checkout shared skills (workflow's own repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ needs.prepare.outputs.source_ref }}
+          sparse-checkout: |
+            .claude/skills/pr-review-process
+            .claude/skills/review-response-format
+          path: _shared-skills
+
+      - name: Overlay shared skills into the PR checkout
+        # Claude Code's Skill tool discovers project skills under ./.claude/skills relative to
+        # cwd, so the two skills need to physically exist inside the PR repo's checkout for this
+        # run — not committed there, just present on disk. Excluded via .git/info/exclude (a
+        # local-only ignore, never committed) so an incautious `git add -A` while implementing a
+        # bundle can't accidentally sweep them into a task branch.
+        run: |
+          set -euo pipefail
+          mkdir -p .claude/skills
+          cp -r _shared-skills/.claude/skills/pr-review-process .claude/skills/
+          cp -r _shared-skills/.claude/skills/review-response-format .claude/skills/
+          rm -rf _shared-skills
+          {
+            echo "/.claude/skills/pr-review-process/"
+            echo "/.claude/skills/review-response-format/"
+          } >> .git/info/exclude
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: review-gpt
+          path: reviews
+      - uses: actions/download-artifact@v4
+        with:
+          name: review-claude
+          path: reviews
+
+      - name: Configure git identity
+        run: |
+          git config user.name "claude-pr-review-bot"
+          git config user.email "claude-pr-review-bot@users.noreply.github.com"
+
+      - name: Triage findings, implement, and open task PRs
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+            --max-turns 60
+            --model ${{ env.CLAUDE_IMPLEMENT_MODEL }}
+          prompt: |
+            First, use the Skill tool to load the "pr-review-process" skill, then follow its
+            procedure exactly. It references the "review-response-format" skill for the shape of
+            the findings files below.
+
+            Context for this run:
+              - Repo: ${{ github.repository }}
+              - Original PR number: ${{ inputs.pr_number }}
+              - Original PR title: ${{ needs.prepare.outputs.pr_title }}
+              - Original PR head branch (task branches must branch from here): ${{ needs.prepare.outputs.head_branch }}
+              - Original PR base branch: ${{ needs.prepare.outputs.base_branch }}
+              - Findings files (one per reviewer, each per the review-response-format contract):
+                  - reviews/gpt.json
+                  - reviews/claude.json
+
+            You are already on a checkout of the head branch with full history. `gh` is
+            authenticated via GH_TOKEN. Follow the skill's steps: merge and rank findings, bundle
+            into at most 3 task branches (each touching fewer than 10 files), implement each
+            bundle, open a PR per bundle against the head branch listed above, and finish by
+            posting one summary comment on the original PR (#${{ inputs.pr_number }}).
+
+            When staging changes, always `git add` the specific files you intentionally edited —
+            never `git add -A` or `git add .`. The working tree has files unrelated to any bundle
+            (including this run's own skill files) that must never be committed.
