@@ -97,6 +97,10 @@ jobs:
       base_branch: ${{ steps.meta.outputs.base_branch }}
       pr_title: ${{ steps.meta.outputs.pr_title }}
       pr_url: ${{ steps.meta.outputs.pr_url }}
+      # Hardcoded rather than derived from `github.repository`: in the reusable-workflow-call
+      # case, `github.repository` resolves to the *caller's* repo, not this one, but the shared
+      # scripts/skills below always live in bcgov/aps-devops regardless of who calls this workflow.
+      source_repo: bcgov/aps-devops
     steps:
       - name: Resolve PR metadata and diff
         id: meta
@@ -130,7 +134,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ needs.prepare.outputs.source_repo }}
-          ref: ${{ needs.prepare.outputs.source_ref }}
+          ref: ${{ inputs.source_ref }}
           sparse-checkout: |
             .github/scripts
             .claude/skills/review-response-format
@@ -162,7 +166,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ needs.prepare.outputs.source_repo }}
-          ref: ${{ needs.prepare.outputs.source_ref }}
+          ref: ${{ inputs.source_ref }}
           sparse-checkout: |
             .github/scripts
             .claude/skills/review-response-format
@@ -204,7 +208,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ needs.prepare.outputs.source_repo }}
-          ref: ${{ needs.prepare.outputs.source_ref }}
+          ref: ${{ inputs.source_ref }}
           sparse-checkout: |
             .claude/skills/pr-review-process
             .claude/skills/review-response-format
