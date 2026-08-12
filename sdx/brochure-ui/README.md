@@ -85,18 +85,25 @@ The app listens on port `5500` by default; override with `-e PORT=xxxx`
 ## Deployment
 
 ```sh
-./scripts/build-chart.sh && \
 helm upgrade --install sdx-brochure \
  --set fullnameOverride=sdx-brochure \
- -f chart.yaml -f .values-dev.yaml -f config[0].contents=@config-dev.yaml \
+ -f chart.yaml -f .values-dev.yaml \
+bcgov/generic-api
+```
+
+### Test
+
+```sh
+helm upgrade -n b8840c-test --install sdx-brochure \
+ --set fullnameOverride=sdx-brochure \
+ -f chart.yaml -f .values-test.yaml \
 bcgov/generic-api
 ```
 
 ### Production
 
 ```sh
-./scripts/build-chart.sh && \
-helm upgrade --install sdx-brochure \
+helm upgrade -n b8840c-prod --install sdx-brochure \
  --set fullnameOverride=sdx-brochure \
  -f chart.yaml -f .values-prod.yaml \
 bcgov/generic-api
