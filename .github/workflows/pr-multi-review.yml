@@ -25,17 +25,21 @@ name: Multi-Model PR Review
 #            uses: bcgov/aps-devops/.github/workflows/pr-multi-review.yml@main
 #            with:
 #              pr_number: ${{ inputs.pr_number }}
+#              source_ref: main   # optional; which ref of bcgov/aps-devops to pull the shared
+#                                 # scripts/skills from — defaults to main, override to pin a
+#                                 # branch/tag/sha (e.g. while this workflow is still in review)
 #            secrets: inherit
 #            permissions:
 #              contents: write
 #              pull-requests: write
 #              issues: write
 #
-#      The shared scripts and skills are pulled from *this* repo (bcgov/aps-devops) at whatever
-#      ref the caller pinned on its `uses:` line (`@main` above), so the calling repo only needs
-#      the one small wrapper workflow above — nothing else copied over. This relies on
-#      bcgov/aps-devops staying public; if it's ever made private, callers will additionally need
-#      to supply a token with read access to it (see the "Checkout shared" steps below).
+#      The shared scripts and skills are always pulled from bcgov/aps-devops (this repo) at the
+#      `source_ref` input above, independent of which ref of *this* file the caller's `uses:`
+#      line is pinned to — so the calling repo only needs the one small wrapper workflow above,
+#      nothing else copied over. This relies on bcgov/aps-devops staying public; if it's ever
+#      made private, callers will additionally need to supply a token with read access to it (see
+#      the "Checkout shared" steps below).
 #
 # One-time setup required:
 #   - Secrets ANTHROPIC_API_KEY, OPENAI_API_KEY, available either as repo/org secrets (direct
@@ -52,12 +56,22 @@ on:
         description: "Pull request number to review"
         required: true
         type: string
+      source_ref:
+        description: "Ref of bcgov/aps-devops to pull the shared review scripts/skills from"
+        required: false
+        type: string
+        default: main
   workflow_call:
     inputs:
       pr_number:
         description: "Pull request number to review"
         required: true
         type: string
+      source_ref:
+        description: "Ref of bcgov/aps-devops to pull the shared review scripts/skills from"
+        required: false
+        type: string
+        default: pr-multi-review
     secrets:
       ANTHROPIC_API_KEY:
         required: true
@@ -83,23 +97,7 @@ jobs:
       base_branch: ${{ steps.meta.outputs.base_branch }}
       pr_title: ${{ steps.meta.outputs.pr_title }}
       pr_url: ${{ steps.meta.outputs.pr_url }}
-      source_repo: ${{ steps.source.outputs.repo }}
-      source_ref: ${{ steps.source.outputs.ref }}
     steps:
-      - name: Resolve this workflow's own repo/ref
-        # github.workflow_ref always points at the reusable workflow itself (not the caller), in
-        # the form {owner}/{repo}/{path}@{ref} — use it to fetch the shared scripts/skills from
-        # the exact version of this repo the caller pinned, whether that's a same-repo
-        # workflow_dispatch run or a cross-repo workflow_call.
-        id: source
-        run: |
-          set -euo pipefail
-          ref_full="${{ github.workflow_ref }}"
-          ref="${ref_full##*@}"
-          repo_and_path="${ref_full%@*}"
-          repo="${repo_and_path%%/.github/workflows/*}"
-          echo "repo=$repo" >> "$GITHUB_OUTPUT"
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Resolve PR metadata and diff
         id: meta
         env:
