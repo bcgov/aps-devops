@@ -18,7 +18,9 @@ function parseArgs(argv) {
 const args = parseArgs(process.argv.slice(2));
 const provider = args.provider;
 if (!["gpt", "grok", "claude"].includes(provider)) {
-  console.error(`--provider must be one of gpt|grok|claude, got: ${provider}`);
+  console.error(
+    `--provider must be one of gpt|grok|claude, got: ${provider}`,
+  );
   process.exit(1);
 }
 
@@ -26,7 +28,9 @@ const MAX_DIFF_CHARS = 150_000;
 
 const skillRaw = readFileSync(args["skill-file"], "utf8");
 // Strip the YAML frontmatter, keep the instructions body.
-const instructions = skillRaw.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
+const instructions = skillRaw
+  .replace(/^---\n[\s\S]*?\n---\n/, "")
+  .trim();
 
 let diff = readFileSync(args["diff-file"], "utf8");
 let truncated = false;
@@ -70,7 +74,10 @@ async function callWithRetry(fn, attempts = 3) {
       return await fn();
     } catch (err) {
       lastErr = err;
-      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+      if (i < attempts - 1)
+        await new Promise((r) =>
+          setTimeout(r, 2000 * (i + 1)),
+        );
     }
   }
   throw lastErr;
@@ -78,82 +85,113 @@ async function callWithRetry(fn, attempts = 3) {
 
 async function callGpt() {
   const model = process.env.GPT_MODEL || "gpt-5.5";
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+  const res = await fetch(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: instructions },
+          { role: "user", content: userPrompt },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: instructions },
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`OpenAI API error ${res.status}: ${await res.text()}`);
+  );
+  if (!res.ok)
+    throw new Error(
+      `OpenAI API error ${res.status}: ${await res.text()}`,
+    );
   const body = await res.json();
-  return { model, text: body.choices?.[0]?.message?.content ?? "" };
+  return {
+    model,
+    text: body.choices?.[0]?.message?.content ?? "",
+  };
 }
 
 async function callGrok() {
   const model = process.env.GROK_MODEL || "grok-4";
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${process.env.XAI_API_KEY}`,
+  const res = await fetch(
+    "https://api.x.ai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${process.env.XAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: instructions },
+          {
+            role: "user",
+            content: `${userPrompt}\n\nRespond with ONLY the JSON object described above — no markdown fences, no prose.`,
+          },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: instructions },
-        {
-          role: "user",
-          content: `${userPrompt}\n\nRespond with ONLY the JSON object described above — no markdown fences, no prose.`,
-        },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`xAI API error ${res.status}: ${await res.text()}`);
+  );
+  if (!res.ok)
+    throw new Error(
+      `xAI API error ${res.status}: ${await res.text()}`,
+    );
   const body = await res.json();
-  return { model, text: body.choices?.[0]?.message?.content ?? "" };
+  return {
+    model,
+    text: body.choices?.[0]?.message?.content ?? "",
+  };
 }
 
 async function callClaude() {
-  const model = process.env.CLAUDE_REVIEW_MODEL || "claude-opus-5";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
+  const model =
+    process.env.CLAUDE_REVIEW_MODEL || "claude-opus-5";
+  const res = await fetch(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 8000,
+        system: instructions,
+        messages: [
+          {
+            role: "user",
+            content: `${userPrompt}\n\nRespond with ONLY the JSON object described above — no markdown fences, no prose.`,
+          },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: 8000,
-      system: instructions,
-      messages: [
-        {
-          role: "user",
-          content: `${userPrompt}\n\nRespond with ONLY the JSON object described above — no markdown fences, no prose.`,
-        },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`Anthropic API error ${res.status}: ${await res.text()}`);
+  );
+  if (!res.ok)
+    throw new Error(
+      `Anthropic API error ${res.status}: ${await res.text()}`,
+    );
   const body = await res.json();
-  const text = (body.content ?? []).map((b) => b.text ?? "").join("");
+  const text = (body.content ?? [])
+    .map((b) => b.text ?? "")
+    .join("");
   return { model, text };
 }
 
-const callers = { gpt: callGpt, grok: callGrok, claude: callClaude };
+const callers = {
+  gpt: callGpt,
+  grok: callGrok,
+  claude: callClaude,
+};
 
-const { model, text } = await callWithRetry(() => callers[provider]());
+const { model, text } = await callWithRetry(() =>
+  callers[provider](),
+);
 const parsed = extractJson(text);
 
 const result = parsed.ok
@@ -161,11 +199,14 @@ const result = parsed.ok
   : {
       reviewer: provider,
       model,
-      summary: "Reviewer response was not valid JSON; see parse_error_raw.",
+      summary:
+        "Reviewer response was not valid JSON; see parse_error_raw.",
       findings: [],
       parse_error: true,
       parse_error_raw: parsed.raw,
     };
 
 writeFileSync(args.out, JSON.stringify(result, null, 2));
-console.log(`Wrote ${args.out} (${result.findings?.length ?? 0} findings, parse_error=${!!result.parse_error})`);
+console.log(
+  `Wrote ${args.out} (${result.findings?.length ?? 0} findings, parse_error=${!!result.parse_error})`,
+);
