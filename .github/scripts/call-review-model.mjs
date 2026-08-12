@@ -83,6 +83,19 @@ async function callWithRetry(fn, attempts = 3) {
   throw lastErr;
 }
 
+// Normalizes each provider's usage shape to a common { input_tokens, output_tokens,
+// total_tokens } so the triage step can report token usage the same way for every reviewer.
+function normalizeOpenAiUsage(usage) {
+  if (!usage) return undefined;
+  return {
+    input_tokens: usage.prompt_tokens ?? 0,
+    output_tokens: usage.completion_tokens ?? 0,
+    total_tokens:
+      usage.total_tokens ??
+      (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0),
+  };
+}
+
 async function callGpt() {
   const model = process.env.GPT_MODEL || "gpt-5.5";
   const res = await fetch(
@@ -111,6 +124,7 @@ async function callGpt() {
   return {
     model,
     text: body.choices?.[0]?.message?.content ?? "",
+    usage: normalizeOpenAiUsage(body.usage),
   };
 }
 
@@ -144,6 +158,7 @@ async function callGrok() {
   return {
     model,
     text: body.choices?.[0]?.message?.content ?? "",
+    usage: normalizeOpenAiUsage(body.usage),
   };
 }
 
@@ -180,7 +195,16 @@ async function callClaude() {
   const text = (body.content ?? [])
     .map((b) => b.text ?? "")
     .join("");
-  return { model, text };
+  const usage = body.usage
+    ? {
+        input_tokens: body.usage.input_tokens ?? 0,
+        output_tokens: body.usage.output_tokens ?? 0,
+        total_tokens:
+          (body.usage.input_tokens ?? 0) +
+          (body.usage.output_tokens ?? 0),
+      }
+    : undefined;
+  return { model, text, usage };
 }
 
 const callers = {
@@ -189,16 +213,17 @@ const callers = {
   claude: callClaude,
 };
 
-const { model, text } = await callWithRetry(() =>
+const { model, text, usage } = await callWithRetry(() =>
   callers[provider](),
 );
 const parsed = extractJson(text);
 
 const result = parsed.ok
-  ? { reviewer: provider, model, ...parsed.value }
+  ? { reviewer: provider, model, usage, ...parsed.value }
   : {
       reviewer: provider,
       model,
+      usage,
       summary:
         "Reviewer response was not valid JSON; see parse_error_raw.",
       findings: [],

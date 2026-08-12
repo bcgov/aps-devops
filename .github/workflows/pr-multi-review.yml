@@ -267,6 +267,7 @@ jobs:
               - Original PR title: ${{ needs.prepare.outputs.pr_title }}
               - Original PR head branch (task branches must branch from here): ${{ needs.prepare.outputs.head_branch }}
               - Original PR base branch: ${{ needs.prepare.outputs.base_branch }}
+              - Initiated by: @${{ github.triggering_actor }}
               - Findings files (one per reviewer, each per the review-response-format contract):
                   - reviews/gpt.json
                   - reviews/claude.json
