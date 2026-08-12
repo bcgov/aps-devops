@@ -60,7 +60,7 @@ on:
         description: "Ref of bcgov/aps-devops to pull the shared review scripts/skills from"
         required: false
         type: string
-        default: main
+        default: pr-multi-review
   workflow_call:
     inputs:
       pr_number:
