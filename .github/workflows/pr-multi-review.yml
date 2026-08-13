@@ -29,10 +29,10 @@ name: Multi-Model PR Review
 #              source_ref: main   # optional; which ref of bcgov/aps-devops to pull the shared
 #                                 # scripts/skills from — defaults to main, override to pin a
 #                                 # branch/tag/sha (e.g. while this workflow is still in review)
-#              review_claude_api: false  # optional, defaults to true; set false to skip the
-#                                 # ANTHROPIC_API_KEY-billed review-claude job and rely on just
-#                                 # review-gpt + review-claude-code (the CLAUDE_CODE_OAUTH_TOKEN-
-#                                 # billed reviewer) — useful when there's no API credit balance
+#              review_claude_api: true  # optional, defaults to false (skipped); set true to also
+#                                 # run the ANTHROPIC_API_KEY-billed review-claude job alongside
+#                                 # review-gpt and review-claude-code (the CLAUDE_CODE_OAUTH_TOKEN-
+#                                 # billed reviewer) — needs an actual API credit balance to spend
 #            secrets: inherit
 #            permissions:
 #              contents: write
@@ -77,7 +77,7 @@ on:
         description: "Also run review-claude (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
         required: false
         type: boolean
-        default: true
+        default: false
   workflow_call:
     inputs:
       pr_number:
@@ -93,7 +93,7 @@ on:
         description: "Also run review-claude (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
         required: false
         type: boolean
-        default: true
+        default: false
     secrets:
       ANTHROPIC_API_KEY:
         required: true
