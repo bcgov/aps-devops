@@ -1,6 +1,6 @@
 ---
 name: review-response-format
-description: Shared response contract given to every model (currently GPT and Claude) performing a parallel PR review, so their findings are directly comparable and mergeable downstream.
+description: Shared response contract given to every model (currently GPT, Claude, and Claude Code) performing a parallel PR review, so their findings are directly comparable and mergeable downstream.
 ---
 
 # Review Response Format
@@ -15,7 +15,7 @@ Respond with **only** a single JSON object, no markdown code fences, no leading/
 
 ```json
 {
-  "reviewer": "<gpt|claude>",
+  "reviewer": "<gpt|claude|claude-code>",
   "model": "<the exact model id you are running as>",
   "summary": "1-3 sentences: overall risk/quality assessment of this diff.",
   "findings": [

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Calls one reviewer model (GPT, Grok, or Claude) with the shared
-// review-response-format skill as its system prompt, so all three reviewers
-// return findings in the same shape. Used by .github/workflows/pr-multi-review.yml.
+// Calls one reviewer model (GPT, Grok, Claude via the raw Messages API, or
+// Claude Code via the `claude` CLI) with the shared review-response-format
+// skill as its system prompt, so all reviewers return findings in the same
+// shape. Used by .github/workflows/pr-multi-review.yml.
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 function parseArgs(argv) {
   const out = {};
@@ -17,9 +19,9 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const provider = args.provider;
-if (!["gpt", "grok", "claude"].includes(provider)) {
+if (!["gpt", "grok", "claude", "claude-code"].includes(provider)) {
   console.error(
-    `--provider must be one of gpt|grok|claude, got: ${provider}`,
+    `--provider must be one of gpt|grok|claude|claude-code, got: ${provider}`,
   );
   process.exit(1);
 }
@@ -228,23 +230,83 @@ async function callClaude() {
   return { model, text, usage };
 }
 
+// Reviews via the `claude` CLI itself rather than a raw API call, so it bills against
+// CLAUDE_CODE_OAUTH_TOKEN's Claude Code subscription instead of a separate ANTHROPIC_API_KEY.
+// --tools "" disables all tool access — this is a plain one-shot completion, same as the other
+// reviewers, not an agentic run — and --system-prompt replaces (not appends to) Claude Code's own
+// default system prompt so the reviewer doesn't inherit unrelated agentic-tool framing.
+function callClaudeCode() {
+  const model =
+    process.env.CLAUDE_CODE_REVIEW_MODEL || "claude-sonnet-5";
+  const res = spawnSync(
+    "claude",
+    [
+      "-p",
+      userPrompt,
+      "--system-prompt",
+      instructions,
+      "--model",
+      model,
+      "--output-format",
+      "json",
+      "--tools",
+      "",
+      "--no-session-persistence",
+    ],
+    { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 },
+  );
+  if (res.error) {
+    throw new Error(`Failed to spawn claude CLI: ${res.error.message}`);
+  }
+  if (res.status !== 0) {
+    throw new Error(
+      `claude CLI exited ${res.status}: ${res.stderr || res.stdout}`,
+    );
+  }
+  const parsed = JSON.parse(res.stdout);
+  if (parsed.is_error) {
+    throw new Error(
+      `claude CLI reported an error: ${parsed.result ?? JSON.stringify(parsed)}`,
+    );
+  }
+  // The CLI tracks its own exact spend — no pricing-table estimate needed, unlike the raw-API
+  // reviewers above.
+  const usage = parsed.usage
+    ? {
+        input_tokens: parsed.usage.input_tokens ?? 0,
+        output_tokens: parsed.usage.output_tokens ?? 0,
+        total_tokens:
+          (parsed.usage.input_tokens ?? 0) +
+          (parsed.usage.output_tokens ?? 0),
+        cost_usd: parsed.total_cost_usd,
+      }
+    : undefined;
+  return { model, text: parsed.result ?? "", usage };
+}
+
 const callers = {
   gpt: callGpt,
   grok: callGrok,
   claude: callClaude,
+  "claude-code": callClaudeCode,
 };
 
 const { model, text, usage } = await callWithRetry(() =>
   callers[provider](),
 );
-if (usage) {
+// Only estimate cost when the caller didn't already supply an exact figure (callClaudeCode sets
+// usage.cost_usd itself from the CLI's own tracked spend).
+if (usage && usage.cost_usd === undefined) {
   const costUsd = estimateCostUsd(model, usage);
   if (costUsd !== undefined) usage.cost_usd = costUsd;
 }
 const parsed = extractJson(text);
 
 const result = parsed.ok
-  ? { reviewer: provider, model, usage, ...parsed.value }
+  ? // `reviewer`/`model`/`usage` come after the spread so our own authoritative values (what we
+    // actually requested and measured) always win over parsed.value's copies — models frequently
+    // misreport their own id/reviewer name in the response text itself.
+    { ...parsed.value, reviewer: provider, model, usage }
   : {
       reviewer: provider,
       model,

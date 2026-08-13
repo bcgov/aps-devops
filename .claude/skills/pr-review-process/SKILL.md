@@ -1,6 +1,6 @@
 ---
 name: pr-review-process
-description: Procedure for triaging merged findings from parallel PR reviewers (currently GPT and Claude), bundling fixes into at most 3 task branches (<10 files each), opening a PR per bundle, and summarizing everything back on the original PR. Used by the multi-model PR review GitHub Action.
+description: Procedure for triaging merged findings from parallel PR reviewers (currently GPT, Claude, and Claude Code), bundling fixes into at most 3 task branches (<10 files each), opening a PR per bundle, and summarizing everything back on the original PR. Used by the multi-model PR review GitHub Action.
 ---
 
 # PR Review → Plan → Implement Process
@@ -101,14 +101,15 @@ comment on the original PR via `gh pr comment <original_pr_number> --body "..."`
 - A closing "Run info" line (or small collapsed `<details>` section, so it doesn't compete with the
   findings for attention):
   - Who initiated the run, and the models involved — each reviewer's model (from its findings
-    file's `model` field) plus your own implement model, e.g.
-    `Models: gpt (gpt-5.5) · claude (claude-sonnet-5) · implement (claude-sonnet-5)`. Always
+    file's `model` field) plus your own implement model, e.g. `Models: gpt (gpt-5.5) · claude
+    (claude-sonnet-5) · claude-code (claude-sonnet-5) · implement (claude-sonnet-5)`. Always
     include this, independent of whether usage/cost data is available.
   - Only for reviewers whose findings file carried a `usage` field, each one's token usage and
     estimated cost, e.g. `gpt: 42,310 in / 1,204 out (~$0.25) · claude: 38,750 in / 980 out
-    (~$0.13)`. Omit a reviewer from this line entirely if its file has no `usage` field; omit just
-    the `(~$...)` part if `usage` is present but has no `cost_usd`; don't report zeros or guess
-    either figure. Note this covers only the review calls — the separate implement/triage step
+    (~$0.13) · claude-code: 40,100 in / 1,050 out (~$0.14)`. Omit a reviewer from this line
+    entirely if its file has no `usage` field; omit just the `(~$...)` part if `usage` is present
+    but has no `cost_usd`; don't report zeros or guess either figure. Note this covers only the
+    review calls — the separate implement/triage step
     you're running right now posts its own exact cost (tracked by the Claude Code CLI itself) as
     a follow-up comment after you finish, so don't try to estimate or include that cost yourself.
 

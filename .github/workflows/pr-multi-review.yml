@@ -1,9 +1,10 @@
 name: Multi-Model PR Review
 
-# Reviews an open PR with GPT and Claude in parallel (both follow the shared
-# `.claude/skills/review-response-format` contract so their findings merge cleanly; Grok is left
-# out for now — add a review-grok job mirroring review-gpt/review-claude, plus an XAI_API_KEY
-# secret, to bring it back), then has
+# Reviews an open PR with GPT, Claude (raw Anthropic API), and Claude Code (the `claude` CLI
+# itself, billed against a Claude Code subscription instead of API credits) in parallel — all
+# three follow the shared `.claude/skills/review-response-format` contract so their findings merge
+# cleanly; Grok is left out for now — add a review-grok job mirroring review-gpt/review-claude,
+# plus an XAI_API_KEY secret, to bring it back), then has
 # Claude Code triage the combined findings, bundle fixes into up to 3 `task/*` branches (each
 # touching < 10 files), open a PR per bundle against the reviewed PR's branch, and post a summary
 # comment on the original PR. See `.claude/skills/pr-review-process` for the full
@@ -44,12 +45,12 @@ name: Multi-Model PR Review
 # One-time setup required:
 #   - Secrets ANTHROPIC_API_KEY, OPENAI_API_KEY, available either as repo/org secrets (direct
 #     workflow_dispatch use) or passed via `secrets: inherit` / explicit mapping from the calling
-#     repo (reusable-workflow use). ANTHROPIC_API_KEY is used directly for the review-claude API
-#     call either way.
+#     repo (reusable-workflow use). ANTHROPIC_API_KEY is used directly for review-claude's raw API
+#     call, and as the review-claude-code / triage fallback below either way.
 #   - Optional secret CLAUDE_CODE_OAUTH_TOKEN (a long-lived token from running `claude
-#     setup-token` under a Pro/Max subscription) — if set, the final triage/implement step passes
-#     it to claude-code-action alongside ANTHROPIC_API_KEY, and the Claude CLI prefers it over the
-#     API key. Leave unset to keep using ANTHROPIC_API_KEY for that step too.
+#     setup-token` under a Pro/Max subscription) — if set, both the review-claude-code job and the
+#     final triage/implement step use it (the `claude` CLI prefers it over ANTHROPIC_API_KEY when
+#     both are present). Leave unset and both fall back to ANTHROPIC_API_KEY.
 #   - Settings > Actions > General > Workflow permissions on whichever repo is being reviewed:
 #       "Allow GitHub Actions to create and approve pull requests" must be enabled, since the
 #       final job pushes task/* branches and opens PRs using the default GITHUB_TOKEN.
@@ -91,6 +92,7 @@ permissions:
 env:
   GPT_MODEL: gpt-5.5
   CLAUDE_REVIEW_MODEL: claude-sonnet-5
+  CLAUDE_CODE_REVIEW_MODEL: claude-sonnet-5
   CLAUDE_IMPLEMENT_MODEL: claude-sonnet-5
 
 jobs:
@@ -197,8 +199,46 @@ jobs:
           path: claude.json
           retention-days: 1
 
+  review-claude-code:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared scripts and skill (workflow's own repo)
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            .github/scripts
+            .claude/skills/review-response-format
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-diff
+      - name: Install claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Call Claude Code
+        # Reviews via the `claude` CLI itself (see call-review-model.mjs's callClaudeCode) rather
+        # than a raw API call, so this bills against CLAUDE_CODE_OAUTH_TOKEN's subscription when
+        # set, instead of always drawing on ANTHROPIC_API_KEY like review-claude above.
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node .github/scripts/call-review-model.mjs \
+            --provider claude-code \
+            --diff-file pr.diff \
+            --skill-file .claude/skills/review-response-format/SKILL.md \
+            --pr-number "${{ inputs.pr_number }}" \
+            --pr-title "${{ needs.prepare.outputs.pr_title }}" \
+            --out claude-code.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: review-claude-code
+          path: claude-code.json
+          retention-days: 1
+
   synthesize-and-implement:
-    needs: [prepare, review-gpt, review-claude]
+    needs: [prepare, review-gpt, review-claude, review-claude-code]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -246,6 +286,10 @@ jobs:
         with:
           name: review-claude
           path: reviews
+      - uses: actions/download-artifact@v8
+        with:
+          name: review-claude-code
+          path: reviews
 
       - name: Configure git identity
         run: |
@@ -281,6 +325,7 @@ jobs:
               - Findings files (one per reviewer, each per the review-response-format contract):
                   - reviews/gpt.json
                   - reviews/claude.json
+                  - reviews/claude-code.json
 
             You are already on a checkout of the head branch with full history. `gh` is
             authenticated via GH_TOKEN. Follow the skill's steps: merge and rank findings, bundle
