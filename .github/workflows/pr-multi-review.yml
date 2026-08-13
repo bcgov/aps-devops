@@ -44,7 +44,12 @@ name: Multi-Model PR Review
 # One-time setup required:
 #   - Secrets ANTHROPIC_API_KEY, OPENAI_API_KEY, available either as repo/org secrets (direct
 #     workflow_dispatch use) or passed via `secrets: inherit` / explicit mapping from the calling
-#     repo (reusable-workflow use).
+#     repo (reusable-workflow use). ANTHROPIC_API_KEY is used directly for the review-claude API
+#     call either way.
+#   - Optional secret CLAUDE_CODE_OAUTH_TOKEN (a long-lived token from running `claude
+#     setup-token` under a Pro/Max subscription) — if set, the final triage/implement step passes
+#     it to claude-code-action alongside ANTHROPIC_API_KEY, and the Claude CLI prefers it over the
+#     API key. Leave unset to keep using ANTHROPIC_API_KEY for that step too.
 #   - Settings > Actions > General > Workflow permissions on whichever repo is being reviewed:
 #       "Allow GitHub Actions to create and approve pull requests" must be enabled, since the
 #       final job pushes task/* branches and opens PRs using the default GITHUB_TOKEN.
@@ -77,6 +82,8 @@ on:
         required: true
       OPENAI_API_KEY:
         required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -251,6 +258,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           claude_args: >-
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
