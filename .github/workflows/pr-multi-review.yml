@@ -383,6 +383,21 @@ jobs:
             never `git add -A` or `git add .`. The working tree has files unrelated to any bundle
             (including this run's own skill files) that must never be committed.
 
+      - name: Label PR as reviewed
+        # Default (no `if:`) — only runs once the triage step above succeeds, so the label means
+        # the review/triage process actually completed rather than just "was attempted".
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # --force makes this idempotent: creates the label on first use, or is a no-op (aside
+          # from re-applying description/color) if it already exists — never errors either way.
+          gh label create "pr-multi-reviewed" \
+            --description "Reviewed by the Multi-Model PR Review workflow" \
+            --color "0E8A16" \
+            --force
+          gh pr edit "${{ inputs.pr_number }}" --add-label "pr-multi-reviewed"
+
       - name: Report implement-step cost
         # Runs even if the triage step above failed partway through, so a partial run's cost is
         # still visible. Never fails the job — this is a best-effort addendum, not core to the
