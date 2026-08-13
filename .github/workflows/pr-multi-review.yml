@@ -254,7 +254,7 @@ jobs:
           github_token: ${{ github.token }}
           claude_args: >-
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
-            --max-turns 60
+            --max-turns 80
             --model ${{ env.CLAUDE_IMPLEMENT_MODEL }}
           prompt: |
             First, use the Skill tool to load the "pr-review-process" skill, then follow its
