@@ -24,6 +24,9 @@ the checked-out repo — do not ask for confirmation, this run is unattended.
   round it to a sensible precision, and never invent a figure when the field is absent.
 - The original PR number, its head branch, and its base branch.
 - Who initiated this review run (as `Initiated by: @<username>`).
+- The implement model you yourself are running as (as `Implement model: <model id>`). Each
+  reviewer's own model id is already on its findings file as a top-level `model` field — don't
+  ask for it separately.
 
 ## Step 1 — Merge and rank findings
 
@@ -73,9 +76,12 @@ For each bundle, in priority order:
    (including this skill's own files, if they were staged into the checkout for this run) that
    must never end up in a commit.
 5. `git push -u origin task/<n>-<slug>`.
-6. `gh pr create --base <head_branch> --head task/<n>-<slug> --title "..." --body "..."` — the
-   base is the **original PR's head branch**, not its base branch, so merging this task PR feeds
-   the fix back into the PR under review. The body must:
+6. `gh pr create --base <head_branch> --head task/<n>-<slug> --title "[PR #<original_pr_number>] <short description>" --body "..."` —
+   the `[PR #<n>]` prefix makes it immediately obvious, from the PR list alone, which original PR
+   each task PR feeds back into (it also means multiple concurrent review runs on different PRs
+   don't produce ambiguous-looking task PRs). The base is the **original PR's head branch**, not
+   its base branch, so merging this task PR feeds the fix back into the PR under review. The body
+   must:
    - Summarize what the bundle fixes, in prose.
    - List each finding addressed (id, file, severity, one-line description).
    - Say which reviewer(s) flagged each one.
@@ -93,14 +99,18 @@ comment on the original PR via `gh pr comment <original_pr_number> --body "..."`
 - For findings left unaddressed (over the 3-bundle cap, too risky, or design-level): a short note
   on why, so a human knows to look at them manually.
 - A closing "Run info" line (or small collapsed `<details>` section, so it doesn't compete with the
-  findings for attention): who initiated the run, and — only for reviewers whose findings file
-  carried a `usage` field — each one's token usage and estimated cost, e.g.
-  `gpt: 42,310 in / 1,204 out (~$0.25) · claude: 38,750 in / 980 out (~$0.13)`. Omit a reviewer
-  from this line entirely if its file has no `usage` field; omit just the `(~$...)` part if
-  `usage` is present but has no `cost_usd`; don't report zeros or guess either figure. Note this
-  covers only the review calls — the separate implement/triage step you're running right now
-  posts its own exact cost (tracked by the Claude Code CLI itself) as a follow-up comment after
-  you finish, so don't try to estimate or include that cost yourself.
+  findings for attention):
+  - Who initiated the run, and the models involved — each reviewer's model (from its findings
+    file's `model` field) plus your own implement model, e.g.
+    `Models: gpt (gpt-5.5) · claude (claude-sonnet-5) · implement (claude-sonnet-5)`. Always
+    include this, independent of whether usage/cost data is available.
+  - Only for reviewers whose findings file carried a `usage` field, each one's token usage and
+    estimated cost, e.g. `gpt: 42,310 in / 1,204 out (~$0.25) · claude: 38,750 in / 980 out
+    (~$0.13)`. Omit a reviewer from this line entirely if its file has no `usage` field; omit just
+    the `(~$...)` part if `usage` is present but has no `cost_usd`; don't report zeros or guess
+    either figure. Note this covers only the review calls — the separate implement/triage step
+    you're running right now posts its own exact cost (tracked by the Claude Code CLI itself) as
+    a follow-up comment after you finish, so don't try to estimate or include that cost yourself.
 
 Keep the comment skimmable — headings and bullet points, not a wall of prose. This comment is the
 single source of truth for what happened during this review run.
