@@ -4,7 +4,7 @@ run-name: Review PR #${{ inputs.pr_number }}
 # Reviews an open PR with GPT, Claude (raw Anthropic API), and Claude Code (the `claude` CLI
 # itself, billed against a Claude Code subscription instead of API credits) in parallel — all
 # three follow the shared `.claude/skills/review-response-format` contract so their findings merge
-# cleanly; Grok is left out for now — add a review-grok job mirroring review-gpt/review-claude,
+# cleanly; Grok is left out for now — add a review-grok job mirroring review-gpt/review-claude-api,
 # plus an XAI_API_KEY secret, to bring it back), then has
 # Claude Code triage the combined findings, bundle fixes into up to 3 `task/*` branches (each
 # touching < 10 files), open a PR per bundle against the reviewed PR's branch, and post a summary
@@ -31,7 +31,7 @@ run-name: Review PR #${{ inputs.pr_number }}
 #                                 # scripts/skills from — defaults to main, override to pin a
 #                                 # branch/tag/sha (e.g. while this workflow is still in review)
 #              review_claude_api: true  # optional, defaults to false (skipped); set true to also
-#                                 # run the ANTHROPIC_API_KEY-billed review-claude job alongside
+#                                 # run the ANTHROPIC_API_KEY-billed review-claude-api job alongside
 #                                 # review-gpt and review-claude-code (the CLAUDE_CODE_OAUTH_TOKEN-
 #                                 # billed reviewer) — needs an actual API credit balance to spend
 #            secrets: inherit
@@ -50,7 +50,7 @@ run-name: Review PR #${{ inputs.pr_number }}
 # One-time setup required:
 #   - Secrets ANTHROPIC_API_KEY, OPENAI_API_KEY, available either as repo/org secrets (direct
 #     workflow_dispatch use) or passed via `secrets: inherit` / explicit mapping from the calling
-#     repo (reusable-workflow use). ANTHROPIC_API_KEY is used directly for review-claude's raw API
+#     repo (reusable-workflow use). ANTHROPIC_API_KEY is used directly for review-claude-api's raw API
 #     call, and as the review-claude-code / triage fallback below either way.
 #   - Optional secret CLAUDE_CODE_OAUTH_TOKEN (a long-lived token from running `claude
 #     setup-token` under a Pro/Max subscription) — if set, both the review-claude-code job and the
@@ -75,7 +75,7 @@ on:
         type: string
         default: pr-multi-review
       review_claude_api:
-        description: "Also run review-claude (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
+        description: "Also run review-claude-api (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
         required: false
         type: boolean
         default: false
@@ -91,7 +91,7 @@ on:
         type: string
         default: pr-multi-review
       review_claude_api:
-        description: "Also run review-claude (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
+        description: "Also run review-claude-api (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
         required: false
         type: boolean
         default: false
@@ -184,7 +184,7 @@ jobs:
           path: gpt.json
           retention-days: 1
 
-  review-claude:
+  review-claude-api:
     needs: prepare
     if: ${{ inputs.review_claude_api }}
     runs-on: ubuntu-latest
@@ -213,7 +213,7 @@ jobs:
             --out claude.json
       - uses: actions/upload-artifact@v7
         with:
-          name: review-claude
+          name: review-claude-api
           path: claude.json
           retention-days: 1
 
@@ -237,7 +237,7 @@ jobs:
       - name: Call Claude Code
         # Reviews via the `claude` CLI itself (see call-review-model.mjs's callClaudeCode) rather
         # than a raw API call, so this bills against CLAUDE_CODE_OAUTH_TOKEN's subscription when
-        # set, instead of always drawing on ANTHROPIC_API_KEY like review-claude above.
+        # set, instead of always drawing on ANTHROPIC_API_KEY like review-claude-api above.
         #
         # The CLI does NOT prefer the OAuth token when both credentials are present in its
         # environment — an ANTHROPIC_API_KEY, even an invalid one, silently takes precedence over
@@ -269,10 +269,10 @@ jobs:
       [
         prepare,
         review-gpt,
-        review-claude,
+        review-claude-api,
         review-claude-code,
       ]
-    # review-claude can be skipped (review_claude_api: false) rather than succeed or fail, and a
+    # review-claude-api can be skipped (review_claude_api: false) rather than succeed or fail, and a
     # skipped dependency does not satisfy the implicit default `if: success()` — so this needs an
     # explicit condition that tolerates a skip but still blocks on a genuine failure/cancellation
     # anywhere in the dependency chain (prepare, review-gpt, review-claude-code included).
@@ -321,12 +321,12 @@ jobs:
           name: review-gpt
           path: reviews
       - uses: actions/download-artifact@v8
-        # review-claude never uploads this artifact when it was skipped via review_claude_api:
+        # review-claude-api never uploads this artifact when it was skipped via review_claude_api:
         # false — leave reviews/claude.json absent rather than failing the download. The skill's
         # Step 4 procedure already treats a missing findings file the same as a parse_error one.
         if: ${{ inputs.review_claude_api }}
         with:
-          name: review-claude
+          name: review-claude-api
           path: reviews
       - uses: actions/download-artifact@v8
         with:
@@ -415,7 +415,7 @@ jobs:
           fi
           # The claude-code-action / Claude Code CLI tracks exact spend internally and emits it
           # on the final SDK "result" message — no pricing table needed here, unlike the
-          # review-gpt/review-claude cost estimates.
+          # review-gpt/review-claude-api cost estimates.
           result=$(jq -c '[.[] | select(.type == "result")] | last // empty' "$execution_file")
           if [ -z "$result" ]; then
             echo "No result message in execution file; skipping cost report."
