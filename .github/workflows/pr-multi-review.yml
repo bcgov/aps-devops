@@ -238,7 +238,13 @@ jobs:
           retention-days: 1
 
   synthesize-and-implement:
-    needs: [prepare, review-gpt, review-claude, review-claude-code]
+    needs:
+      [
+        prepare,
+        review-gpt,
+        review-claude,
+        review-claude-code,
+      ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -307,7 +313,7 @@ jobs:
           github_token: ${{ github.token }}
           claude_args: >-
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
-            --max-turns 80
+            --max-turns 100
             --model ${{ env.CLAUDE_IMPLEMENT_MODEL }}
           prompt: |
             First, use the Skill tool to load the "pr-review-process" skill, then follow its
