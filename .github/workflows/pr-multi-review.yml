@@ -1,4 +1,5 @@
 name: Multi-Model PR Review
+run-name: Review PR #${{ inputs.pr_number }}
 
 # Reviews an open PR with GPT, Claude (raw Anthropic API), and Claude Code (the `claude` CLI
 # itself, billed against a Claude Code subscription instead of API credits) in parallel — all
