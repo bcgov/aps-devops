@@ -18,8 +18,10 @@ the checked-out repo — do not ask for confirmation, this run is unattended.
 - Paths to one findings file per reviewer, each shaped per [[review-response-format]] (a
   `parse_error: true` file means that reviewer's output wasn't valid JSON — treat its findings as
   empty but mention the failure in your final summary). Each file may also carry a top-level
-  `usage` field — `{ input_tokens, output_tokens, total_tokens }` — added by the calling script,
-  not by the reviewer model itself; it's absent if the provider didn't return usage data.
+  `usage` field — `{ input_tokens, output_tokens, total_tokens, cost_usd }` — added by the calling
+  script, not by the reviewer model itself. `cost_usd` is an *estimate* from a hardcoded
+  $/token pricing table (not returned by either provider's API), so treat it as approximate,
+  round it to a sensible precision, and never invent a figure when the field is absent.
 - The original PR number, its head branch, and its base branch.
 - Who initiated this review run (as `Initiated by: @<username>`).
 
@@ -92,9 +94,13 @@ comment on the original PR via `gh pr comment <original_pr_number> --body "..."`
   on why, so a human knows to look at them manually.
 - A closing "Run info" line (or small collapsed `<details>` section, so it doesn't compete with the
   findings for attention): who initiated the run, and — only for reviewers whose findings file
-  carried a `usage` field — each one's token usage, e.g.
-  `gpt: 42,310 in / 1,204 out · claude: 38,750 in / 980 out`. Omit a reviewer from this line
-  entirely if its file has no `usage` field; don't report zeros or guess.
+  carried a `usage` field — each one's token usage and estimated cost, e.g.
+  `gpt: 42,310 in / 1,204 out (~$0.25) · claude: 38,750 in / 980 out (~$0.13)`. Omit a reviewer
+  from this line entirely if its file has no `usage` field; omit just the `(~$...)` part if
+  `usage` is present but has no `cost_usd`; don't report zeros or guess either figure. Note this
+  covers only the review calls — the separate implement/triage step you're running right now
+  posts its own exact cost (tracked by the Claude Code CLI itself) as a follow-up comment after
+  you finish, so don't try to estimate or include that cost yourself.
 
 Keep the comment skimmable — headings and bullet points, not a wall of prose. This comment is the
 single source of truth for what happened during this review run.

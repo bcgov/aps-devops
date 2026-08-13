@@ -253,6 +253,7 @@ jobs:
           git config user.email "claude-pr-review-bot@users.noreply.github.com"
 
       - name: Triage findings, implement, and open task PRs
+        id: triage
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
@@ -289,3 +290,36 @@ jobs:
             When staging changes, always `git add` the specific files you intentionally edited —
             never `git add -A` or `git add .`. The working tree has files unrelated to any bundle
             (including this run's own skill files) that must never be committed.
+
+      - name: Report implement-step cost
+        # Runs even if the triage step above failed partway through, so a partial run's cost is
+        # still visible. Never fails the job — this is a best-effort addendum, not core to the
+        # workflow's outcome.
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          execution_file="${{ steps.triage.outputs.execution_file }}"
+          if [ -z "$execution_file" ] || [ ! -f "$execution_file" ]; then
+            echo "No execution file produced by the triage step; skipping cost report."
+            exit 0
+          fi
+          # The claude-code-action / Claude Code CLI tracks exact spend internally and emits it
+          # on the final SDK "result" message — no pricing table needed here, unlike the
+          # review-gpt/review-claude cost estimates.
+          result=$(jq -c '[.[] | select(.type == "result")] | last // empty' "$execution_file")
+          if [ -z "$result" ]; then
+            echo "No result message in execution file; skipping cost report."
+            exit 0
+          fi
+          cost=$(echo "$result" | jq -r '.total_cost_usd // empty')
+          if [ -z "$cost" ]; then
+            echo "No total_cost_usd in result message; skipping cost report."
+            exit 0
+          fi
+          turns=$(echo "$result" | jq -r '.num_turns // "?"')
+          duration_s=$(echo "$result" | jq -r '((.duration_ms // 0) / 1000 | floor)')
+          cost_fmt=$(printf '%.4f' "$cost")
+          gh pr comment "${{ inputs.pr_number }}" --body "**Implement step cost:** \$${cost_fmt} · ${turns} turns · ${duration_s}s (tracked by the Claude Code CLI)"

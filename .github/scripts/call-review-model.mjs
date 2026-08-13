@@ -67,6 +67,27 @@ function extractJson(text) {
   }
 }
 
+// $ per 1M tokens (list price, no cache/batch discounts applied). Anthropic
+// figures are from https://platform.claude.com/docs/en/pricing; the GPT-5.5
+// figures are from third-party trackers (OpenAI doesn't publish a stable
+// pricing page for it) and may drift — update this table when the actual
+// billed rate changes. A model missing here simply gets no cost_usd field.
+const PRICING_PER_MTOK = {
+  "gpt-5.5": { input: 5.0, output: 30.0 },
+  "claude-sonnet-5": { input: 3.0, output: 15.0 },
+  "claude-opus-5": { input: 5.0, output: 25.0 },
+};
+
+function estimateCostUsd(model, usage) {
+  if (!usage) return undefined;
+  const pricing = PRICING_PER_MTOK[model];
+  if (!pricing) return undefined;
+  return (
+    (usage.input_tokens / 1_000_000) * pricing.input +
+    (usage.output_tokens / 1_000_000) * pricing.output
+  );
+}
+
 async function callWithRetry(fn, attempts = 3) {
   let lastErr;
   for (let i = 0; i < attempts; i++) {
@@ -216,6 +237,10 @@ const callers = {
 const { model, text, usage } = await callWithRetry(() =>
   callers[provider](),
 );
+if (usage) {
+  const costUsd = estimateCostUsd(model, usage);
+  if (costUsd !== undefined) usage.cost_usd = costUsd;
+}
 const parsed = extractJson(text);
 
 const result = parsed.ok
