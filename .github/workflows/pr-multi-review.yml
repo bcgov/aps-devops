@@ -127,7 +127,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "pr_url=$(echo "$data" | jq -r .url)" >> "$GITHUB_OUTPUT"
           gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pr-diff
           path: pr.diff
@@ -138,14 +138,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout shared scripts and skill (workflow's own repo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ needs.prepare.outputs.source_repo }}
           ref: ${{ inputs.source_ref }}
           sparse-checkout: |
             .github/scripts
             .claude/skills/review-response-format
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pr-diff
       - name: Call GPT
@@ -159,7 +159,7 @@ jobs:
             --pr-number "${{ inputs.pr_number }}" \
             --pr-title "${{ needs.prepare.outputs.pr_title }}" \
             --out gpt.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: review-gpt
           path: gpt.json
@@ -170,14 +170,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout shared scripts and skill (workflow's own repo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ needs.prepare.outputs.source_repo }}
           ref: ${{ inputs.source_ref }}
           sparse-checkout: |
             .github/scripts
             .claude/skills/review-response-format
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: pr-diff
       - name: Call Claude
@@ -191,7 +191,7 @@ jobs:
             --pr-number "${{ inputs.pr_number }}" \
             --pr-title "${{ needs.prepare.outputs.pr_title }}" \
             --out claude.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: review-claude
           path: claude.json
@@ -206,13 +206,13 @@ jobs:
       issues: write
     steps:
       - name: Checkout PR branch (repo being reviewed)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.head_branch }}
           fetch-depth: 0
 
       - name: Checkout shared skills (workflow's own repo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ needs.prepare.outputs.source_repo }}
           ref: ${{ inputs.source_ref }}
@@ -238,11 +238,11 @@ jobs:
             echo "/.claude/skills/review-response-format/"
           } >> .git/info/exclude
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: review-gpt
           path: reviews
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: review-claude
           path: reviews
