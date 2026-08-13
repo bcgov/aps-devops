@@ -29,6 +29,10 @@ name: Multi-Model PR Review
 #              source_ref: main   # optional; which ref of bcgov/aps-devops to pull the shared
 #                                 # scripts/skills from — defaults to main, override to pin a
 #                                 # branch/tag/sha (e.g. while this workflow is still in review)
+#              review_claude_api: false  # optional, defaults to true; set false to skip the
+#                                 # ANTHROPIC_API_KEY-billed review-claude job and rely on just
+#                                 # review-gpt + review-claude-code (the CLAUDE_CODE_OAUTH_TOKEN-
+#                                 # billed reviewer) — useful when there's no API credit balance
 #            secrets: inherit
 #            permissions:
 #              contents: write
@@ -69,6 +73,11 @@ on:
         required: false
         type: string
         default: pr-multi-review
+      review_claude_api:
+        description: "Also run review-claude (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
+        required: false
+        type: boolean
+        default: true
   workflow_call:
     inputs:
       pr_number:
@@ -80,6 +89,11 @@ on:
         required: false
         type: string
         default: pr-multi-review
+      review_claude_api:
+        description: "Also run review-claude (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
+        required: false
+        type: boolean
+        default: true
     secrets:
       ANTHROPIC_API_KEY:
         required: true
@@ -171,6 +185,7 @@ jobs:
 
   review-claude:
     needs: prepare
+    if: ${{ inputs.review_claude_api }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout shared scripts and skill (workflow's own repo)
@@ -256,6 +271,11 @@ jobs:
         review-claude,
         review-claude-code,
       ]
+    # review-claude can be skipped (review_claude_api: false) rather than succeed or fail, and a
+    # skipped dependency does not satisfy the implicit default `if: success()` — so this needs an
+    # explicit condition that tolerates a skip but still blocks on a genuine failure/cancellation
+    # anywhere in the dependency chain (prepare, review-gpt, review-claude-code included).
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -300,6 +320,10 @@ jobs:
           name: review-gpt
           path: reviews
       - uses: actions/download-artifact@v8
+        # review-claude never uploads this artifact when it was skipped via review_claude_api:
+        # false — leave reviews/claude.json absent rather than failing the download. The skill's
+        # Step 4 procedure already treats a missing findings file the same as a parse_error one.
+        if: ${{ inputs.review_claude_api }}
         with:
           name: review-claude
           path: reviews
