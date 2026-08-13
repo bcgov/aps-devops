@@ -49,8 +49,10 @@ name: Multi-Model PR Review
 #     call, and as the review-claude-code / triage fallback below either way.
 #   - Optional secret CLAUDE_CODE_OAUTH_TOKEN (a long-lived token from running `claude
 #     setup-token` under a Pro/Max subscription) — if set, both the review-claude-code job and the
-#     final triage/implement step use it (the `claude` CLI prefers it over ANTHROPIC_API_KEY when
-#     both are present). Leave unset and both fall back to ANTHROPIC_API_KEY.
+#     final triage/implement step use it. The `claude` CLI does NOT prefer the OAuth token when
+#     both credentials are present in its environment — a set ANTHROPIC_API_KEY silently
+#     overrides a working subscription login (confirmed directly against the CLI) — so both of
+#     those steps only pass ANTHROPIC_API_KEY through when CLAUDE_CODE_OAUTH_TOKEN is unset.
 #   - Settings > Actions > General > Workflow permissions on whichever repo is being reviewed:
 #       "Allow GitHub Actions to create and approve pull requests" must be enabled, since the
 #       final job pushes task/* branches and opens PRs using the default GITHUB_TOKEN.
@@ -220,9 +222,18 @@ jobs:
         # Reviews via the `claude` CLI itself (see call-review-model.mjs's callClaudeCode) rather
         # than a raw API call, so this bills against CLAUDE_CODE_OAUTH_TOKEN's subscription when
         # set, instead of always drawing on ANTHROPIC_API_KEY like review-claude above.
+        #
+        # The CLI does NOT prefer the OAuth token when both credentials are present in its
+        # environment — an ANTHROPIC_API_KEY, even an invalid one, silently takes precedence over
+        # a working claude.ai/subscription login (confirmed against the CLI directly: it logs
+        # "claude.ai connectors are disabled because ANTHROPIC_API_KEY ... takes precedence", then
+        # bills the API key, which can fail with "Credit balance is too low" on an account that
+        # relies on subscription usage rather than pay-as-you-go API credits). So ANTHROPIC_API_KEY
+        # must only be present in this step's environment when there's no OAuth token to use —
+        # never pass both unconditionally.
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
         run: |
           node .github/scripts/call-review-model.mjs \
             --provider claude-code \
@@ -308,7 +319,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # See the "Call Claude Code" step's comment in review-claude-code above: the CLI does
+          # NOT prefer the OAuth token when both credentials are present — a set ANTHROPIC_API_KEY
+          # silently overrides a working subscription login — so it must only be passed through
+          # when there's no OAuth token to use.
+          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           claude_args: >-
