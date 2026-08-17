@@ -14,6 +14,28 @@ await producer.connect();
 
 const encoder = new TextEncoder();
 
+type StreamConsumer = ReturnType<typeof kafka.consumer>;
+
+// Each SSE connection gets its own ephemeral consumer group (see below), so
+// once the consumer disconnects we also delete the group from the broker.
+// Otherwise, over a long-lived deployment with frequent client
+// reconnects (proxy idle timeouts, browser SSE retry, etc.) these groups
+// accumulate indefinitely and add load to the broker's group coordinator.
+async function cleanupConsumer(consumer: StreamConsumer, groupId: string) {
+  await consumer.disconnect().catch(() => {});
+  const admin = kafka.admin();
+  try {
+    await admin.connect();
+    await admin.deleteGroups([groupId]);
+  } catch {
+    // Best-effort: the group may have already been removed, or still have
+    // an in-flight rebalance; it's harmless to leave it for the broker to
+    // eventually clean up.
+  } finally {
+    await admin.disconnect().catch(() => {});
+  }
+}
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -86,25 +108,9 @@ Deno.serve({ port: 8000 }, async (req) => {
 
   const historyParam = url.searchParams.get("history");
   const historyCount = historyParam ? Math.max(0, parseInt(historyParam, 10) || 0) : 0;
-
-  const seekTargets: Array<{ topic: string; partition: number; offset: string }> = [];
+  const wantsHistory = historyCount > 0 && !isWildcard;
 
   try {
-    if (historyCount > 0 && !isWildcard) {
-      const admin = kafka.admin();
-      await admin.connect();
-      try {
-        const offsets = await admin.fetchTopicOffsets(topic);
-        for (const o of offsets) {
-          const high = parseInt(o.offset ?? "0", 10);
-          const start = Math.max(0, high - historyCount);
-          seekTargets.push({ topic, partition: o.partition, offset: start.toString() });
-        }
-      } finally {
-        await admin.disconnect().catch(() => {});
-      }
-    }
-
     await consumer.connect();
     await consumer.subscribe({ topic: resolvedTopic, fromBeginning: false });
   } catch (err) {
@@ -175,23 +181,44 @@ Deno.serve({ port: 8000 }, async (req) => {
           } catch {
             /* already closed */
           }
+          cleanupConsumer(consumer, groupId).catch(() => {});
         });
 
-      if (seekTargets.length > 0) {
-        consumer.on(consumer.events.GROUP_JOIN, () => {
-          for (const target of seekTargets) {
-            try {
-              consumer.seek(target);
-            } catch {
-              // partition not assigned to this consumer; ignore
+      if (wantsHistory) {
+        // Resolve offsets at join time (not before consumer.connect()) so the
+        // window between "read the watermarks" and "seek to them" is as small
+        // as possible — a wide window lets retention delete the target offset
+        // out from under us, causing "offset out of range" on the first fetch.
+        consumer.on(consumer.events.GROUP_JOIN, async () => {
+          const admin = kafka.admin();
+          try {
+            await admin.connect();
+            const offsets = await admin.fetchTopicOffsets(topic);
+            for (const o of offsets) {
+              const high = parseInt(o.offset ?? "0", 10);
+              const low = parseInt(o.low ?? "0", 10);
+              // Clamp to the earliest offset the broker still retains, not
+              // just 0 — otherwise a topic that has aged past its retention
+              // window computes a start offset that no longer exists.
+              const start = Math.min(high, Math.max(low, high - historyCount));
+              try {
+                consumer.seek({ topic, partition: o.partition, offset: start.toString() });
+              } catch {
+                // partition not assigned to this consumer; ignore
+              }
             }
+          } catch {
+            // Best-effort history replay; fall back to live-only streaming
+            // rather than failing the whole connection.
+          } finally {
+            await admin.disconnect().catch(() => {});
           }
         });
       }
     },
     cancel() {
       clearInterval(pingInterval);
-      consumer.disconnect().catch(() => {});
+      return cleanupConsumer(consumer, groupId);
     },
   });
 
