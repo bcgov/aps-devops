@@ -18,6 +18,7 @@ export interface Organization {
   description?: string;
   member: { memberClass: string; memberId: string };
   publicBodyId?: string;
+  access?: SubsystemAccess[];
 }
 
 export interface Scope {
@@ -98,6 +99,9 @@ export interface EnvironmentConfig {
 export interface SiteConfig {
   site: { title: string; description: string; subtitle: string };
   support_url: string;
+  /** Overrides the default "Secure Data Exchange" header banner title for
+   * this deployment (e.g. "SDX Playground" for dev/test/local). */
+  bannerTitle?: string;
   /** Ordered list of SDX environments to surface in the UI. */
   environments?: EnvironmentConfig[];
   /** Environment selected by default — used when the visitor has made no

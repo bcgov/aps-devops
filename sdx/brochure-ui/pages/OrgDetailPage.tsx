@@ -1,6 +1,7 @@
 import { Layout } from "../components/Layout.tsx";
 import { SubsystemCard } from "../components/SubsystemCard.tsx";
 import { ActivityFeed } from "../components/ActivityFeed.tsx";
+import { Contacts } from "../components/Contacts.tsx";
 import {
   type EnvKeyset,
   TrustKeysets,
@@ -87,6 +88,7 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
       ? `${publicBodyType.name} · ${publicBodyType.shortName}`
       : publicBodyType.name
     : null;
+  const contacts = org.access ?? [];
 
   return (
     <Layout title={org.title} currentPath={currentPath} user={user}>
@@ -188,6 +190,12 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
       <TrustKeysets
         keysets={orgKeys}
         description="Public keys published for this organization member in the SDX JWKS registry, by environment."
+      />
+
+      {/* Contacts section */}
+      <Contacts
+        contacts={contacts}
+        description="People responsible for this organization and the roles they hold"
       />
 
       {/* Recent Activity section */}

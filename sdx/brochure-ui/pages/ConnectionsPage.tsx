@@ -73,6 +73,7 @@ const WIZARD_SCRIPT = `
   var form = document.getElementById('wiz-form');
   if (!form) return;
   var clientInput = document.getElementById('wiz-client-id');
+  var policyInput = document.getElementById('wiz-policy');
   var selectionsInput = document.getElementById('wiz-selections');
   var reviewEl = document.getElementById('wiz-review');
   var reviewClientEl = document.getElementById('wiz-review-client');
@@ -106,7 +107,7 @@ const WIZARD_SCRIPT = `
     var step1Hidden = (form.querySelector('[data-step="1"]') || {}).classList && form.querySelector('[data-step="1"]').classList.contains('hidden');
     var minStep = step1Hidden ? 2 : 1;
     backBtn.style.visibility = n === minStep ? 'hidden' : 'visible';
-    if (n === 3) {
+    if (n === 4) {
       nextBtn.classList.add('hidden');
       submitBtn.classList.remove('hidden');
       renderReview();
@@ -114,6 +115,12 @@ const WIZARD_SCRIPT = `
       nextBtn.classList.remove('hidden');
       submitBtn.classList.add('hidden');
     }
+  }
+
+  function applyPolicyMode(policy) {
+    var tree = form.querySelector('.wiz-tree');
+    if (!tree) return;
+    tree.classList.toggle('policy-hide-scopes', policy !== 'SDX.R2.00');
   }
 
   function ownCheckbox(li) {
@@ -234,10 +241,16 @@ const WIZARD_SCRIPT = `
       clientInput.value = picked.value;
       setStep(2);
     } else if (current === 2) {
+      var pickedPolicy = form.querySelector('input[name="wiz-policy-radio"]:checked');
+      if (!pickedPolicy) { alert('Choose an auth policy first.'); return; }
+      policyInput.value = pickedPolicy.value;
+      applyPolicyMode(pickedPolicy.value);
+      setStep(3);
+    } else if (current === 3) {
       var sel = buildSelections();
       if (sel.length === 0) { alert('Select at least one API to request.'); return; }
       selectionsInput.value = JSON.stringify(sel);
-      setStep(3);
+      setStep(4);
     }
   });
 
@@ -300,11 +313,15 @@ const WIZARD_SCRIPT = `
       }
       var radios = form.querySelectorAll('input[name="wiz-client-radio"]');
       for (var i = 0; i < radios.length; i++) radios[i].checked = false;
+      var policyRadios = form.querySelectorAll('input[name="wiz-policy-radio"]');
+      for (var k = 0; k < policyRadios.length; k++) policyRadios[k].checked = false;
       var cbs = form.querySelectorAll('.wz-cb');
       for (var j = 0; j < cbs.length; j++) { cbs[j].checked = false; cbs[j].indeterminate = false; }
       clientInput.value = defaultClient;
+      policyInput.value = '';
       selectionsInput.value = '[]';
       applyEnvFilter('');
+      applyPolicyMode('');
       setStep(defaultClient ? 2 : 1);
       if (typeof target.showModal === 'function') target.showModal();
       else target.setAttribute('open', '');
@@ -335,6 +352,7 @@ dialog.sdx-dialog::backdrop { background: rgba(0,0,0,0.45); }
 .wiz-tree li > ul { margin-left: 1.25rem; border-left: 1px dashed #e5e7eb; padding-left: 0.5rem; }
 .wiz-tree .wz-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
 .wiz-tree .wz-label:hover { background-color: #f9fafb; }
+.wiz-tree.policy-hide-scopes .wz-node[data-node-type="scope"] { display: none; }
 `;
 
 const DIALOG_SCRIPT = `
@@ -1204,7 +1222,7 @@ function EditDialog({
 
         <div className="px-5 py-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-[#003366]">
-            Edit connection
+            Customize connection
           </h2>
           <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-[#003366] break-all">
             <span className="font-semibold">
@@ -1362,7 +1380,7 @@ function ConnectionCard({
             data-dialog-open={editId}
             className="text-xs font-semibold px-3 py-1 rounded border border-[#003366] text-[#003366] hover:bg-blue-50"
           >
-            Edit
+            Customize...
           </button>
           {isProviderPending ? (
             <button
@@ -1592,6 +1610,11 @@ function ReviewDialog({
       <input type="hidden" name="org" value={org} />
       <input
         type="hidden"
+        name="id"
+        value={conn.id ?? ""}
+      />
+      <input
+        type="hidden"
         name="clientId"
         value={conn.clientId}
       />
@@ -1611,7 +1634,7 @@ function ReviewDialog({
         <p className="text-xs text-gray-500 mt-1">
           A consumer has requested access to a service you
           provide. Approve to grant access, or reject to
-          deny the request.
+          remove the request.
         </p>
       </div>
       <div className="px-5 py-4 space-y-4 text-sm max-h-[60vh] overflow-auto">
@@ -1906,6 +1929,12 @@ function AddConnectionWizard({
         />
         <input
           type="hidden"
+          name="policyVersion"
+          id="wiz-policy"
+          value=""
+        />
+        <input
+          type="hidden"
           name="selections"
           id="wiz-selections"
           value="[]"
@@ -1947,11 +1976,16 @@ function AddConnectionWizard({
             <StepPill
               stepId={2}
               displayNum={hasDefault ? 1 : 2}
-              label="APIs & scopes"
+              label="Auth policy"
             />
             <StepPill
               stepId={3}
               displayNum={hasDefault ? 2 : 3}
+              label="APIs & scopes"
+            />
+            <StepPill
+              stepId={4}
+              displayNum={hasDefault ? 3 : 4}
               label="Review"
               last
             />
@@ -1994,9 +2028,90 @@ function AddConnectionWizard({
           )}
         </div>
 
-        {/* Step 2: tree of APIs & scopes */}
+        {/* Step 2: auth policy */}
         <div
           data-step="2"
+          className="wiz-step hidden px-5 py-4"
+        >
+          <h3 className="text-sm font-semibold text-gray-800 mb-2">
+            Choose the auth policy for this connection
+          </h3>
+          <p className="text-xs text-gray-500 mb-3">
+            SDX and Common SSO grant access to all
+            operations on the selected service(s). Scoped
+            access lets you request specific OAuth scopes.
+          </p>
+          <ul className="border border-gray-200 rounded divide-y divide-gray-100">
+            <li>
+              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="radio"
+                  name="wiz-policy-radio"
+                  value="SDX.R0.00"
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-800">
+                    SDX{" "}
+                    <span className="font-mono text-xs text-gray-400 font-normal">
+                      SDX.R0.00
+                    </span>
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Service-level access, no scopes.
+                  </span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="radio"
+                  name="wiz-policy-radio"
+                  value="SDX.R1.00"
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-800">
+                    Common SSO{" "}
+                    <span className="font-mono text-xs text-gray-400 font-normal">
+                      SDX.R1.00
+                    </span>
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Service-level access, no scopes.
+                  </span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="radio"
+                  name="wiz-policy-radio"
+                  value="SDX.R2.00"
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-800">
+                    Scoped access{" "}
+                    <span className="font-mono text-xs text-gray-400 font-normal">
+                      SDX.R2.00
+                    </span>
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Request specific OAuth scopes for the
+                    selected service(s).
+                  </span>
+                </span>
+              </label>
+            </li>
+          </ul>
+        </div>
+
+        {/* Step 3: tree of APIs & scopes */}
+        <div
+          data-step="3"
           className="wiz-step hidden px-5 py-4"
         >
           <h3 className="text-sm font-semibold text-gray-800 mb-2">
@@ -2173,9 +2288,9 @@ function AddConnectionWizard({
           </div>
         </div>
 
-        {/* Step 3: review */}
+        {/* Step 4: review */}
         <div
-          data-step="3"
+          data-step="4"
           className="wiz-step hidden px-5 py-4"
         >
           <h3 className="text-sm font-semibold text-gray-800 mb-2">

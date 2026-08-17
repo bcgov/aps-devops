@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { parse } from "@std/yaml";
+import { config } from "./lib/config.ts";
 import type {
   ActivityRecord,
   JwksData,
@@ -8,7 +8,6 @@ import type {
   Subsystem,
   Organization,
   Service,
-  SiteConfig,
 } from "./types.ts";
 import { HomePage } from "./pages/HomePage.tsx";
 import { SubsystemsPage } from "./pages/SubsystemsPage.tsx";
@@ -130,11 +129,6 @@ async function loadScopes(): Promise<ResourceScope[]> {
     ? (data as ResourceScope[])
     : [];
 }
-
-const configText = await Deno.readTextFile(
-  new URL("./config.yaml", import.meta.url),
-);
-const config = parse(configText) as SiteConfig;
 
 let subsystems: Subsystem[] = [];
 let organizations: Organization[] = [];
@@ -849,6 +843,20 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       (o) => o.name === orgName,
     );
     if (!org) return notFound();
+    // The list endpoint omits `access`; the per-organization detail response
+    // carries the users and roles that have access to this organization.
+    let orgDetail: Organization = org;
+    try {
+      const detailRes = await fetch(
+        `${ORGANIZATIONS_API}/${encodeURIComponent(orgName)}?includeAccess=true`,
+      );
+      if (detailRes.ok) {
+        const detail = await detailRes.json();
+        orgDetail = { ...org, ...detail };
+      }
+    } catch (e) {
+      console.error(`Failed to fetch organization detail for ${orgName}:`, e);
+    }
     const orgSubsystems =
       subsystemsByOrg.get(orgName) ?? [];
     const serviceCounts: Record<string, number> = {};
@@ -895,7 +903,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
 
     return htmlResponse(
       React.createElement(OrgDetailPage, {
-        org,
+        org: orgDetail,
         subsystems: orgSubsystems,
         serviceCounts,
         publicBody,
@@ -1269,6 +1277,19 @@ async function handleConnectionsAddMulti(
   const org = String(form.get("org") ?? "");
   const clientId = String(form.get("clientId") ?? "");
   const raw = String(form.get("selections") ?? "[]");
+  const rawPolicyVersion = String(
+    form.get("policyVersion") ?? "",
+  );
+  const KNOWN_POLICY_VERSIONS: string[] = [
+    "SDX.R0.00",
+    "SDX.R1.00",
+    "SDX.R2.00",
+  ];
+  const policyVersion = KNOWN_POLICY_VERSIONS.includes(
+      rawPolicyVersion,
+    )
+    ? rawPolicyVersion
+    : "SDX.R0.00";
 
   let items: MultiAddItem[];
   try {
@@ -1328,7 +1349,7 @@ async function handleConnectionsAddMulti(
           clientId,
           serviceId: item.serviceId,
           scopes: item.scopes,
-          policyVersion: "SDX.R0.00",
+          policyVersion,
         },
         { accessToken: user!.accessToken },
       );
@@ -1542,12 +1563,17 @@ async function handleConnectionsReject(
 
   const form = await req.formData();
   const org = String(form.get("org") ?? "");
+  const id = String(form.get("id") ?? "");
   const clientId = String(form.get("clientId") ?? "");
   const serviceId = String(form.get("serviceId") ?? "");
-  if (!org || !clientId || !serviceId) {
+  if (!org || !id || !clientId || !serviceId) {
     return connectionsRedirect(
       org,
-      { kind: "error", message: "Missing required fields" },
+      {
+        kind: "error",
+        message:
+          "Missing organization or connection id.",
+      },
       clientId,
     );
   }
@@ -1568,20 +1594,17 @@ async function handleConnectionsReject(
     );
   }
   try {
-    await setConnectionApproval(
-      org,
-      {
-        clientId,
-        serviceId,
-        isApproved: false,
-      },
-      { accessToken: user!.accessToken },
-    );
+    // Rejecting a pending request deletes it outright rather than merely
+    // flipping isApproved, so the requester sees it as withdrawn, not denied
+    // and still sitting around.
+    await deleteConnection(org, id, {
+      accessToken: user!.accessToken,
+    });
     return connectionsRedirect(
       org,
       {
         kind: "success",
-        message: `Rejected ${clientId} → ${serviceId}`,
+        message: `Rejected and removed ${clientId} → ${serviceId}`,
       },
       clientId,
     );

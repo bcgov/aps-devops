@@ -1,5 +1,6 @@
 import { Nav } from "./Nav.tsx";
 import { Footer } from "./Footer.tsx";
+import { config } from "../lib/config.ts";
 import {
   authEnabled,
   type SessionUser,
@@ -99,7 +100,7 @@ export function Layout({
           user={user}
           authEnabled={authEnabled}
           hideMainNav={hideMainNav}
-          bannerTitle={bannerTitle}
+          bannerTitle={bannerTitle ?? config.bannerTitle}
           bannerHref={bannerHref}
         />
         <main className="flex-1">{children}</main>

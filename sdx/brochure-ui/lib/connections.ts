@@ -135,8 +135,15 @@ export async function upsertConnection(
   opts: SdxCallOpts = {},
 ): Promise<unknown> {
   const url = `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections`;
-  // Backend does not yet support `scopes` on this endpoint — strip before sending.
-  const { scopes: _scopes, ...payload } = input;
+  // Only the SDX.R2.00 (scoped access) policy sends scopes — R0.00/R1.00
+  // requests are service-level only, and the backend doesn't expect scopes
+  // on this endpoint for those policies.
+  const payload = input.policyVersion === "SDX.R2.00"
+    ? input
+    : (() => {
+      const { scopes: _scopes, ...rest } = input;
+      return rest;
+    })();
   const res = await fetch(url, {
     method: "PUT",
     headers: authHeaders(opts.accessToken),
