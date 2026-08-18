@@ -77,7 +77,7 @@ spec:
                       --cert=./tls.crt \
                       --key=./tls.key | kubectl apply -f -
 
-{{- if .Values.kong.enabled }}
+{{- if and .Values.kong.enabled (not .Values.renewal.deferRestart) }}
                     kubectl rollout restart deployment $EDGE_NAME
 {{- end }}
 {{- if .Values.shared.fluentbit.enabled }}

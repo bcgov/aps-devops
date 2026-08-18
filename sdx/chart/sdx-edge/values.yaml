@@ -26,6 +26,24 @@ bootstrap:
     # Added as a SAN to the edge certificate
     ip: ""
 
+  # Write {release}-client-next instead of live client/server secrets and skip
+  # Kong restart. Use after generating a new key/CSR so the public key can be
+  # published (operation=rotate) before the private key is mounted.
+  stageSecret: false
+  # Skip Kong restart after writing live bootstrap secrets.
+  deferRestart: false
+
+renewal:
+  # Certificate renewal keeps the same private key. Restart afterwards so Kong
+  # picks up the new certificate; set true only when restart is handled separately.
+  deferRestart: false
+
+rotation:
+  # Copy {release}-client-next onto live client and server TLS secrets, then
+  # rolling-restart Kong. Bump nonce so Helm creates a new Job on each promote.
+  promote: false
+  nonce: "1"
+
 environment: prod
 
 sdx_control_url_by_env:

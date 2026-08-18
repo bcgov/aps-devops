@@ -1,0 +1,92 @@
+# Promote a staged runtime-group TLS secret ({release}-client-next) to the live
+# client and server secrets, then rolling-restart Kong so trust-sign mounts the
+# new private key. Run only after sdx-keys.r1 operation=rotate has published
+# the matching public key.
+{{ if .Values.rotation.promote }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ include "sdx-edge.fullname" . }}-promote-{{ .Values.rotation.nonce | default "1" }}"
+  labels:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: job-cert-promote
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    data-plane: "{{ include "sdx-edge.fullname" . }}"
+  annotations:
+    helm.sh/hook: post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        DataClass: Low
+        app.kubernetes.io/name: sdx-edge
+        app.kubernetes.io/component: job-cert-promote
+        app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+        data-plane: "{{ include "sdx-edge.fullname" . }}"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: sdx-job-cert-bootstrap
+      schedulerName: default-scheduler
+      enableServiceLinks: true
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: cert-promote
+          image: 'docker.io/smallstep/step-cli:0.23.0'
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - +x
+            - -e
+            - -c
+            - |-
+                cd /tmp
+                export PATH=$PATH:/tmp
+
+                curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+
+                kubectl get secret ${EDGE_NAME}-client-next -o jsonpath='{.data.tls\.crt}' | base64 -d > tls.crt
+                kubectl get secret ${EDGE_NAME}-client-next -o jsonpath='{.data.tls\.key}' | base64 -d > tls.key
+
+                kubectl create secret \
+                  --save-config --dry-run=client -o yaml \
+                  tls ${EDGE_NAME}-client \
+                  --cert=./tls.crt \
+                  --key=./tls.key | kubectl apply -f -
+
+                kubectl create secret \
+                  --save-config --dry-run=client -o yaml \
+                  tls ${EDGE_NAME}-server \
+                  --cert=./tls.crt \
+                  --key=./tls.key | kubectl apply -f -
+
+{{- if .Values.kong.enabled }}
+                kubectl rollout restart deployment $EDGE_NAME
+{{- end }}
+          env:
+            - name: EDGE_NAME
+              value: "{{ include "sdx-edge.fullname" . }}"
+            {{- if .Values.https_proxy }}
+            - name: HTTPS_PROXY
+              value: "{{ .Values.https_proxy }}"
+            - name: NO_PROXY
+              value: ".cluster.local,.svc,10.91.0.0/16,10.93.0.0/16,172.30.0.0/16,127.0.0.1,localhost,.gov.bc.ca"
+            {{- end }}
+          volumeMounts:
+            - name: working-dir
+              mountPath: /tmp
+            - name: kube-cache
+              mountPath: .kube
+      automountServiceAccountToken: true
+      volumes:
+        - name: working-dir
+          emptyDir: {}
+        - name: kube-cache
+          emptyDir: {}
+      dnsPolicy: ClusterFirst
+{{ end }}

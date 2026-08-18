@@ -6,7 +6,7 @@ A Kubernetes deployment for running SDX (Secure Data Exchange) Edge Servers as h
 
 ### Helm Chart (`chart/sdx-edge`)
 
-**Chart Version:** 0.3.4
+**Chart Version:** 0.3.6
 **App Version:** 3.9.1
 
 Deploys a Kong Gateway data plane node configured for secure data exchange operations. The chart includes:
@@ -54,7 +54,7 @@ helm upgrade --install ${EDGE_ID} \
 
 ```sh
 helm package sdx-edge
-helm push sdx-edge-0.3.5.tgz oci://ghcr.io/bcgov/aps-devops
+helm push sdx-edge-0.3.6.tgz oci://ghcr.io/bcgov/aps-devops
 ```
 
 #### Configuration
@@ -74,6 +74,11 @@ The following table lists the configurable parameters in `values.yaml`:
 | `mtls_required`                     | Enable/disable mutual TLS requirement                          | `true`                                                                  |
 | `https_proxy`                       | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
 | `bootstrap.tls.token`               | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
+| `bootstrap.stageSecret`             | Write `{release}-client-next` and skip Kong restart            | `false`                                                                 |
+| `bootstrap.deferRestart`            | Skip Kong restart after writing live bootstrap secrets         | `false`                                                                 |
+| `renewal.deferRestart`              | Skip Kong restart after certificate renewal                    | `false`                                                                 |
+| `rotation.promote`                  | Copy `{release}-client-next` to live secrets and restart Kong  | `false`                                                                 |
+| `rotation.nonce`                    | Suffix for the promote Job name (bump on each promote)         | `"1"`                                                                   |
 | `tls.client.cn`                     | Common Name for client certificate                             | `example.com`                                                           |
 | `tls.server.ip`                     | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
 | `tls.public_ca`                     | PEM-encoded public CA certificates for trust chain             | (includes Sectigo, USERTrust, SDX, APS, Amazon, Let's Encrypt root CAs) |
@@ -96,6 +101,46 @@ The following values must be set during installation:
 
 - `bootstrap.tls.token` - Required for certificate bootstrapping
 - `route.host` - Required for proper external routing
+
+#### Runtime-group key rotation
+
+Private-key generation and Kong restart are separate Helm steps so the new
+public key can be published before the data plane starts signing with it.
+
+1. Create a one-time CA token, then bootstrap with staging:
+
+   ```sh
+   helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+     --reuse-values \
+     --set bootstrap.tls.token=${TOKEN} \
+     --set bootstrap.stageSecret=true
+   ```
+
+   This writes `{release}-client-next` and does **not** restart Kong.
+
+2. Sign the CSR and publish the new public key with `sdx-keys.r1`
+   `operation=rotate` (keeps the old key for overlap). Confirm JWKS lists both
+   kids.
+
+3. Promote the staged secret and rolling-restart Kong:
+
+   ```sh
+   helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+     --reuse-values \
+     --set bootstrap.stageSecret=false \
+     --set rotation.promote=true \
+     --set rotation.nonce=$(date +%s)
+   ```
+
+4. Confirm `trust-sign` emits the kid that matches the mounted private key,
+   wait through the verifier grace period, then delete the old kid with
+   `operation=delete`.
+
+Certificate **renewal** (`step ca renew`) keeps the same private key, so the
+cron job still restarts Kong by default. Set `renewal.deferRestart=true` only
+when restart is handled separately.
+
+See `docs/sdx-keys-rotation.md` in api-services-portal for the full contract.
 
 **Example Override:**
 
