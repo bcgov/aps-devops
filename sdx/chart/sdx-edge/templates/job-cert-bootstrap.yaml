@@ -11,6 +11,9 @@ metadata:
     app.kubernetes.io/component: job-cert-bootstrap
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   parallelism: 1
   completions: 1

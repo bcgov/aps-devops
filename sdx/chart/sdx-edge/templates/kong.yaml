@@ -69,6 +69,10 @@ spec:
         image: ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
         imagePullPolicy: IfNotPresent
         env:
+        - name: SDX_EDGE_ID
+          value: "{{ .Release.Name }}"
+        - name: SDX_INSTANCE
+          value: {{ .Values.environment | quote }}
         - name: KONG_CLUSTER_DP_LABELS
           value: "runtime-group:{{ include "sdx-edge.fullname" . }},endpoint:{{- .Values.route.host }},role:sdx-access-point"
         - name: KONG_CLUSTER_CONTROL_PLANE
