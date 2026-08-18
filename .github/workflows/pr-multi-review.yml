@@ -1,0 +1,432 @@
+name: Multi-Model PR Review
+run-name: Review PR #${{ inputs.pr_number }}
+
+# Reviews an open PR with GPT, Claude (raw Anthropic API), and Claude Code (the `claude` CLI
+# itself, billed against a Claude Code subscription instead of API credits) in parallel — all
+# three follow the shared `.claude/skills/review-response-format` contract so their findings merge
+# cleanly; Grok is left out for now — add a review-grok job mirroring review-gpt/review-claude-api,
+# plus an XAI_API_KEY secret, to bring it back), then has
+# Claude Code triage the combined findings, bundle fixes into up to 3 `task/*` branches (each
+# touching < 10 files), open a PR per bundle against the reviewed PR's branch, and post a summary
+# comment on the original PR. See `.claude/skills/pr-review-process` for the full
+# triage/bundling/reporting procedure Claude follows.
+#
+# Can be run two ways:
+#   1. Directly in this repo, via workflow_dispatch (Actions tab > Multi-Model PR Review > Run).
+#   2. As a reusable workflow called from another repo's own workflow, to review PRs over there:
+#
+#        name: Review PR
+#        on:
+#          workflow_dispatch:
+#            inputs:
+#              pr_number:
+#                required: true
+#                type: string
+#        jobs:
+#          review:
+#            uses: bcgov/aps-devops/.github/workflows/pr-multi-review.yml@main
+#            with:
+#              pr_number: ${{ inputs.pr_number }}
+#              source_ref: main   # optional; which ref of bcgov/aps-devops to pull the shared
+#                                 # scripts/skills from — defaults to main, override to pin a
+#                                 # branch/tag/sha (e.g. while this workflow is still in review)
+#              review_claude_api: true  # optional, defaults to false (skipped); set true to also
+#                                 # run the ANTHROPIC_API_KEY-billed review-claude-api job alongside
+#                                 # review-gpt and review-claude-code (the CLAUDE_CODE_OAUTH_TOKEN-
+#                                 # billed reviewer) — needs an actual API credit balance to spend
+#            secrets: inherit
+#            permissions:
+#              contents: write
+#              pull-requests: write
+#              issues: write
+#
+#      The shared scripts and skills are always pulled from bcgov/aps-devops (this repo) at the
+#      `source_ref` input above, independent of which ref of *this* file the caller's `uses:`
+#      line is pinned to — so the calling repo only needs the one small wrapper workflow above,
+#      nothing else copied over. This relies on bcgov/aps-devops staying public; if it's ever
+#      made private, callers will additionally need to supply a token with read access to it (see
+#      the "Checkout shared" steps below).
+#
+# One-time setup required:
+#   - Secrets ANTHROPIC_API_KEY, OPENAI_API_KEY, available either as repo/org secrets (direct
+#     workflow_dispatch use) or passed via `secrets: inherit` / explicit mapping from the calling
+#     repo (reusable-workflow use). ANTHROPIC_API_KEY is used directly for review-claude-api's raw API
+#     call, and as the review-claude-code / triage fallback below either way.
+#   - Optional secret CLAUDE_CODE_OAUTH_TOKEN (a long-lived token from running `claude
+#     setup-token` under a Pro/Max subscription) — if set, both the review-claude-code job and the
+#     final triage/implement step use it. The `claude` CLI does NOT prefer the OAuth token when
+#     both credentials are present in its environment — a set ANTHROPIC_API_KEY silently
+#     overrides a working subscription login (confirmed directly against the CLI) — so both of
+#     those steps only pass ANTHROPIC_API_KEY through when CLAUDE_CODE_OAUTH_TOKEN is unset.
+#   - Settings > Actions > General > Workflow permissions on whichever repo is being reviewed:
+#       "Allow GitHub Actions to create and approve pull requests" must be enabled, since the
+#       final job pushes task/* branches and opens PRs using the default GITHUB_TOKEN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: string
+      source_ref:
+        description: "Ref of bcgov/aps-devops to pull the shared review scripts/skills from"
+        required: false
+        type: string
+        default: pr-multi-review
+      review_claude_api:
+        description: "Also run review-claude-api (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: string
+      source_ref:
+        description: "Ref of bcgov/aps-devops to pull the shared review scripts/skills from"
+        required: false
+        type: string
+        default: pr-multi-review
+      review_claude_api:
+        description: "Also run review-claude-api (raw Anthropic API call, billed via ANTHROPIC_API_KEY) alongside review-gpt and review-claude-code"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+      OPENAI_API_KEY:
+        required: true
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  GPT_MODEL: gpt-5.5
+  CLAUDE_REVIEW_MODEL: claude-sonnet-5
+  CLAUDE_CODE_REVIEW_MODEL: claude-sonnet-5
+  CLAUDE_IMPLEMENT_MODEL: claude-sonnet-5
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      head_branch: ${{ steps.meta.outputs.head_branch }}
+      base_branch: ${{ steps.meta.outputs.base_branch }}
+      pr_title: ${{ steps.meta.outputs.pr_title }}
+      pr_url: ${{ steps.meta.outputs.pr_url }}
+      # Hardcoded rather than derived from `github.repository`: in the reusable-workflow-call
+      # case, `github.repository` resolves to the *caller's* repo, not this one, but the shared
+      # scripts/skills below always live in bcgov/aps-devops regardless of who calls this workflow.
+      source_repo: bcgov/aps-devops
+    steps:
+      - name: Resolve PR metadata and diff
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          data=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json baseRefName,headRefName,title,url)
+          echo "head_branch=$(echo "$data" | jq -r .headRefName)" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$(echo "$data" | jq -r .baseRefName)" >> "$GITHUB_OUTPUT"
+          {
+            echo "pr_title<<EOF"
+            echo "$data" | jq -r .title
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "pr_url=$(echo "$data" | jq -r .url)" >> "$GITHUB_OUTPUT"
+          gh pr diff "$PR_NUMBER" --repo "$REPO" > pr.diff
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pr-diff
+          path: pr.diff
+          retention-days: 1
+
+  review-gpt:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared scripts and skill (workflow's own repo)
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            .github/scripts
+            .claude/skills/review-response-format
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-diff
+      - name: Call GPT
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node .github/scripts/call-review-model.mjs \
+            --provider gpt \
+            --diff-file pr.diff \
+            --skill-file .claude/skills/review-response-format/SKILL.md \
+            --pr-number "${{ inputs.pr_number }}" \
+            --pr-title "${{ needs.prepare.outputs.pr_title }}" \
+            --out gpt.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: review-gpt
+          path: gpt.json
+          retention-days: 1
+
+  review-claude-api:
+    needs: prepare
+    if: ${{ inputs.review_claude_api }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared scripts and skill (workflow's own repo)
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            .github/scripts
+            .claude/skills/review-response-format
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-diff
+      - name: Call Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node .github/scripts/call-review-model.mjs \
+            --provider claude \
+            --diff-file pr.diff \
+            --skill-file .claude/skills/review-response-format/SKILL.md \
+            --pr-number "${{ inputs.pr_number }}" \
+            --pr-title "${{ needs.prepare.outputs.pr_title }}" \
+            --out claude.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: review-claude-api
+          path: claude.json
+          retention-days: 1
+
+  review-claude-code:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared scripts and skill (workflow's own repo)
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            .github/scripts
+            .claude/skills/review-response-format
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-diff
+      - name: Install claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Call Claude Code
+        # Reviews via the `claude` CLI itself (see call-review-model.mjs's callClaudeCode) rather
+        # than a raw API call, so this bills against CLAUDE_CODE_OAUTH_TOKEN's subscription when
+        # set, instead of always drawing on ANTHROPIC_API_KEY like review-claude-api above.
+        #
+        # The CLI does NOT prefer the OAuth token when both credentials are present in its
+        # environment — an ANTHROPIC_API_KEY, even an invalid one, silently takes precedence over
+        # a working claude.ai/subscription login (confirmed against the CLI directly: it logs
+        # "claude.ai connectors are disabled because ANTHROPIC_API_KEY ... takes precedence", then
+        # bills the API key, which can fail with "Credit balance is too low" on an account that
+        # relies on subscription usage rather than pay-as-you-go API credits). So ANTHROPIC_API_KEY
+        # must only be present in this step's environment when there's no OAuth token to use —
+        # never pass both unconditionally.
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
+        run: |
+          node .github/scripts/call-review-model.mjs \
+            --provider claude-code \
+            --diff-file pr.diff \
+            --skill-file .claude/skills/review-response-format/SKILL.md \
+            --pr-number "${{ inputs.pr_number }}" \
+            --pr-title "${{ needs.prepare.outputs.pr_title }}" \
+            --out claude-code.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: review-claude-code
+          path: claude-code.json
+          retention-days: 1
+
+  synthesize-and-implement:
+    needs:
+      [
+        prepare,
+        review-gpt,
+        review-claude-api,
+        review-claude-code,
+      ]
+    # review-claude-api can be skipped (review_claude_api: false) rather than succeed or fail, and a
+    # skipped dependency does not satisfy the implicit default `if: success()` — so this needs an
+    # explicit condition that tolerates a skip but still blocks on a genuine failure/cancellation
+    # anywhere in the dependency chain (prepare, review-gpt, review-claude-code included).
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout PR branch (repo being reviewed)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.head_branch }}
+          fetch-depth: 0
+
+      - name: Checkout shared skills (workflow's own repo)
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ needs.prepare.outputs.source_repo }}
+          ref: ${{ inputs.source_ref }}
+          sparse-checkout: |
+            .claude/skills/pr-review-process
+            .claude/skills/review-response-format
+          path: _shared-skills
+
+      - name: Overlay shared skills into the PR checkout
+        # Claude Code's Skill tool discovers project skills under ./.claude/skills relative to
+        # cwd, so the two skills need to physically exist inside the PR repo's checkout for this
+        # run — not committed there, just present on disk. Excluded via .git/info/exclude (a
+        # local-only ignore, never committed) so an incautious `git add -A` while implementing a
+        # bundle can't accidentally sweep them into a task branch.
+        run: |
+          set -euo pipefail
+          mkdir -p .claude/skills
+          cp -r _shared-skills/.claude/skills/pr-review-process .claude/skills/
+          cp -r _shared-skills/.claude/skills/review-response-format .claude/skills/
+          rm -rf _shared-skills
+          {
+            echo "/.claude/skills/pr-review-process/"
+            echo "/.claude/skills/review-response-format/"
+          } >> .git/info/exclude
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: review-gpt
+          path: reviews
+      - uses: actions/download-artifact@v8
+        # review-claude-api never uploads this artifact when it was skipped via review_claude_api:
+        # false — leave reviews/claude.json absent rather than failing the download. The skill's
+        # Step 4 procedure already treats a missing findings file the same as a parse_error one.
+        if: ${{ inputs.review_claude_api }}
+        with:
+          name: review-claude-api
+          path: reviews
+      - uses: actions/download-artifact@v8
+        with:
+          name: review-claude-code
+          path: reviews
+
+      - name: Configure git identity
+        run: |
+          git config user.name "claude-pr-review-bot"
+          git config user.email "claude-pr-review-bot@users.noreply.github.com"
+
+      - name: Triage findings, implement, and open task PRs
+        id: triage
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          # See the "Call Claude Code" step's comment in review-claude-code above: the CLI does
+          # NOT prefer the OAuth token when both credentials are present — a set ANTHROPIC_API_KEY
+          # silently overrides a working subscription login — so it must only be passed through
+          # when there's no OAuth token to use.
+          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+            --max-turns 100
+            --model ${{ env.CLAUDE_IMPLEMENT_MODEL }}
+          prompt: |
+            First, use the Skill tool to load the "pr-review-process" skill, then follow its
+            procedure exactly. It references the "review-response-format" skill for the shape of
+            the findings files below.
+
+            Context for this run:
+              - Repo: ${{ github.repository }}
+              - Original PR number: ${{ inputs.pr_number }}
+              - Original PR title: ${{ needs.prepare.outputs.pr_title }}
+              - Original PR head branch (task branches must branch from here): ${{ needs.prepare.outputs.head_branch }}
+              - Original PR base branch: ${{ needs.prepare.outputs.base_branch }}
+              - Initiated by: @${{ github.triggering_actor }}
+              - Implement model (the model you are running as right now): ${{ env.CLAUDE_IMPLEMENT_MODEL }}
+              - Findings files (one per reviewer, each per the review-response-format contract):
+                  - reviews/gpt.json
+                  - reviews/claude.json
+                  - reviews/claude-code.json
+
+            You are already on a checkout of the head branch with full history. `gh` is
+            authenticated via GH_TOKEN. Follow the skill's steps: merge and rank findings, bundle
+            into at most 3 task branches (each touching fewer than 10 files), implement each
+            bundle, open a PR per bundle against the head branch listed above, and finish by
+            posting one summary comment on the original PR (#${{ inputs.pr_number }}).
+
+            When staging changes, always `git add` the specific files you intentionally edited —
+            never `git add -A` or `git add .`. The working tree has files unrelated to any bundle
+            (including this run's own skill files) that must never be committed.
+
+      - name: Label PR as reviewed
+        # Default (no `if:`) — only runs once the triage step above succeeds, so the label means
+        # the review/triage process actually completed rather than just "was attempted".
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # --force makes this idempotent: creates the label on first use, or is a no-op (aside
+          # from re-applying description/color) if it already exists — never errors either way.
+          gh label create "pr-multi-reviewed" \
+            --description "Reviewed by the Multi-Model PR Review workflow" \
+            --color "0E8A16" \
+            --force
+          gh pr edit "${{ inputs.pr_number }}" --add-label "pr-multi-reviewed"
+
+      - name: Report implement-step cost
+        # Runs even if the triage step above failed partway through, so a partial run's cost is
+        # still visible. Never fails the job — this is a best-effort addendum, not core to the
+        # workflow's outcome.
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          execution_file="${{ steps.triage.outputs.execution_file }}"
+          if [ -z "$execution_file" ] || [ ! -f "$execution_file" ]; then
+            echo "No execution file produced by the triage step; skipping cost report."
+            exit 0
+          fi
+          # The claude-code-action / Claude Code CLI tracks exact spend internally and emits it
+          # on the final SDK "result" message — no pricing table needed here, unlike the
+          # review-gpt/review-claude-api cost estimates.
+          result=$(jq -c '[.[] | select(.type == "result")] | last // empty' "$execution_file")
+          if [ -z "$result" ]; then
+            echo "No result message in execution file; skipping cost report."
+            exit 0
+          fi
+          cost=$(echo "$result" | jq -r '.total_cost_usd // empty')
+          if [ -z "$cost" ]; then
+            echo "No total_cost_usd in result message; skipping cost report."
+            exit 0
+          fi
+          turns=$(echo "$result" | jq -r '.num_turns // "?"')
+          duration_s=$(echo "$result" | jq -r '((.duration_ms // 0) / 1000 | floor)')
+          cost_fmt=$(printf '%.4f' "$cost")
+          gh pr comment "${{ inputs.pr_number }}" --body "**Implement step cost:** \$${cost_fmt} · ${turns} turns · ${duration_s}s (tracked by the Claude Code CLI)"
