@@ -222,6 +222,13 @@ export interface ConnectionServiceResources {
   gatewayPatterns?: Record<string, ConnectionGatewayPattern>;
 }
 
+export interface ConnectionProvisionerStatus {
+  status: string;
+  message: string;
+  endpoint?: string;
+  spec?: string;
+}
+
 export interface ConnectionRequest {
   id?: string;
   slug?: string;
@@ -235,6 +242,7 @@ export interface ConnectionRequest {
   requesterDetails?: ConnectionRequesterDetails;
   clientResources?: ConnectionClientResources;
   serviceResources?: ConnectionServiceResources;
+  provisionerStatus?: ConnectionProvisionerStatus;
 }
 
 export interface ConnectionRequestInput {

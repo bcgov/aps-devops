@@ -7,6 +7,7 @@ import { OrgPicker } from "../components/OrgPicker.tsx";
 import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
 import type {
   ConnectionGatewayPattern,
+  ConnectionProvisionerStatus,
   ConnectionRequest,
   Organization,
   Scope,
@@ -62,6 +63,35 @@ function StatusPill({
     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
       <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
       Pending
+    </span>
+  );
+}
+
+function ProvisionerStatusPill({
+  status,
+}: {
+  status: ConnectionProvisionerStatus;
+}) {
+  if (status.status === "provisioned") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+        Provisioned
+      </span>
+    );
+  }
+  if (status.status === "failed") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+        Provisioning failed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+      {status.status}
     </span>
   );
 }
@@ -1345,11 +1375,13 @@ function ConnectionCard({
   const servicePatterns =
     conn.serviceResources?.gatewayPatterns;
   const subsystemId = conn.serviceResources?.subsystemId;
+  const provisionerStatus = conn.provisionerStatus;
   const hasDetails = Boolean(
     rd ||
     clientPatterns ||
     servicePatterns ||
     subsystemId ||
+    provisionerStatus ||
     (conn.scopes && conn.scopes.length > 0),
   );
   return (
@@ -1361,6 +1393,11 @@ function ConnectionCard({
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
             <StatusPill connection={conn} />
+            {provisionerStatus && (
+              <ProvisionerStatusPill
+                status={provisionerStatus}
+              />
+            )}
             <SubmittedByBadge
               policyVersion={conn.policyVersion}
             />
@@ -1410,6 +1447,44 @@ function ConnectionCard({
             ▸ Connection details
           </summary>
           <div className="px-4 py-3 bg-gray-50/50 space-y-4 text-xs">
+            {provisionerStatus && (
+              <DetailSection title="Provisioner status">
+                <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1">
+                  <FieldRow
+                    label="Status"
+                    value={provisionerStatus.status}
+                    mono
+                  />
+                  <FieldRow
+                    label="Message"
+                    value={provisionerStatus.message}
+                  />
+                  {provisionerStatus.endpoint && (
+                    <>
+                      <dt className="text-gray-500">
+                        Endpoint
+                      </dt>
+                      <dd className="font-mono text-gray-800 break-all">
+                        <a
+                          href={provisionerStatus.endpoint}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#003366] underline hover:no-underline"
+                        >
+                          {provisionerStatus.endpoint}
+                        </a>
+                      </dd>
+                    </>
+                  )}
+                  <FieldRow
+                    label="Spec"
+                    value={provisionerStatus.spec}
+                    mono
+                  />
+                </dl>
+              </DetailSection>
+            )}
+
             {rd && (
               <DetailSection title="Requester details">
                 <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1">
