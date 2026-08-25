@@ -1,6 +1,10 @@
 # Cert Bootstrap Job
 # - This job is used to register a new TLS certificate for Kong
 # - It runs a container that executes the certificate sign script
+# - Rendered only while bootstrap.tls.token is set. Clear the token on promote
+#   (see README) so Helm deletes this Job instead of changing its pod template
+#   (stageSecret). Job specs are immutable; a consumed one-time token must not
+#   recreate the Job after TTL either.
 {{ if .Values.bootstrap.tls.token }}
 apiVersion: batch/v1
 kind: Job

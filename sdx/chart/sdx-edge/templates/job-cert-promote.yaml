@@ -3,6 +3,10 @@
 # client and server secrets, then rolling-restart Kong so trust-sign mounts the
 # new private key. Run only after sdx-keys.r1 operation=rotate has published
 # the matching public key.
+#
+# One-shot: Helm stores rotation.promote in release values. Reset it to false
+# after this hook succeeds; otherwise the next --reuse-values upgrade renders
+# the hook again, overwrites live secrets from client-next, and restarts Kong.
 apiVersion: batch/v1
 kind: Job
 metadata:

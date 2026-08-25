@@ -20,6 +20,8 @@ kong:
 
 bootstrap:
   tls:
+    # One-time CA token. Clear on promote (`null`) so Helm drops the bootstrap
+    # Job instead of mutating its immutable pod template (see README).
     token: ""
     cn: "example.com"
 
@@ -39,8 +41,10 @@ renewal:
   deferRestart: false
 
 rotation:
-  # Copy {release}-client-next onto live client and server TLS secrets, then
-  # rolling-restart Kong. Bump nonce so Helm creates a new Job on each promote.
+  # One-shot: copy {release}-client-next onto live client and server TLS
+  # secrets, then rolling-restart Kong. Helm persists this across
+  # --reuse-values, so set false in a follow-up upgrade after the Job succeeds
+  # (see README). Bump nonce so each intentional promote gets a new Job name.
   promote: false
   nonce: "1"
 

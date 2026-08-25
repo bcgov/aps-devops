@@ -73,11 +73,11 @@ The following table lists the configurable parameters in `values.yaml`:
 | `sdx_aggregator_url`                | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
 | `mtls_required`                     | Enable/disable mutual TLS requirement                          | `true`                                                                  |
 | `https_proxy`                       | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
-| `bootstrap.tls.token`               | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
+| `bootstrap.tls.token`               | One-time CA token for certificate bootstrap. Clear on promote (`null`) so the bootstrap Job is dropped, not mutated. | `""` (must be provided)                                                 |
 | `bootstrap.stageSecret`             | Write `{release}-client-next` and skip Kong restart            | `false`                                                                 |
 | `bootstrap.deferRestart`            | Skip Kong restart after writing live bootstrap secrets         | `false`                                                                 |
 | `renewal.deferRestart`              | Skip Kong restart after certificate renewal                    | `false`                                                                 |
-| `rotation.promote`                  | Copy `{release}-client-next` to live secrets and restart Kong  | `false`                                                                 |
+| `rotation.promote`                  | One-shot: copy `{release}-client-next` to live secrets and restart Kong. Reset to `false` after the Job succeeds. | `false`                                                                 |
 | `rotation.nonce`                    | Suffix for the promote Job name (bump on each promote)         | `"1"`                                                                   |
 | `tls.client.cn`                     | Common Name for client certificate                             | `example.com`                                                           |
 | `tls.server.ip`                     | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
@@ -107,11 +107,17 @@ The following values must be set during installation:
 Private-key generation and Kong restart are separate Helm steps so the new
 public key can be published before the data plane starts signing with it.
 
-1. Create a one-time CA token, then bootstrap with staging:
+`--reuse-values` persists flags in the release, so stage and promote must
+clear one-shot values instead of only toggling `stageSecret`.
+
+1. Create a one-time CA token, then bootstrap with staging. Use
+   `--wait --wait-for-jobs` so the bootstrap Job finishes before the next
+   step (it is not a Helm hook):
 
    ```sh
    helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
      --reuse-values \
+     --wait --wait-for-jobs \
      --set bootstrap.tls.token=${TOKEN} \
      --set bootstrap.stageSecret=true
    ```
@@ -122,17 +128,37 @@ public key can be published before the data plane starts signing with it.
    `operation=rotate` (keeps the old key for overlap). Confirm JWKS lists both
    kids.
 
-3. Promote the staged secret and rolling-restart Kong:
+3. Promote the staged secret and rolling-restart Kong. Clear the consumed
+   bootstrap token so Helm **drops** the `*-boot-<token hash>` Job and its
+   Secret. Leaving the token set keeps that Job in the release while
+   `stageSecret` flips the pod template from staging writes to live writes.
+   Kubernetes Job specs are immutable, so the upgrade is rejected while the
+   completed Job still exists; if TTL already removed it, Helm recreates the
+   Job with the spent one-time token.
 
    ```sh
    helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
      --reuse-values \
+     --wait \
+     --set bootstrap.tls.token=null \
      --set bootstrap.stageSecret=false \
      --set rotation.promote=true \
      --set rotation.nonce=$(date +%s)
    ```
 
-4. Confirm `trust-sign` emits the kid that matches the mounted private key,
+   Helm waits for the post-upgrade promote Job before this command returns.
+
+4. Reset `rotation.promote` so later `--reuse-values` upgrades do not render
+   the hook again (that would copy `{release}-client-next` over the live
+   secrets and restart Kong):
+
+   ```sh
+   helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+     --reuse-values \
+     --set rotation.promote=false
+   ```
+
+5. Confirm `trust-sign` emits the kid that matches the mounted private key,
    wait through the verifier grace period, then delete the old kid with
    `operation=delete`.
 
