@@ -43,6 +43,30 @@ export async function listConnections(
   return Array.isArray(data) ? data.map(normalizeConnection) : [];
 }
 
+// Full client (subsystem) detail, scoped to the owning organization — unlike
+// the public catalog's subsystem detail, this includes runtime group info.
+// `name` is the plain subsystem name (Subsystem.name, e.g. "AJC-ME") — NOT
+// Subsystem.clientId, which is the dotted id (e.g. "MIN.MYO.AJC-ME").
+export async function getClientDetail(
+  org: string,
+  name: string,
+  opts: SdxCallOpts = {},
+): Promise<Record<string, unknown>> {
+  const url =
+    `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/clients/${encodeURIComponent(name)}`;
+  console.log(`getClientDetail: GET ${url}`);
+  const res = await fetch(url, {
+    headers: authHeaders(opts.accessToken),
+    signal: opts.signal,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`getClientDetail: ${res.status} from ${url}: ${body}`);
+    throw new SdxApiError(res.status, `[${url}] ${body}`);
+  }
+  return await res.json();
+}
+
 // The SDX API sometimes returns scopes and the requester as `{ name }` objects
 // rather than the bare strings our types (and the UI) expect. Coerce them at the
 // boundary so components can render `scopes`/`requester` directly as text.
@@ -52,6 +76,15 @@ function toName(v: unknown): string {
     return String((v as { name: unknown }).name ?? "");
   }
   return v == null ? "" : String(v);
+}
+
+// The requester may also carry an `email` alongside `name` when it's an object.
+function toEmail(v: unknown): string | undefined {
+  if (v && typeof v === "object" && "email" in v) {
+    const email = (v as { email: unknown }).email;
+    return email == null ? undefined : String(email);
+  }
+  return undefined;
 }
 
 function normalizeScopes(v: unknown): string[] | undefined {
@@ -68,6 +101,7 @@ function normalizeConnection(c: ConnectionRequest): ConnectionRequest {
       ? {
           ...rd,
           requester: toName(rd.requester),
+          requesterEmail: toEmail(rd.requester) ?? rd.requesterEmail,
           scopes: normalizeScopes(rd.scopes) ?? rd.scopes,
         }
       : rd,

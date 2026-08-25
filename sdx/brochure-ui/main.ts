@@ -20,6 +20,7 @@ import { MetricsPage } from "./pages/MetricsPage.tsx";
 import { ConsolePage } from "./pages/ConsolePage.tsx";
 import { ScopesPage } from "./pages/ScopesPage.tsx";
 import { RuntimesPage } from "./pages/RuntimesPage.tsx";
+import { OrgSubsystemsPage } from "./pages/OrgSubsystemsPage.tsx";
 import { TrafficPage } from "./pages/TrafficPage.tsx";
 import { TrustPage } from "./pages/TrustPage.tsx";
 import { ConnectionsPage } from "./pages/ConnectionsPage.tsx";
@@ -42,6 +43,7 @@ import {
 } from "./lib/auth.ts";
 import {
   deleteConnection,
+  getClientDetail,
   listConnections,
   listOrgActivity,
   SdxApiError,
@@ -128,6 +130,24 @@ async function loadScopes(): Promise<ResourceScope[]> {
   return Array.isArray(data)
     ? (data as ResourceScope[])
     : [];
+}
+
+// The list endpoint omits `access`; the per-subsystem detail response carries
+// the users and roles that have access to this subsystem (and any other
+// fields the summary list drops). Returns null on failure — callers fall back
+// to the summary already in hand.
+async function fetchSubsystemDetail(
+  clientId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const detailRes = await fetch(
+      `${SUBSYSTEMS_API}/${encodeURIComponent(clientId)}?includeAccess=true`,
+    );
+    if (detailRes.ok) return await detailRes.json();
+  } catch (e) {
+    console.error(`Failed to fetch subsystem detail for ${clientId}:`, e);
+  }
+  return null;
 }
 
 let subsystems: Subsystem[] = [];
@@ -574,18 +594,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     if (!subsystem) return notFound();
     // The list endpoint omits `access`; the per-subsystem detail response
     // carries the users and roles that have access to this subsystem.
-    let subsystemDetail: Subsystem = subsystem;
-    try {
-      const detailRes = await fetch(
-        `${SUBSYSTEMS_API}/${encodeURIComponent(clientId)}?includeAccess=true`,
-      );
-      if (detailRes.ok) {
-        const detail = await detailRes.json();
-        subsystemDetail = { ...subsystem, ...detail };
-      }
-    } catch (e) {
-      console.error(`Failed to fetch subsystem detail for ${clientId}:`, e);
-    }
+    const detail = await fetchSubsystemDetail(clientId);
+    const subsystemDetail: Subsystem = detail
+      ? { ...subsystem, ...detail }
+      : subsystem;
     const subsystemKeys = await getSubsystemKeysets(clientId);
     return htmlResponse(
       React.createElement(SubsystemDetailPage, {
@@ -731,6 +743,55 @@ Deno.serve({ port: PORT }, async (req: Request) => {
 
   if (path === "/runtimes") {
     return await handleRuntimes(req, url, user);
+  }
+
+  if (path === "/org-subsystems") {
+    return await handleOrgSubsystems(req, url, user);
+  }
+
+  if (path.startsWith("/api/subsystems/")) {
+    const gate = requireAuth(req, user);
+    if (gate) return gate;
+    const clientId = decodeURIComponent(
+      path.slice("/api/subsystems/".length),
+    );
+    const subsystem = subsystems.find(
+      (s) => s.clientId === clientId,
+    );
+    if (!subsystem) {
+      console.error(
+        `/api/subsystems/${clientId}: not found in cached catalog (${subsystems.length} subsystems loaded)`,
+      );
+      return new Response(
+        `subsystem not found: ${clientId}`,
+        {
+          status: 404,
+          headers: { "content-type": "text/plain" },
+        },
+      );
+    }
+    // Org-scoped client endpoint — unlike the public catalog's subsystem
+    // detail, this includes runtime group info. Takes the plain subsystem
+    // name (subsystem.name), not the dotted subsystem.clientId used to look
+    // it up in the cached catalog above.
+    try {
+      const detail = await getClientDetail(
+        subsystem.organization.name,
+        subsystem.name,
+        { accessToken: user!.accessToken },
+      );
+      return Response.json(
+        { ...subsystem, ...detail },
+        { headers: { "cache-control": "no-store" } },
+      );
+    } catch (e) {
+      const status =
+        e instanceof SdxApiError ? e.status : 502;
+      return new Response((e as Error).message, {
+        status,
+        headers: { "content-type": "text/plain" },
+      });
+    }
   }
 
   if (path === "/scopes") {
@@ -1042,6 +1103,34 @@ async function handleRuntimes(
       error,
       config,
       currentPath: "/runtimes",
+      user: user!,
+    }),
+  );
+}
+
+async function handleOrgSubsystems(
+  req: Request,
+  url: URL,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<Response> {
+  const gate = requireAuth(req, user);
+  if (gate) return gate;
+
+  const orgName = url.searchParams.get("org") ?? "";
+  const selectedOrg =
+    organizations.find((o) => o.name === orgName) ?? null;
+  const orgSubsystems = selectedOrg
+    ? (subsystemsByOrg.get(selectedOrg.name) ?? [])
+    : [];
+
+  return htmlResponse(
+    React.createElement(OrgSubsystemsPage, {
+      organizations,
+      selectedOrg,
+      subsystems: orgSubsystems,
+      error: null,
+      config,
+      currentPath: "/org-subsystems",
       user: user!,
     }),
   );

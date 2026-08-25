@@ -47,6 +47,11 @@ function ScopesIcon() {
     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
   );
 }
+function SubsystemsIcon() {
+  return (
+    <path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm0 9h7v7h-7v-7zM4 13h7v7H4v-7z" />
+  );
+}
 
 // Long horizontal boxes on the left — the operational resources.
 const RESOURCE_CARDS: ConsoleCard[] = [
@@ -56,6 +61,13 @@ const RESOURCE_CARDS: ConsoleCard[] = [
     description:
       "Runtime groups owned by, and available to, an organization member.",
     icon: <RuntimesIcon />,
+  },
+  {
+    label: "Subsystems",
+    href: "/org-subsystems",
+    description:
+      "Choose an organization to browse its subsystems and view full client detail.",
+    icon: <SubsystemsIcon />,
   },
   {
     label: "Connection Requests",

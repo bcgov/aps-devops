@@ -205,6 +205,7 @@ export interface ConnectionRequesterDetails {
     privacyZone: string;
   };
   requester: string;
+  requesterEmail?: string;
   scopes: string[];
   service: {
     clientId: string;

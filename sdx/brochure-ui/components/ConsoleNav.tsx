@@ -4,6 +4,7 @@ export const CONSOLE_PAGES: {
   href: string;
 }[] = [
   { label: "Runtime Groups", href: "/runtimes" },
+  { label: "Subsystems", href: "/org-subsystems" },
   { label: "Connection Requests", href: "/connections" },
   { label: "Activity", href: "/org-activity" },
   { label: "Resource Scopes", href: "/scopes" },
@@ -16,6 +17,7 @@ export const CONSOLE_PAGES: {
 export const CONSOLE_PATHS = [
   "/console",
   "/runtimes",
+  "/org-subsystems",
   "/traffic",
   "/logs",
   "/metrics",
