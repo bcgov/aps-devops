@@ -473,15 +473,20 @@ const EDIT_SCRIPT = `
     var activeEl = f.querySelector('[data-active-toggle]');
     var subEl = f.querySelector('[data-subsystem-id]');
     var sub = subEl ? (subEl.value||'').trim() : '';
+    var clientComment = (f.querySelector('[data-comment-field][data-res="client"]')||{}).value || '';
+    var serviceComment = (f.querySelector('[data-comment-field][data-res="service"]')||{}).value || '';
     var servicePatterns = buildPatterns(f, 'service');
     var serviceResources;
-    if (sub || Object.keys(servicePatterns).length) {
+    if (sub || serviceComment.trim() || Object.keys(servicePatterns).length) {
       serviceResources = { gatewayPatterns: servicePatterns };
       if (sub) serviceResources.subsystemId = sub;
+      if (serviceComment.trim()) serviceResources.comment = serviceComment.trim();
     }
+    var clientResources = { gatewayPatterns: buildPatterns(f, 'client') };
+    if (clientComment.trim()) clientResources.comment = clientComment.trim();
     var payload = {
       isActive: activeEl ? !!activeEl.checked : undefined,
-      clientResources: { gatewayPatterns: buildPatterns(f, 'client') },
+      clientResources: clientResources,
       serviceResources: serviceResources
     };
     var hidden = f.querySelector('[data-edit-payload]');
@@ -696,6 +701,26 @@ function GatewayPatterns({
                 value={p.service_id}
                 mono
               />
+              <FieldRow
+                label="tls_verify"
+                value={p.tls_verify}
+                mono
+              />
+              <FieldRow
+                label="client_runtime_override"
+                value={p.client_runtime_override}
+                mono
+              />
+              <FieldRow
+                label="integration_client_id"
+                value={p.integration_client_id}
+                mono
+              />
+              <FieldRow
+                label="use_sni"
+                value={p.use_sni}
+                mono
+              />
             </dl>
             {p.upgrades && (
               <UpgradesView upgrades={p.upgrades} />
@@ -840,6 +865,17 @@ const TOKEN_EXCHANGE_FIELDS: EditFieldSpec[] = [
     label: "Token endpoint",
     type: "string",
   },
+  {
+    key: "audience",
+    label: "Audience",
+    type: "string",
+  },
+  {
+    key: "scopes",
+    label: "Scopes",
+    type: "set",
+    placeholder: "one scope per line",
+  },
 ];
 
 const UP_SIGN: UpgradeSpec = {
@@ -918,8 +954,14 @@ const CLIENT_PATTERNS: PatternSpec[] = [
     key: "sdx-p2p-consumer-access.r1",
     label: "Consumer access",
     description:
-      "Baseline consumer access pattern. No additional properties.",
-    fields: [],
+      "Baseline consumer access pattern.",
+    fields: [
+      {
+        key: "integrationClientId",
+        label: "Integration client ID",
+        type: "string",
+      },
+    ],
     upgrades: [],
   },
   {
@@ -932,6 +974,16 @@ const CLIENT_PATTERNS: PatternSpec[] = [
         key: "stripPath",
         label: "Strip path",
         type: "bool",
+      },
+      {
+        key: "tlsVerify",
+        label: "TLS verify",
+        type: "string",
+      },
+      {
+        key: "clientRuntimeOverride",
+        label: "Client runtime override",
+        type: "string",
       },
     ],
     upgrades: [
@@ -957,6 +1009,11 @@ const SERVICE_PATTERNS: PatternSpec[] = [
         label: "Upstream URL",
         type: "string",
         placeholder: "https://…",
+      },
+      {
+        key: "useSni",
+        label: "Use SNI",
+        type: "string",
       },
     ],
     upgrades: [
@@ -1287,6 +1344,20 @@ function EditDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Client resources
             </h3>
+            <label className="block py-0.5">
+              <span className="block text-xs font-medium text-gray-600 mb-0.5">
+                Comment
+              </span>
+              <input
+                type="text"
+                data-comment-field
+                data-res="client"
+                defaultValue={
+                  conn.clientResources?.comment ?? ""
+                }
+                className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+              />
+            </label>
             {CLIENT_PATTERNS.map((p) => (
               <PatternBlock
                 key={p.key}
@@ -1301,6 +1372,20 @@ function EditDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Service resources
             </h3>
+            <label className="block py-0.5">
+              <span className="block text-xs font-medium text-gray-600 mb-0.5">
+                Comment
+              </span>
+              <input
+                type="text"
+                data-comment-field
+                data-res="service"
+                defaultValue={
+                  conn.serviceResources?.comment ?? ""
+                }
+                className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+              />
+            </label>
             {SERVICE_PATTERNS.map((p) => (
               <PatternBlock
                 key={p.key}
@@ -1548,6 +1633,14 @@ function ConnectionCard({
               subsystemId ||
               servicePatterns) && (
               <DetailSection title="Client resources">
+                {conn.clientResources?.comment && (
+                  <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1 mb-2">
+                    <FieldRow
+                      label="comment"
+                      value={conn.clientResources.comment}
+                    />
+                  </dl>
+                )}
                 <GatewayPatterns
                   patterns={clientPatterns}
                 />
@@ -1556,12 +1649,17 @@ function ConnectionCard({
 
             {(servicePatterns || subsystemId) && (
               <DetailSection title="Service resources">
-                {subsystemId && (
+                {(subsystemId ||
+                  conn.serviceResources?.comment) && (
                   <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1 mb-2">
                     <FieldRow
                       label="subsystemId"
                       value={subsystemId}
                       mono
+                    />
+                    <FieldRow
+                      label="comment"
+                      value={conn.serviceResources?.comment}
                     />
                   </dl>
                 )}

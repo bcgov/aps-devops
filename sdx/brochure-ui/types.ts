@@ -195,6 +195,10 @@ export interface ConnectionGatewayPattern {
   strip_path?: boolean;
   client_id?: string;
   service_id?: string;
+  client_runtime_override?: string;
+  tls_verify?: string;
+  integration_client_id?: string;
+  use_sni?: string;
   upgrades?: ConnectionGatewayUpgrades;
 }
 
@@ -215,10 +219,12 @@ export interface ConnectionRequesterDetails {
 }
 
 export interface ConnectionClientResources {
+  comment?: string;
   gatewayPatterns?: Record<string, ConnectionGatewayPattern>;
 }
 
 export interface ConnectionServiceResources {
+  comment?: string;
   subsystemId: string;
   gatewayPatterns?: Record<string, ConnectionGatewayPattern>;
 }
