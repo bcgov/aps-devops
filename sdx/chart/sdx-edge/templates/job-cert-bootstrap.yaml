@@ -90,7 +90,7 @@ spec:
                   --from-file=ca.crt=./roots.pem | kubectl apply -f -
 {{- end }}
 {{- if .Values.kong.enabled }}
-                kubectl rollout restart deployment $EDGE_NAME
+                kubectl rollout restart deployment $EDGE_NAME || true
 {{- end }}
 
           env:
