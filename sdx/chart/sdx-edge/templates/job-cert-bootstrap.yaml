@@ -68,7 +68,7 @@ spec:
                 curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
 
-{{- if .Values.bootstrap.stageSecret }}
+{{- if .Values.bootstrap.stageSecret | default false }}
                 kubectl create secret \
                   --save-config --dry-run=client -o yaml \
                   tls ${EDGE_NAME}-client-next \
@@ -98,7 +98,7 @@ spec:
                   generic sdx-edge-ca \
                   --from-file=ca.crt=./roots.pem | kubectl apply -f -
 {{- end }}
-{{- if and .Values.kong.enabled (not .Values.bootstrap.stageSecret) (not .Values.bootstrap.deferRestart) }}
+{{- if and .Values.kong.enabled (not (.Values.bootstrap.stageSecret | default false)) (not (.Values.bootstrap.deferRestart | default false)) }}
                 kubectl rollout restart deployment $EDGE_NAME
 {{- end }}
 

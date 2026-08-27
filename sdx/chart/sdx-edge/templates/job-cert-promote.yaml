@@ -1,4 +1,4 @@
-{{ if .Values.rotation.promote }}
+{{ if and .Values.rotation .Values.rotation.promote }}
 # Promote a staged runtime-group TLS secret ({release}-client-next) to the live
 # client and server secrets, then rolling-restart Kong so trust-sign mounts the
 # new private key. Run only after sdx-keys.r1 operation=rotate has published
