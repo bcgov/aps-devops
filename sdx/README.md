@@ -73,7 +73,7 @@ The following table lists the configurable parameters in `values.yaml`:
 | `sdx_aggregator_url`                | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
 | `mtls_required`                     | Enable/disable mutual TLS requirement                          | `true`                                                                  |
 | `https_proxy`                       | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
-| `bootstrap.tls.token`               | One-time CA token for certificate bootstrap. Clear on promote (`null`) so the bootstrap Job is dropped, not mutated. | `""` (must be provided)                                                 |
+| `bootstrap.tls.token`               | One-time CA token for certificate bootstrap. Clear on promote with `--set-string bootstrap.tls.token=""` so the bootstrap Job is dropped, not mutated. | `""` (must be provided)                                                 |
 | `bootstrap.stageSecret`             | Write `{release}-client-next` and skip Kong restart            | `false`                                                                 |
 | `bootstrap.deferRestart`            | Skip Kong restart after writing live bootstrap secrets         | `false`                                                                 |
 | `renewal.deferRestart`              | Skip Kong restart after certificate renewal                    | `false`                                                                 |
@@ -122,25 +122,37 @@ clear one-shot values instead of only toggling `stageSecret`.
      --set bootstrap.stageSecret=true
    ```
 
-   This writes `{release}-client-next` and does **not** restart Kong.
+   This writes `sdx-edge-${EDGE_ID}-client-next` and does **not** restart Kong.
+   The Job signs the CSR itself (`step ca sign`); only `tls.crt` and `tls.key`
+   are stored.
 
-2. Sign the CSR and publish the new public key with `sdx-keys.r1`
+2. Extract the staged certificate and publish it with `sdx-keys.r1`
    `operation=rotate` (keeps the old key for overlap). Confirm JWKS lists both
    kids.
 
+   ```sh
+   kubectl get secret sdx-edge-${EDGE_ID}-client-next \
+     -o jsonpath='{.data.tls\.crt}' | base64 -d
+   ```
+
+   Pass that PEM as `certificatePem` on `sdx-keys.r1` (see
+   `docs/sdx-keys-rotation.md` in api-services-portal).
+
 3. Promote the staged secret and rolling-restart Kong. Clear the consumed
-   bootstrap token so Helm **drops** the `*-boot-<token hash>` Job and its
-   Secret. Leaving the token set keeps that Job in the release while
-   `stageSecret` flips the pod template from staging writes to live writes.
-   Kubernetes Job specs are immutable, so the upgrade is rejected while the
-   completed Job still exists; if TTL already removed it, Helm recreates the
-   Job with the spent one-time token.
+   bootstrap token with an **empty string** so Helm **drops** the
+   `*-boot-<token hash>` Job and its Secret. Do not use `--set …=null`: with
+   `--reuse-values`, Helm 3 coalescing strips the null and the previous token
+   is rendered again. Leaving the token set keeps that Job in the release
+   while `stageSecret` flips the pod template from staging writes to live
+   writes. Kubernetes Job specs are immutable, so the upgrade is rejected
+   while the completed Job still exists; if TTL already removed it, Helm
+   recreates the Job with the spent one-time token.
 
    ```sh
    helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
      --reuse-values \
      --wait \
-     --set bootstrap.tls.token=null \
+     --set-string bootstrap.tls.token="" \
      --set bootstrap.stageSecret=false \
      --set rotation.promote=true \
      --set rotation.nonce=$(date +%s)

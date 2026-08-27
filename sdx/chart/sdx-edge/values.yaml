@@ -20,8 +20,9 @@ kong:
 
 bootstrap:
   tls:
-    # One-time CA token. Clear on promote (`null`) so Helm drops the bootstrap
-    # Job instead of mutating its immutable pod template (see README).
+    # One-time CA token. Clear on promote with an empty string
+    # (`--set-string bootstrap.tls.token=""`), not null: Helm 3 --reuse-values
+    # coalescing drops null and restores the previous token (see README).
     token: ""
     cn: "example.com"
 
