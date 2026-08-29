@@ -301,40 +301,6 @@ export function SubsystemDetailPage({
             </code>
             <CopyButton value={subsystem.clientId} />
           </div>
-
-          {subsystem.privacyZone && (
-            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-                <dt className="text-xs text-gray-500 mb-1">
-                  Privacy zone
-                </dt>
-                <dd className="font-mono font-semibold text-gray-800 text-sm">
-                  {subsystem.privacyZone}
-                </dd>
-              </div>
-            </dl>
-          )}
-
-          {subsystem.integrationClientIds &&
-            subsystem.integrationClientIds.length > 0 && (
-              <div
-                className={subsystem.privacyZone ? "mt-5" : ""}
-              >
-                <h3 className="text-xs text-gray-500 mb-2">
-                  Integrations
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {subsystem.integrationClientIds.map((id) => (
-                    <code
-                      key={id}
-                      className="text-xs font-mono bg-white border border-gray-200 rounded px-2 py-1 text-gray-700"
-                    >
-                      {id}
-                    </code>
-                  ))}
-                </div>
-              </div>
-            )}
         </div>
       </div>
 
