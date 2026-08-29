@@ -234,6 +234,7 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
                 subsystem={sub}
                 href={`/subsystems/${sub.clientId}`}
                 serviceCount={serviceCounts[sub.clientId] ?? 0}
+                showOrganization={false}
               />
             ))}
           </div>

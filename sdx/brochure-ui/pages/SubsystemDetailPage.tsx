@@ -244,21 +244,14 @@ export function SubsystemDetailPage({
           </a>
           <span className="mx-2">›</span>
           <a
-            href="/organizations"
+            href="/subsystems"
             className="hover:text-[#003366] hover:underline"
           >
-            Organizations
-          </a>
-          <span className="mx-2">›</span>
-          <a
-            href={`/organizations/${subsystem.organization.name}`}
-            className="hover:text-[#003366] hover:underline"
-          >
-            {subsystem.organization.title}
+            Subsystems
           </a>
           <span className="mx-2">›</span>
           <span className="text-gray-800 font-medium">
-            {subsystem.name}
+            {subsystem.clientId}
           </span>
         </div>
       </div>
@@ -309,40 +302,39 @@ export function SubsystemDetailPage({
             <CopyButton value={subsystem.clientId} />
           </div>
 
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">
-                Organization
-              </dt>
-              <dd className="font-semibold text-gray-800 text-sm">
-                {subsystem.organization.title}
-              </dd>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">
-                Organization type
-              </dt>
-              <dd className="font-semibold text-gray-800 text-sm">
-                {classLabel}
-              </dd>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">
-                Member ID
-              </dt>
-              <dd className="font-mono font-semibold text-gray-800 text-sm">
-                {subsystem.member.memberId}
-              </dd>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">
-                Subsystem identifier
-              </dt>
-              <dd className="font-mono font-semibold text-gray-800 text-sm">
-                {subsystem.name}
-              </dd>
-            </div>
-          </dl>
+          {subsystem.privacyZone && (
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+                <dt className="text-xs text-gray-500 mb-1">
+                  Privacy zone
+                </dt>
+                <dd className="font-mono font-semibold text-gray-800 text-sm">
+                  {subsystem.privacyZone}
+                </dd>
+              </div>
+            </dl>
+          )}
+
+          {subsystem.integrationClientIds &&
+            subsystem.integrationClientIds.length > 0 && (
+              <div
+                className={subsystem.privacyZone ? "mt-5" : ""}
+              >
+                <h3 className="text-xs text-gray-500 mb-2">
+                  Integrations
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {subsystem.integrationClientIds.map((id) => (
+                    <code
+                      key={id}
+                      className="text-xs font-mono bg-white border border-gray-200 rounded px-2 py-1 text-gray-700"
+                    >
+                      {id}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            )}
         </div>
       </div>
 

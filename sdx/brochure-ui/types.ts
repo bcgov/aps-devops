@@ -10,6 +10,8 @@ export interface Subsystem {
   member: { memberClass: string; memberId: string };
   description?: string;
   access?: SubsystemAccess[];
+  privacyZone?: string;
+  integrationClientIds?: string[];
 }
 
 export interface Organization {

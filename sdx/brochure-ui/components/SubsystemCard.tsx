@@ -15,10 +15,11 @@ const MEMBER_CLASS_COLORS: Record<string, string> = {
 };
 
 export function SubsystemCard(
-  { subsystem, href, serviceCount }: {
+  { subsystem, href, serviceCount, showOrganization = true }: {
     subsystem: Subsystem;
     href?: string;
     serviceCount?: number;
+    showOrganization?: boolean;
   },
 ) {
   const classLabel = MEMBER_CLASS_LABELS[subsystem.member.memberClass] ?? subsystem.member.memberClass;
@@ -35,14 +36,16 @@ export function SubsystemCard(
 
   const inner = (
     <div className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-[#003366] transition-all flex flex-col gap-2 h-full">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
-          {subsystem.organization.title}
-        </span>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${classColor}`}>
-          {classLabel}
-        </span>
-      </div>
+      {showOrganization && (
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+            {subsystem.organization.title}
+          </span>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${classColor}`}>
+            {classLabel}
+          </span>
+        </div>
+      )}
       <h3 className="text-[#003366] font-bold text-lg leading-snug">{subsystem.name}</h3>
       {subsystem.description && (
         <p className="text-gray-600 text-sm line-clamp-3">{subsystem.description}</p>
