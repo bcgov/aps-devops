@@ -6,7 +6,7 @@ A Kubernetes deployment for running SDX (Secure Data Exchange) Edge Servers as h
 
 ### Helm Chart (`chart/sdx-edge`)
 
-**Chart Version:** 0.3.4
+**Chart Version:** 0.3.6
 **App Version:** 3.9.1
 
 Deploys a Kong Gateway data plane node configured for secure data exchange operations. The chart includes:
@@ -55,6 +55,9 @@ helm upgrade --install ${EDGE_ID} \
 ```sh
 helm package sdx-edge
 helm push sdx-edge-0.3.6.tgz oci://ghcr.io/bcgov/aps-devops
+
+# --reuse-values from 0.3.5 has no renewal/rotation maps
+./chart/sdx-edge/ci/render-from-0.3.5-values.sh
 ```
 
 #### Configuration
@@ -73,7 +76,12 @@ The following table lists the configurable parameters in `values.yaml`:
 | `sdx_aggregator_url`                | SDX aggregator service endpoint                                | `gwaggregator-api-gov-bc-ca-lab.dev.api.gov.bc.ca`                      |
 | `mtls_required`                     | Enable/disable mutual TLS requirement                          | `true`                                                                  |
 | `https_proxy`                       | HTTP proxy URL for restricted network environments             | `""` (empty, disabled)                                                  |
-| `bootstrap.tls.token`               | Bootstrap token for initial certificate request                | `""` (must be provided)                                                 |
+| `bootstrap.tls.token`               | One-time CA token for certificate bootstrap. Clear on promote with `--set-string bootstrap.tls.token=""` so the bootstrap Job is dropped, not mutated. | `""` (must be provided)                                                 |
+| `bootstrap.stageSecret`             | Write `{release}-client-next` and skip Kong restart            | `false`                                                                 |
+| `bootstrap.deferRestart`            | Skip Kong restart after writing live bootstrap secrets         | `false`                                                                 |
+| `renewal.deferRestart`              | Skip Kong restart after certificate renewal                    | `false`                                                                 |
+| `rotation.promote`                  | One-shot: copy `{release}-client-next` to live secrets and restart Kong. Reset to `false` after the Job succeeds. | `false`                                                                 |
+| `rotation.nonce`                    | Suffix for the promote Job name (bump on each promote)         | `"1"`                                                                   |
 | `tls.client.cn`                     | Common Name for client certificate                             | `example.com`                                                           |
 | `tls.server.ip`                     | IP address to add as SAN to edge server certificate            | `""` (optional)                                                         |
 | `tls.public_ca`                     | PEM-encoded public CA certificates for trust chain             | (includes Sectigo, USERTrust, SDX, APS, Amazon, Let's Encrypt root CAs) |
@@ -96,6 +104,82 @@ The following values must be set during installation:
 
 - `bootstrap.tls.token` - Required for certificate bootstrapping
 - `route.host` - Required for proper external routing
+
+#### Runtime-group key rotation
+
+Private-key generation and Kong restart are separate Helm steps so the new
+public key can be published before the data plane starts signing with it.
+
+`--reuse-values` persists flags in the release, so stage and promote must
+clear one-shot values instead of only toggling `stageSecret`.
+
+1. Create a one-time CA token, then bootstrap with staging. Helm waits for
+   the pre-upgrade bootstrap hook before continuing the release:
+
+   ```sh
+   helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+     --reuse-values \
+     --wait \
+     --set bootstrap.tls.token=${TOKEN} \
+     --set bootstrap.stageSecret=true
+   ```
+
+   This writes `sdx-edge-${EDGE_ID}-client-next` and does **not** restart Kong.
+   The Job signs the CSR itself (`step ca sign`); only `tls.crt` and `tls.key`
+   are stored.
+
+2. Extract the staged certificate and publish it with `sdx-keys.r1`
+   `operation=rotate` (keeps the old key for overlap). Confirm JWKS lists both
+   kids.
+
+   ```sh
+   kubectl get secret sdx-edge-${EDGE_ID}-client-next \
+     -o jsonpath='{.data.tls\.crt}' | base64 -d
+   ```
+
+   Pass that PEM as `certificatePem` on `sdx-keys.r1` (see
+   `docs/sdx-keys-rotation.md` in api-services-portal).
+
+3. Promote the staged secret and rolling-restart Kong. Clear the consumed
+   bootstrap token with an **empty string** so Helm **drops** the
+   `*-boot-<token hash>` hook Job and its Secret. Do not use `--set …=null`: with
+   `--reuse-values`, Helm 3 coalescing strips the null and the previous token
+   is rendered again. Leaving the token set re-renders the pre-upgrade hook
+   while `stageSecret` flips the pod template from staging writes to live
+   writes; `before-hook-creation` then recreates that Job with the spent
+   one-time token.
+
+   ```sh
+   helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+     --reuse-values \
+     --wait \
+     --set-string bootstrap.tls.token="" \
+     --set bootstrap.stageSecret=false \
+     --set rotation.promote=true \
+     --set rotation.nonce=$(date +%s)
+   ```
+
+   Helm waits for the post-upgrade promote Job before this command returns.
+
+4. Reset `rotation.promote` so later `--reuse-values` upgrades do not render
+   the hook again (that would copy `{release}-client-next` over the live
+   secrets and restart Kong):
+
+   ```sh
+   helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+     --reuse-values \
+     --set rotation.promote=false
+   ```
+
+5. Confirm `trust-sign` emits the kid that matches the mounted private key,
+   wait through the verifier grace period, then delete the old kid with
+   `operation=delete`.
+
+Certificate **renewal** (`step ca renew`) keeps the same private key, so the
+cron job still restarts Kong by default. Set `renewal.deferRestart=true` only
+when restart is handled separately.
+
+See `docs/sdx-keys-rotation.md` in api-services-portal for the full contract.
 
 **Example Override:**
 

@@ -1,6 +1,11 @@
 # Cert Bootstrap Job
 # - This job is used to register a new TLS certificate for Kong
 # - It runs a container that executes the certificate sign script
+# - Rendered only while bootstrap.tls.token is set. Clear the token on promote
+#   with --set-string bootstrap.tls.token="" (not null; see README) so Helm
+#   does not re-run this pre-upgrade hook. Leaving the token set while
+#   stageSecret changes recreates the Job (before-hook-creation) with a spent
+#   one-time token.
 {{ if .Values.bootstrap.tls.token }}
 apiVersion: batch/v1
 kind: Job
@@ -67,6 +72,13 @@ spec:
                 curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
 
+{{- if .Values.bootstrap.stageSecret | default false }}
+                kubectl create secret \
+                  --save-config --dry-run=client -o yaml \
+                  tls ${EDGE_NAME}-client-next \
+                  --cert=./tls.crt \
+                  --key=./tls.key | kubectl apply -f -
+{{- else }}
                 kubectl delete secret ${EDGE_NAME}-client || true
                 kubectl delete secret ${EDGE_NAME}-server || true
 
@@ -81,6 +93,7 @@ spec:
                   tls ${EDGE_NAME}-server \
                   --cert=./tls.crt \
                   --key=./tls.key | kubectl apply -f -
+{{- end }}
 
 {{- if .Values.shared.ca_secret }}
 
@@ -89,7 +102,7 @@ spec:
                   generic sdx-edge-ca \
                   --from-file=ca.crt=./roots.pem | kubectl apply -f -
 {{- end }}
-{{- if .Values.kong.enabled }}
+{{- if and .Values.kong.enabled (not (.Values.bootstrap.stageSecret | default false)) (not (.Values.bootstrap.deferRestart | default false)) }}
                 kubectl rollout restart deployment $EDGE_NAME
 {{- end }}
 
