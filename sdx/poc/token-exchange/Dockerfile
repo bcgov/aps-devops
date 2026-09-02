@@ -1,4 +1,4 @@
-FROM quay.io/keycloak/keycloak:26.7
+FROM quay.io/keycloak/keycloak:26.6
 
 ENV KC_DB=dev-file
 ENV KC_HEALTH_ENABLED=true
