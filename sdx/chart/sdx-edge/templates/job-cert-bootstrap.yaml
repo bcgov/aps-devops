@@ -3,9 +3,9 @@
 # - It runs a container that executes the certificate sign script
 # - Rendered only while bootstrap.tls.token is set. Clear the token on promote
 #   with --set-string bootstrap.tls.token="" (not null; see README) so Helm
-#   deletes this Job instead of changing its pod template (stageSecret). Job
-#   specs are immutable; a consumed one-time token must not recreate the Job
-#   after TTL either.
+#   does not re-run this pre-upgrade hook. Leaving the token set while
+#   stageSecret changes recreates the Job (before-hook-creation) with a spent
+#   one-time token.
 {{ if .Values.bootstrap.tls.token }}
 apiVersion: batch/v1
 kind: Job
@@ -16,6 +16,9 @@ metadata:
     app.kubernetes.io/component: job-cert-bootstrap
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   parallelism: 1
   completions: 1
@@ -53,7 +56,7 @@ spec:
 
                 step certificate create \
                   --no-password --insecure \
-                   --san ${CN} --san ${IP} \
+                  --san ${CN} --san ${IP} \
                   --csr ${CN} tls.csr tls.key
 
                 TOKEN=$(cat /etc/secrets/sdx-edge-bootstrap-token/token)
@@ -63,6 +66,7 @@ spec:
                 step ca sign \
                   --ca-url $CLIENT_CA_URL \
                   --root ./roots.pem \
+                  --not-after 48h \
                   --force --token $TOKEN tls.csr tls.crt  
 
                 curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"

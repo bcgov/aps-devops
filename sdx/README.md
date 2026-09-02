@@ -113,14 +113,13 @@ public key can be published before the data plane starts signing with it.
 `--reuse-values` persists flags in the release, so stage and promote must
 clear one-shot values instead of only toggling `stageSecret`.
 
-1. Create a one-time CA token, then bootstrap with staging. Use
-   `--wait --wait-for-jobs` so the bootstrap Job finishes before the next
-   step (it is not a Helm hook):
+1. Create a one-time CA token, then bootstrap with staging. Helm waits for
+   the pre-upgrade bootstrap hook before continuing the release:
 
    ```sh
    helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
      --reuse-values \
-     --wait --wait-for-jobs \
+     --wait \
      --set bootstrap.tls.token=${TOKEN} \
      --set bootstrap.stageSecret=true
    ```
@@ -143,13 +142,12 @@ clear one-shot values instead of only toggling `stageSecret`.
 
 3. Promote the staged secret and rolling-restart Kong. Clear the consumed
    bootstrap token with an **empty string** so Helm **drops** the
-   `*-boot-<token hash>` Job and its Secret. Do not use `--set …=null`: with
+   `*-boot-<token hash>` hook Job and its Secret. Do not use `--set …=null`: with
    `--reuse-values`, Helm 3 coalescing strips the null and the previous token
-   is rendered again. Leaving the token set keeps that Job in the release
+   is rendered again. Leaving the token set re-renders the pre-upgrade hook
    while `stageSecret` flips the pod template from staging writes to live
-   writes. Kubernetes Job specs are immutable, so the upgrade is rejected
-   while the completed Job still exists; if TTL already removed it, Helm
-   recreates the Job with the spent one-time token.
+   writes; `before-hook-creation` then recreates that Job with the spent
+   one-time token.
 
    ```sh
    helm upgrade ${EDGE_ID} oci://ghcr.io/bcgov/aps-devops/sdx-edge \

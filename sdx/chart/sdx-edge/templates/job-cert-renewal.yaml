@@ -13,7 +13,8 @@ metadata:
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
 spec:
-  schedule: 0 */12 * * *
+  # This is UTC time, so this will run at 12:30am and 12:30pm UTC (5:30pm and 5:30am PST)
+  schedule: 30 */12 * * *
   startingDeadlineSeconds: 10
   concurrencyPolicy: Replace
   suspend: false
