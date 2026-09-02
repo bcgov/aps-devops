@@ -136,3 +136,60 @@ Stop Keycloak (data is discarded automatically):
 ```bash
 docker stop keycloak-poc
 ```
+
+### DPoP testing
+
+#### DPoP - Emulate a user login to client-a
+
+```sh
+echo "
+const crypto = require('crypto');
+
+// 1. Generate an RSA 2048-bit key pair
+const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+});
+
+// 2. Export the public key parameters into JWK format
+const jwk = privateKey.export({ format: 'jwk' });
+
+// 3. Append necessary metadata for signing
+jwk.kid = crypto.randomUUID(); // Unique key identifier
+jwk.use = 'sig';
+jwk.alg = 'RS256';
+
+// 4. Wrap it inside a JWKS array structure
+const jwks = { keys: [jwk] };
+
+console.log(JSON.stringify(jwks, null, 2));
+" | node > key.json
+
+export SECRET=$(terraform output client_a_secret | jq -r .)
+
+# User: testuser, Pass: secret
+oauth2c "http://localhost:8080/realms/poc-realm/.well-known/openid-configuration" \
+  --client-id client-a \
+  --client-secret $SECRET \
+  --response-types code \
+  --response-mode query \
+  --auth-method client_secret_basic \
+  --grant-type authorization_code \
+  --scopes "fin:finance:read fin:finance:write hth:patient:read hth:patient:phn:read" \
+  --prompt consent \
+  --dpop \
+  --signing-key key.json \
+  | jq -r .access_token
+
+export TOK="<access token>"
+```
+
+#### DPoP - Emulate Kong API Gateway token exchange
+
+Result: `kong-gw` is not able to perform token exchange. Attempting it returns the error:
+
+```json
+{
+  "error": "invalid_request",
+  "error_description": "Sender-constrained tokens are not supported as subject_token. Use a Bearer token instead."
+}
+```
