@@ -91,10 +91,6 @@ const JWKS_SOURCES: { url: string; environment?: string }[] = JWKS_ENV_OVERRIDE
       environment: env.id,
     }))
   );
-const SDX_KEYSET_BASE =
-  Deno.env.get("SDX_KEYSET_BASE") ??
-  "https://pzgw-api-gov-bc-ca.dev.api.gov.bc.ca/keysets";
-
 const SUBSYSTEMS_API = `${SDX_API_BASE}/subsystems`;
 const ORGANIZATIONS_API = `${SDX_API_BASE}/organizations`;
 const SERVICES_API = `${SDX_API_BASE}/services`;
@@ -191,7 +187,7 @@ function clearLocalJwksCache(): void {
 // JwksData carrying the error.
 function getKeyset(
   keysetId: string,
-  baseUrl: string = SDX_KEYSET_BASE,
+  baseUrl: string,
 ): Promise<JwksData | null> {
   const cached = keysetCache.get(keysetId);
   if (cached) return cached;
@@ -229,7 +225,8 @@ async function getKeysetsByEnvironment(
 ): Promise<EnvKeyset[]> {
   const results = await Promise.all(
     ENVIRONMENTS.map(async (env): Promise<EnvKeyset | null> => {
-      const baseUrl = ORG_KEYSETS_URL_BY_ENV[env.id] ?? SDX_KEYSET_BASE;
+      const baseUrl = ORG_KEYSETS_URL_BY_ENV[env.id];
+      if (!baseUrl) return null;
       const data = await getKeyset(`${prefix}.${env.id}`, baseUrl);
       if (!data || data.error || data.keys.length === 0) {
         return null;

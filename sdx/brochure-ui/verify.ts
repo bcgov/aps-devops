@@ -18,15 +18,21 @@
 //
 // Usage:
 //   deno run --allow-net verify.ts \
-//     --sig <X-Entity-Sig> --edge-token <X-Edge-Token> --entity <dotted-id>
+//     --sig <X-Entity-Sig> --edge-token <X-Edge-Token> --entity <dotted-id> \
+//     --keyset-base <url>
 //
-// Pass the three values the calculation needs directly: the signature, the
-// edge token it was computed over, and the entity (or --keyset to skip the
-// dotted-id → keyset mapping). Exit code is 0 when the signature verified.
+// Pass the values the calculation needs directly: the signature, the edge
+// token it was computed over, the entity (or --keyset to skip the dotted-id
+// → keyset mapping), and the keyset-registry base URL for the entity's
+// environment. There is no default or environment-variable fallback for
+// --keyset-base — since one instance of this script may need to check
+// entities across several environments, each with its own registry, the
+// caller is responsible for resolving the right base URL for the entity's
+// environment (e.g. from the running server's config.yaml) before invoking
+// it. Exit code is 0 when the signature verified.
 
 import { X509Certificate } from "node:crypto";
 
-const KEYSET_BASE = "https://pzgw-api-gov-bc-ca.dev.api.gov.bc.ca/keysets";
 const FETCH_TIMEOUT_MS = 5000;
 
 export type VerificationStatus = "valid" | "invalid" | "missing" | "error";
@@ -667,8 +673,8 @@ async function applyCertChainCheck(
 
 // --- Entity-sig verification ----------------------------------------------
 
-function keysetUrlFor(keysetId: string): string {
-  return `${KEYSET_BASE}/${encodeURIComponent(keysetId)}/.well-known/jwks.json`;
+function keysetUrlFor(keysetId: string, keysetBase: string): string {
+  return `${keysetBase}/${encodeURIComponent(keysetId)}/.well-known/jwks.json`;
 }
 
 // Map a dotted SDX entity id (`<env>.<memberclass>.<memberid>.<subsystem>`,
@@ -758,11 +764,13 @@ async function tryEntitySigVerification(
 //   entitySigHeader — the X-Entity-Sig value (base64url)
 //   edgeToken       — the X-Edge-Token whose 3rd (signature) segment was signed
 //   keysetId        — keyset name to fetch, e.g. "sdx.org.min.citz"
+//   keysetBase      — keyset-registry base URL for the entity's environment
 //   dotted          — optional dotted entity id, surfaced in details only
 export async function verifyEntitySig(
   entitySigHeader: string,
   edgeToken: string,
   keysetId: string,
+  keysetBase: string,
   dotted?: string,
 ): Promise<VerificationResult> {
   let entitySig: Uint8Array;
@@ -781,7 +789,7 @@ export async function verifyEntitySig(
       message: "edge token is not a JWT, cannot derive segment 3",
     };
   }
-  const url = keysetUrlFor(keysetId);
+  const url = keysetUrlFor(keysetId, keysetBase);
   const baseDetails: Record<string, string> = { keyset: keysetId, jwks_uri: url };
   if (dotted) baseDetails.entity = dotted;
   let jwks: Jwks;
@@ -816,12 +824,15 @@ export async function verifyEntitySig(
 
 const USAGE =
   "Usage: deno run --allow-net verify.ts --sig <X-Entity-Sig> --edge-token <X-Edge-Token> \\\n" +
-  "         (--entity <dotted-id> | --keyset <keyset-id>)\n\n" +
+  "         (--entity <dotted-id> | --keyset <keyset-id>) --keyset-base <url>\n\n" +
   "Verifies a detached X-Entity-Sig against the entity's keyset.\n\n" +
-  "  --sig         the X-Entity-Sig header value (base64url)\n" +
-  "  --edge-token  the X-Edge-Token whose 3rd segment was signed\n" +
-  "  --entity      dotted SDX id <env>.<class>.<id>.<sub>; mapped to a keyset\n" +
-  "  --keyset      keyset name to fetch directly, e.g. sdx.org.min.citz\n";
+  "  --sig          the X-Entity-Sig header value (base64url)\n" +
+  "  --edge-token   the X-Edge-Token whose 3rd segment was signed\n" +
+  "  --entity       dotted SDX id <env>.<class>.<id>.<sub>; mapped to a keyset\n" +
+  "  --keyset       keyset name to fetch directly, e.g. sdx.org.min.citz\n" +
+  "  --keyset-base  keyset-registry base URL for the entity's environment,\n" +
+  "                 e.g. https://pzgw.dev.api.gov.bc.ca/keysets. No default —\n" +
+  "                 look this up from the target environment's config.\n";
 
 function parseFlags(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -870,12 +881,14 @@ async function main(): Promise<void> {
   const sig = flags.sig;
   const edgeToken = flags["edge-token"];
   const entity = flags.entity;
+  const keysetBase = flags["keyset-base"];
   let keyset = flags.keyset;
 
   const missing: string[] = [];
   if (!sig) missing.push("--sig");
   if (!edgeToken) missing.push("--edge-token");
   if (!keyset && !entity) missing.push("--entity or --keyset");
+  if (!keysetBase) missing.push("--keyset-base");
   if (missing.length) {
     console.error(`Missing required argument(s): ${missing.join(", ")}\n`);
     console.error(USAGE);
@@ -893,7 +906,7 @@ async function main(): Promise<void> {
     keyset = derived;
   }
 
-  const result = await verifyEntitySig(sig, edgeToken, keyset, entity);
+  const result = await verifyEntitySig(sig, edgeToken, keyset, keysetBase, entity);
   printResult(result);
   Deno.exit(result.status === "valid" ? 0 : 1);
 }

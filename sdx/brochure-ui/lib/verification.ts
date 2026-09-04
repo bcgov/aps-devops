@@ -19,9 +19,6 @@
 import { X509Certificate } from "node:crypto";
 import { orgKeysetsUrlForEnv } from "./environments.ts";
 
-// Fallback keyset-registry base URL, used only when config.yaml configures no
-// `org_keysets_url` for any environment.
-const KEYSET_BASE = "https://pzgw-api-gov-bc-ca.dev.api.gov.bc.ca/keysets";
 const FETCH_TIMEOUT_MS = 5000;
 
 export type VerificationStatus = "valid" | "invalid" | "missing" | "error";
@@ -771,10 +768,15 @@ export async function verifyEdgeToken(
 // Build the JWKS URL for a keyset id. The keyset id carries the environment as
 // its trailing segment (`sdx.org.<class>.<id>.<env>`, `sdx.sys.<clientId>.<env>`),
 // which selects the per-environment registry base URL from config.yaml
-// (`org_keysets_url`), falling back to KEYSET_BASE.
+// (`org_keysets_url`). Throws if no environment configures one.
 function keysetUrlFor(keysetId: string): string {
   const env = keysetId.split(".").pop();
-  const base = orgKeysetsUrlForEnv(env) ?? KEYSET_BASE;
+  const base = orgKeysetsUrlForEnv(env);
+  if (!base) {
+    throw new Error(
+      `no org_keysets_url configured for environment '${env}' in config.yaml`,
+    );
+  }
   return `${base}/${encodeURIComponent(keysetId)}/.well-known/jwks.json`;
 }
 
@@ -964,7 +966,17 @@ export async function verifyEntitySig(
       message: "edge token is not a JWT, cannot derive segment 3",
     };
   }
-  const url = keysetUrlFor(entity.keysetId);
+  let url: string;
+  try {
+    url = keysetUrlFor(entity.keysetId);
+  } catch (e) {
+    return {
+      status: "error",
+      source,
+      message: (e as Error).message,
+      details: { entity: entity.dotted, keyset: entity.keysetId },
+    };
+  }
   let jwks: Jwks;
   try {
     jwks = await fetchJwks(url);
