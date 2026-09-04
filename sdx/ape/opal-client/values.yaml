@@ -1,0 +1,29 @@
+openshift:
+  enabled: true
+  securityContext:
+    runAsUser: 1001610000
+    runAsGroup: 1001610000
+    fsGroup: 1001610000
+  containerSecurityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+
+server:
+  enabled: false
+
+client:
+  enabled: true
+  extraEnv:
+    OPAL_DATA_TOPICS: "policy_data,tenant_data"
+    OPAL_DATA_UPDATER_ENABLED: "true"
+    #OPAL_SERVER_URL: "https://opal-api-gov-bc-ca.dev.api.gov.bc.ca"
+    OPAL_SERVER_WS_URL: "wss://opal-api-gov-bc-ca.dev.api.gov.bc.ca"
+    OPAL_LOG_COLORIZE: "false"
+
+  serverUrl: "https://opal-api-gov-bc-ca.dev.api.gov.bc.ca"
+  secrets:
+    - opal-client
+
+image:
+  client:
+    tag: "0.9.5"

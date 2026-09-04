@@ -1,0 +1,45 @@
+replicaCount: 1
+
+rollingUpdate:
+  maxUnavailable: 100%
+  maxSurge: 100%
+
+image:
+  repository: denoland/deno
+  tag: 2.7.10
+  pullPolicy: IfNotPresent
+
+persistence:
+  deno-dir:
+    mountPath: /deno-dir
+  data:
+    size: 5Mi
+    mountPath: /data
+    storageAccessMode: ReadWriteOnce
+    storageClassName: netapp-file-standard
+
+config:
+  - filename: main.ts
+    mountPath: /app/main.ts
+
+command:
+  - deno
+
+args:
+  - run
+  - --allow-net=:8000,deno.land,opal-server:7002
+  - --allow-read
+  - --allow-write
+  - --allow-env=OPAL_WEBHOOK_URL,OPAL_CLIENT_TOKEN
+  - /app/main.ts
+
+env:
+  OPAL_WEBHOOK_URL:
+    value: "http://opal-server:7002/webhook"
+
+extraEnvs:
+  - name: OPAL_CLIENT_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: opal-policies-client-token
+        key: token

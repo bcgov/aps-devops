@@ -1,0 +1,29 @@
+replicaCount: 1
+
+rollingUpdate:
+  maxUnavailable: 0%
+  maxSurge: 100%
+
+image:
+  repository: ghcr.io/bcgov/aps-devops/sdx-ui
+  tag: feature-sdxui-ape
+  pullPolicy: Always
+
+persistence:
+  deno-dir:
+    mountPath: /deno-dir
+  work:
+    mountPath: /app/public/fonts
+
+env:
+  PORT:
+    value: "8000"
+
+  LOG_STREAM_URL:
+    value: "http://pubsub-kafka/sdx/messages?history=10"
+
+  PROMETHEUS_URL:
+    value: "http://thanos-prom-prometheus-server"
+
+  PUBLIC_BODIES_API:
+    value: "https://public-bodies.dev.api.gov.bc.ca/v1"
