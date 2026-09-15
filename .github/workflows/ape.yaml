@@ -1,0 +1,42 @@
+name: All APE Functions
+
+on:
+  push:
+    branches: [feature/*]
+
+jobs:
+  build-opal-pip-catalog:
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write # 🚀 Crucial permission needed to push to ghcr.io
+    with:
+      name: opal-pip-catalog
+      context: ./sdx/ape/functions/opal-pip-catalog
+
+  build-opal-policies:
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write # 🚀 Crucial permission needed to push to ghcr.io
+    with:
+      name: opal-policies
+      context: ./sdx/ape/functions/opal-policies
+
+  build-pubsub-kafka:
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write # 🚀 Crucial permission needed to push to ghcr.io
+    with:
+      name: pubsub-kafka
+      context: ./sdx/ape/functions/pubsub-kafka
+
+  build-pubsub-webhook:
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write # 🚀 Crucial permission needed to push to ghcr.io
+    with:
+      name: pubsub-webhook
+      context: ./sdx/ape/functions/pubsub-webhook
