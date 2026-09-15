@@ -1,0 +1,14 @@
+.git
+.claude
+node_modules
+dist
+LOCAL.md
+README.md
+Dockerfile
+.dockerignore
+.gitignore
+chart.yaml
+config*.yaml
+.values-*.yaml
+samples
+scripts

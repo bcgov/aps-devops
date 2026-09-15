@@ -3,6 +3,11 @@
 *.ca-bundle
 LOCAL.md
 *.tgz
+.claude
+.values-*.yaml
+**/public/app.js*
+**/public/assets/**
+**/public/fonts/**
 .terraform*
 .claude
 terraform.tfvars

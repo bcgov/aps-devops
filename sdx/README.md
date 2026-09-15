@@ -54,7 +54,7 @@ helm upgrade --install ${EDGE_ID} \
 
 ```sh
 helm package sdx-edge
-helm push sdx-edge-0.3.7.tgz oci://ghcr.io/bcgov/aps-devops
+helm push sdx-edge-0.3.8.tgz oci://ghcr.io/bcgov/aps-devops
 
 # --reuse-values from 0.3.5 has no renewal/rotation maps
 ./chart/sdx-edge/ci/render-from-0.3.5-values.sh
