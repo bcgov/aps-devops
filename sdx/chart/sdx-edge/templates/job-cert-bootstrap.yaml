@@ -1,6 +1,14 @@
 # Cert Bootstrap Job
 # - This job is used to register a new TLS certificate for Kong
 # - It runs a container that executes the certificate sign script
+# - Not a Helm hook: the Job mounts the bootstrap token Secret and uses the
+#   sdx-job-cert-bootstrap ServiceAccount/RBAC, which are ordinary release
+#   resources. A pre-upgrade hook would run before those exist or are updated.
+# - Rendered only while bootstrap.tls.token is set. Clear the token on promote
+#   with --set-string bootstrap.tls.token="" (not null; see README) so Helm
+#   deletes this Job instead of changing its pod template (stageSecret). Job
+#   specs are immutable; a consumed one-time token must not recreate the Job
+#   after TTL either.
 {{ if .Values.bootstrap.tls.token }}
 apiVersion: batch/v1
 kind: Job
@@ -11,9 +19,6 @@ metadata:
     app.kubernetes.io/component: job-cert-bootstrap
     app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
     data-plane: "{{ include "sdx-edge.fullname" . }}"
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   parallelism: 1
   completions: 1
@@ -67,6 +72,13 @@ spec:
                 curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
 
+{{- if .Values.bootstrap.stageSecret | default false }}
+                kubectl create secret \
+                  --save-config --dry-run=client -o yaml \
+                  tls ${EDGE_NAME}-client-next \
+                  --cert=./tls.crt \
+                  --key=./tls.key | kubectl apply -f -
+{{- else }}
                 kubectl delete secret ${EDGE_NAME}-client || true
                 kubectl delete secret ${EDGE_NAME}-server || true
 
@@ -81,6 +93,7 @@ spec:
                   tls ${EDGE_NAME}-server \
                   --cert=./tls.crt \
                   --key=./tls.key | kubectl apply -f -
+{{- end }}
 
 {{- if .Values.shared.ca_secret }}
 
@@ -89,8 +102,8 @@ spec:
                   generic sdx-edge-ca \
                   --from-file=ca.crt=./roots.pem | kubectl apply -f -
 {{- end }}
-{{- if .Values.kong.enabled }}
-                kubectl rollout restart deployment $EDGE_NAME || true
+{{- if and .Values.kong.enabled (not (.Values.bootstrap.stageSecret | default false)) (not (.Values.bootstrap.deferRestart | default false)) }}
+                kubectl rollout restart deployment $EDGE_NAME
 {{- end }}
 
           env:

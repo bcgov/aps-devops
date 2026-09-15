@@ -1,0 +1,9 @@
+{{- if and .Values.rotation .Values.rotation.promote }}
+rotation.promote is true. After the promote Job succeeds, reset it so later
+--reuse-values upgrades do not copy {{ include "sdx-edge.fullname" . }}-client-next
+over the live TLS secrets and restart Kong:
+
+  helm upgrade {{ .Release.Name }} oci://ghcr.io/bcgov/aps-devops/sdx-edge \
+    --reuse-values \
+    --set rotation.promote=false
+{{- end }}

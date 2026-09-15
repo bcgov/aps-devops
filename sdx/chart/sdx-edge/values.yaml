@@ -20,11 +20,34 @@ kong:
 
 bootstrap:
   tls:
+    # One-time CA token. Clear on promote with an empty string
+    # (`--set-string bootstrap.tls.token=""`), not null: Helm 3 --reuse-values
+    # coalescing drops null and restores the previous token (see README).
     token: ""
     cn: "example.com"
 
     # Added as a SAN to the edge certificate
     ip: ""
+
+  # Write {release}-client-next instead of live client/server secrets and skip
+  # Kong restart. Use after generating a new key/CSR so the public key can be
+  # published (operation=rotate) before the private key is mounted.
+  stageSecret: false
+  # Skip Kong restart after writing live bootstrap secrets.
+  deferRestart: false
+
+renewal:
+  # Certificate renewal keeps the same private key. Restart afterwards so Kong
+  # picks up the new certificate; set true only when restart is handled separately.
+  deferRestart: false
+
+rotation:
+  # One-shot: copy {release}-client-next onto live client and server TLS
+  # secrets, then rolling-restart Kong. Helm persists this across
+  # --reuse-values, so set false in a follow-up upgrade after the Job succeeds
+  # (see README). Bump nonce so each intentional promote gets a new Job name.
+  promote: false
+  nonce: "1"
 
 environment: prod
 
