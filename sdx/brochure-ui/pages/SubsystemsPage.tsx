@@ -1,4 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
+import { Btn } from "../components/Btn.tsx";
 import { SubsystemCard } from "../components/custom/SubsystemCard.tsx";
 import type { Subsystem, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
@@ -39,19 +40,9 @@ export function SubsystemsPage({ subsystems, serviceCounts, query, config: _conf
               placeholder="Search by name, description, or organization…"
               className="flex-1 border border-border rounded px-4 py-2 text-sm bg-white text-ink placeholder:text-ink-placeholder focus:outline-none focus:border-border-active"
             />
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded font-medium transition-colors bg-btn-primary text-white hover:bg-btn-primary-hover px-5 py-2 text-sm"
-            >
-              Search
-            </button>
+            <Btn type="submit">Search</Btn>
             {query && (
-              <a
-                href="/subsystems"
-                className="inline-flex items-center justify-center gap-2 rounded font-medium transition-colors bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover px-4 py-2 text-sm"
-              >
-                Clear
-              </a>
+              <Btn href="/subsystems" variant="secondary">Clear</Btn>
             )}
           </div>
         </form>

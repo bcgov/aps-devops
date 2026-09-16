@@ -1,4 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
+import { ChipGroup } from "../components/ChipGroup.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
 import { Markdown } from "../components/custom/Markdown.tsx";
 import { CopyButton } from "../components/custom/CopyButton.tsx";
@@ -179,17 +180,14 @@ function AsyncOperationRow({
           </div>
         )}
         {op.scopes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {op.scopes.map((scope) => (
-              <span
-                key={scope.name}
-                title={scope.description}
-                className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono"
-              >
-                {scope.name}
-              </span>
-            ))}
-          </div>
+          <ChipGroup
+            ariaLabel={`Required scopes for ${op.path}`}
+            items={op.scopes.map((scope) => ({
+              id: scope.name,
+              label: scope.name,
+              color: "blue",
+            }))}
+          />
         )}
       </div>
       {op.operationId && (
@@ -502,25 +500,15 @@ export function SubsystemDetailPage({
                                         {op.summary}
                                       </div>
                                     )}
-                                    {op.scopes.length >
-                                      0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1">
-                                        {op.scopes.map(
-                                          (scope) => (
-                                            <span
-                                              key={
-                                                scope.name
-                                              }
-                                              title={
-                                                scope.description
-                                              }
-                                              className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono"
-                                            >
-                                              {scope.name}
-                                            </span>
-                                          ),
-                                        )}
-                                      </div>
+                                    {op.scopes.length > 0 && (
+                                      <ChipGroup
+                                        ariaLabel={`Required scopes for ${op.path}`}
+                                        items={op.scopes.map((scope) => ({
+                                          id: scope.name,
+                                          label: scope.name,
+                                          color: "blue",
+                                        }))}
+                                      />
                                     )}
                                   </div>
                                   {op.operationId && (

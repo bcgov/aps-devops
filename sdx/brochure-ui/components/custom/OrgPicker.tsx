@@ -1,4 +1,5 @@
 import type { Organization } from "../../types.ts";
+import { Btn } from "../Btn.tsx";
 
 interface OrgPickerProps {
   organizations: Organization[];
@@ -120,12 +121,7 @@ export function OrgPicker({
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          className="bg-btn-primary text-white text-sm font-semibold px-4 py-2 rounded hover:bg-btn-primary-hover"
-        >
-          {submitLabel}
-        </button>
+        <Btn type="submit">{submitLabel}</Btn>
         <button
           type="button"
           id="org-pin-btn"

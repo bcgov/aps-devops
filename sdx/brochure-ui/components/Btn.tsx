@@ -22,7 +22,7 @@
 // markup instead of using this component.
 
 type Variant = "primary" | "secondary" | "tertiary";
-type Size = "small" | "medium" | "large";
+type Size = "xsmall" | "small" | "medium" | "large";
 
 interface BtnCommon {
   variant?: Variant;
@@ -51,6 +51,7 @@ interface BtnActionProps extends BtnCommon {
 export type BtnProps = BtnLinkProps | BtnActionProps;
 
 const SIZE_CLASSES: Record<Size, string> = {
+  xsmall: "px-3 py-1 text-xs",
   small: "px-3 py-1.5 text-sm",
   medium: "px-4 py-2 text-sm",
   large: "px-6 py-3 text-base",

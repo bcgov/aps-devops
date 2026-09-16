@@ -43,6 +43,16 @@
 
 Get a deep understanding of the UX design system at https://github.com/bcgov/design-system and at https://www2.gov.bc.ca/gov/content/digital/design-system/components and refactor the components and pages so that they conform to all the standards described in the design system.
 
+It does not look like the design system was reviewed, for example the header is supposed to be background white (https://www2.gov.bc.ca/gov/content/digital/design-system/components/header)... do a better review
+
+Use the following as sources:
+
+- https://github.com/bcgov/design-system for ensuring the requirements for each component are satisfied
+- Use the components and storybook described here https://designsystem.gov.bc.ca/react-components/?path=/docs/introduction--docs
+- any component that is not in the design system, create as a custom component under "components/custom"
+- for components that are in the design system, refactor to use it
+- also make sure all the "accessibility" requirements are satisfied for each component
+
 ### Verification
 
 - add to the activity log detail a "verification" - which will show various verification statuses (perhaps with a "security shield checkmark/cross")

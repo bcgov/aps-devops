@@ -1,4 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
+import { Btn } from "../components/Btn.tsx";
 import {
   Breadcrumb,
   type Crumb,
@@ -1759,12 +1760,7 @@ function ConfirmDialog({
             name="serviceId"
             value={conn.serviceId}
           />
-          <button
-            type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-btn-danger text-white hover:bg-btn-danger-hover"
-          >
-            {action.label}
-          </button>
+          <Btn type="submit" danger>{action.label}</Btn>
         </form>
       </div>
     </dialog>
@@ -1907,12 +1903,7 @@ function ReviewDialog({
             className="inline"
           >
             {hidden}
-            <button
-              type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
-            >
-              Approve
-            </button>
+            <Btn type="submit">Approve</Btn>
           </form>
         </div>
       </div>
