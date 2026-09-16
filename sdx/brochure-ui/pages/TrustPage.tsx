@@ -18,15 +18,15 @@ const VALIDITY_BADGES: Record<
 > = {
   valid: {
     label: "Valid",
-    color: "bg-green-50 text-green-800 border-green-200",
+    color: "bg-support-success-bg text-support-success-border",
   },
   expired: {
     label: "Expired",
-    color: "bg-red-50 text-red-800 border-red-200",
+    color: "bg-support-danger-bg text-support-danger-border",
   },
   not_yet_valid: {
     label: "Not yet valid",
-    color: "bg-yellow-50 text-yellow-800 border-yellow-200",
+    color: "bg-support-warning-bg text-ink",
   },
 };
 
@@ -74,30 +74,30 @@ function CertCard({
         ? "Root"
         : "Intermediate";
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+    <div className="border border-border rounded-lg overflow-hidden">
+      <div className="px-4 py-3 bg-surface-muted border-b border-border flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold text-ink-secondary uppercase tracking-wide">
           {role}
         </span>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-ink-secondary">
           [{index + 1} of {total}]
         </span>
-        <span className="font-semibold text-[#003366] text-sm truncate">
+        <span className="font-semibold text-bc-blue text-sm truncate">
           {cert.subjectCN ?? cert.subject}
         </span>
         <span className="ml-auto flex items-center gap-2">
           {cert.isCA && (
-            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded">
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-info-bg text-support-info-border">
               CA
             </span>
           )}
           {cert.isSelfSigned && (
-            <span className="text-xs bg-gray-100 text-gray-700 border border-gray-200 px-1.5 py-0.5 rounded">
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
               self-signed
             </span>
           )}
           <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded border ${badge.color}`}
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.color}`}
           >
             {badge.label}
           </span>
@@ -105,55 +105,55 @@ function CertCard({
       </div>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 text-sm">
         <div>
-          <dt className="text-xs text-gray-500 uppercase tracking-wide">
+          <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Subject
           </dt>
-          <dd className="font-mono text-xs text-gray-700 break-all">
+          <dd className="font-mono text-xs text-ink break-all">
             {cert.subject}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-gray-500 uppercase tracking-wide">
+          <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Issuer
           </dt>
-          <dd className="font-mono text-xs text-gray-700 break-all">
+          <dd className="font-mono text-xs text-ink break-all">
             {cert.issuer}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-gray-500 uppercase tracking-wide">
+          <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Valid from
           </dt>
-          <dd className="text-gray-800">{formatDate(cert.notBefore)}</dd>
+          <dd className="text-ink">{formatDate(cert.notBefore)}</dd>
         </div>
         <div>
-          <dt className="text-xs text-gray-500 uppercase tracking-wide">
+          <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Valid until
           </dt>
-          <dd className="text-gray-800">{formatDate(cert.notAfter)}</dd>
+          <dd className="text-ink">{formatDate(cert.notAfter)}</dd>
         </div>
         {publicKeyLabel(cert) && (
           <div>
-            <dt className="text-xs text-gray-500 uppercase tracking-wide">
+            <dt className="text-xs text-ink-secondary uppercase tracking-wide">
               Public key
             </dt>
-            <dd className="text-gray-800">{publicKeyLabel(cert)}</dd>
+            <dd className="text-ink">{publicKeyLabel(cert)}</dd>
           </div>
         )}
         <div>
-          <dt className="text-xs text-gray-500 uppercase tracking-wide">
+          <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Serial
           </dt>
-          <dd className="font-mono text-xs text-gray-700 break-all">
+          <dd className="font-mono text-xs text-ink break-all">
             {cert.serial}
           </dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-xs text-gray-500 uppercase tracking-wide">
+          <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             SHA-256 fingerprint
           </dt>
           <dd className="flex items-center gap-1.5">
-            <code className="font-mono text-xs text-gray-700 break-all">
+            <code className="font-mono text-xs text-ink break-all">
               {cert.fingerprintSha256}
             </code>
             <CopyButton value={cert.fingerprintSha256} />
@@ -161,14 +161,14 @@ function CertCard({
         </div>
         {cert.sans.length > 0 && (
           <div className="sm:col-span-2">
-            <dt className="text-xs text-gray-500 uppercase tracking-wide">
+            <dt className="text-xs text-ink-secondary uppercase tracking-wide">
               Subject alternative names
             </dt>
             <dd className="flex flex-wrap gap-1 mt-1">
               {cert.sans.map((s) => (
                 <span
                   key={s}
-                  className="text-xs bg-gray-50 text-gray-700 border border-gray-200 px-1.5 py-0.5 rounded font-mono"
+                  className="text-xs bg-surface-muted text-ink-secondary border border-border px-1.5 py-0.5 rounded font-mono"
                 >
                   {s}
                 </span>
@@ -189,33 +189,33 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
       : chain.every((c) => c.validityState === "valid")
         ? {
             label: "Chain currently valid",
-            color: "bg-green-50 text-green-800 border-green-200",
+            color: "bg-support-success-bg text-support-success-border",
           }
         : chain.some((c) => c.validityState === "expired")
           ? {
               label: "Chain has expired certs",
-              color: "bg-red-50 text-red-800 border-red-200",
+              color: "bg-support-danger-bg text-support-danger-border",
             }
           : {
               label: "Chain not yet valid",
-              color: "bg-yellow-50 text-yellow-800 border-yellow-200",
+              color: "bg-support-warning-bg text-ink",
             };
 
   const useLabel =
     k.use === "sig" ? "Signing" : k.use === "enc" ? "Encryption" : k.use;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-300 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 bg-gradient-to-r from-slate-100 to-slate-50 border-b-2 border-[#003366]/30 border-l-4 border-l-[#003366]">
+    <div className="bg-white rounded-lg border border-border shadow-sm overflow-hidden">
+      <div className="px-5 py-4 bg-surface-muted border-b-2 border-bc-blue border-l-4 border-l-bc-blue">
         <div className="flex flex-wrap items-baseline gap-2 mb-2">
-          <span className="text-sm font-extrabold text-[#003366] uppercase tracking-wider">
+          <h3 className="text-sm font-extrabold text-bc-blue uppercase tracking-wider">
             Key #{index + 1}
-          </span>
-          <span className="text-xs px-2 py-0.5 rounded border bg-white text-gray-700 border-gray-300 font-mono">
+          </h3>
+          <span className="text-xs px-2 py-0.5 rounded border bg-white text-ink-secondary border-border-medium font-mono">
             {jwkAlgorithmLabel(k)}
           </span>
           {useLabel && (
-            <span className="text-xs px-2 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200">
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-info-bg text-support-info-border">
               {useLabel}
             </span>
           )}
@@ -226,7 +226,7 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
           )}
           {chainStatus && (
             <span
-              className={`text-xs font-semibold px-2 py-0.5 rounded border ml-auto ${chainStatus.color}`}
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ml-auto ${chainStatus.color}`}
             >
               {chainStatus.label}
             </span>
@@ -234,7 +234,7 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
         </div>
         {k.kid && (
           <div className="flex items-start gap-1.5">
-            <code className="font-mono text-sm text-[#003366] break-all">
+            <code className="font-mono text-sm text-bc-blue break-all">
               {k.kid}
             </code>
             <CopyButton value={k.kid} />
@@ -245,17 +245,17 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
       <div className="px-5 py-4">
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-3">
           <div>
-            <dt className="text-xs text-gray-500 uppercase tracking-wide">
+            <dt className="text-xs text-ink-secondary uppercase tracking-wide">
               Key type
             </dt>
-            <dd className="font-mono text-gray-800">{k.kty}</dd>
+            <dd className="font-mono text-ink">{k.kty}</dd>
           </div>
           {k.crv && (
             <div>
-              <dt className="text-xs text-gray-500 uppercase tracking-wide">
+              <dt className="text-xs text-ink-secondary uppercase tracking-wide">
                 Curve
               </dt>
-              <dd className="font-mono text-gray-800">{k.crv}</dd>
+              <dd className="font-mono text-ink">{k.crv}</dd>
             </div>
           )}
         </dl>
@@ -263,34 +263,34 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
         {k.pem && (
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
-              <dt className="text-xs text-gray-500 uppercase tracking-wide">
+              <dt className="text-xs text-ink-secondary uppercase tracking-wide">
                 Public key (PEM)
               </dt>
               <CopyButton value={k.pem} />
             </div>
-            <pre className="font-mono text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded px-3 py-2 overflow-x-auto whitespace-pre">
+            <pre className="font-mono text-xs text-ink bg-surface-muted border border-border rounded px-3 py-2 overflow-x-auto whitespace-pre">
               {k.pem}
             </pre>
           </div>
         )}
 
         {k.pemError && !k.pem && (
-          <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
+          <div className="text-sm text-ink bg-support-warning-bg border-l-4 border-support-warning-border rounded-md px-3 py-2 mb-3">
             Could not derive PEM for this key: {k.pemError}
           </div>
         )}
 
         {k.certError && (
-          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+          <div className="text-sm text-ink bg-support-danger-bg border-l-4 border-support-danger-border rounded-md px-3 py-2 mb-3">
             Could not parse one or more certificates: {k.certError}
           </div>
         )}
 
         {chain.length > 0 && (
           <div>
-            <h4 className="text-sm font-bold text-[#003366] mb-2">
+            <h4 className="text-sm font-bold text-bc-blue mb-2">
               Certificate chain
-              <span className="ml-2 text-xs font-normal text-gray-500">
+              <span className="ml-2 text-xs font-normal text-ink-secondary">
                 ({chain.length} cert{chain.length !== 1 ? "s" : ""})
               </span>
             </h4>
@@ -308,7 +308,7 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
         )}
 
         {chain.length === 0 && !k.x5c && (
-          <div className="text-sm text-gray-500 italic">
+          <div className="text-sm text-ink-secondary italic">
             No certificate chain (x5c) provided for this key.
           </div>
         )}
@@ -329,38 +329,38 @@ function SourceSection({ source }: { source: JwksData }) {
       open
       data-env-item
       data-env={source.environment ?? envAttr(source.url)}
-      className="group mb-6 border-2 border-[#003366] rounded-lg overflow-hidden bg-white shadow-sm"
+      className="group mb-6 border-2 border-bc-blue rounded-lg overflow-hidden bg-white shadow-sm"
     >
-      <summary className="cursor-pointer list-none bg-[#003366] text-white hover:bg-[#002a52] transition-colors">
+      <summary className="cursor-pointer list-none bg-bc-blue text-ink-invert hover:bg-bc-blue-pressed transition-colors">
         <div className="px-5 py-4 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#FCBA19] shrink-0">
+          <span className="text-xs font-bold uppercase tracking-wider text-bc-gold shrink-0">
             JWKS source
           </span>
-          <code className="font-mono text-sm break-all flex-1 min-w-0">
+          <h2 className="font-mono text-sm font-normal break-all flex-1 min-w-0">
             {source.url}
-          </code>
-          <span className="text-xs text-blue-200 shrink-0 tabular-nums">
+          </h2>
+          <span className="text-xs text-ink-invert-secondary shrink-0 tabular-nums">
             {hasError
               ? "load failed"
               : `${source.keys.length} key${source.keys.length !== 1 ? "s" : ""} · ${totalCerts} cert${totalCerts !== 1 ? "s" : ""}`}
           </span>
           <span
             aria-hidden="true"
-            className="text-blue-200 text-lg group-open:rotate-90 transition-transform shrink-0"
+            className="text-ink-invert-secondary text-lg group-open:rotate-90 transition-transform shrink-0"
           >
             ›
           </span>
         </div>
-        <div className="h-1 bg-[#FCBA19]" />
+        <div className="h-1 bg-bc-gold" />
       </summary>
 
       <div className="px-5 py-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-secondary mb-4">
           <span>Fetched {formatDate(source.fetchedAt)}</span>
           <span className="flex items-center gap-1.5">
             <a
               href={source.url}
-              className="font-mono text-[#003366] underline"
+              className="font-mono text-link underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -371,12 +371,12 @@ function SourceSection({ source }: { source: JwksData }) {
         </div>
 
         {source.error ? (
-          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+          <div className="text-sm text-ink bg-support-danger-bg border-l-4 border-support-danger-border rounded-md px-3 py-2">
             Failed to load: {source.error}
           </div>
         ) : source.keys.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-500 font-medium">
+          <div className="text-center py-12 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary font-medium">
               No keys present in this registry.
             </p>
           </div>
@@ -407,25 +407,25 @@ export function TrustPage({
   return (
     <Layout title="Trust" currentPath={currentPath} user={user}>
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <h1 className="text-3xl font-bold mb-3">Trust registry</h1>
-          <p className="text-blue-200 max-w-2xl">
+          <p className="text-ink-invert-secondary max-w-2xl">
             Public keys and signing certificates published by members of the
             Secure Data Exchange. Use these to verify signatures on tokens and
             messages used on SDX.
           </p>
-          <p className="text-blue-300 text-sm mt-3">
+          <p className="text-ink-invert-secondary text-sm mt-3">
             {sources.length} source{sources.length !== 1 ? "s" : ""} ·{" "}
             {totalKeys} key{totalKeys !== 1 ? "s" : ""} · {totalCerts}{" "}
             certificate{totalCerts !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {user && (
-        <div className="bg-white border-b border-gray-200">
+        <div className="bg-white border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
             <EnvFilter label="Environment" />
           </div>
@@ -434,8 +434,8 @@ export function TrustPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {sources.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-500 font-medium">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary font-medium">
               No JWKS sources configured.
             </p>
           </div>

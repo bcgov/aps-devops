@@ -1,4 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
+import { Breadcrumb } from "../components/Breadcrumb.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import { CopyButton } from "../components/CopyButton.tsx";
 import { Contacts } from "../components/Contacts.tsx";
@@ -21,19 +22,24 @@ const MEMBER_CLASS_LABELS: Record<string, string> = {
   PUB: "Public Body",
 };
 
+// Categorical (non-semantic) badge colors — each member class is just a
+// distinct data label, not a status, so these keep their own hues rather
+// than mapping onto the design system's semantic support/* tokens.
 const MEMBER_CLASS_COLORS: Record<string, string> = {
   MIN: "bg-blue-100 text-blue-800",
   DIV: "bg-green-100 text-green-800",
-  USR: "bg-gray-100 text-gray-700",
+  USR: "bg-surface-muted text-ink-secondary",
   PUB: "bg-purple-100 text-purple-800",
 };
 
+// HTTP methods are categorical data labels too — kept as distinct hues,
+// standardized to the shared badge shape (see method span below).
 const METHOD_COLORS: Record<string, string> = {
-  GET: "bg-blue-50 text-blue-700 border-blue-200",
-  POST: "bg-green-50 text-green-700 border-green-200",
-  PUT: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  PATCH: "bg-orange-50 text-orange-700 border-orange-200",
-  DELETE: "bg-red-50 text-red-700 border-red-200",
+  GET: "bg-blue-50 text-blue-700",
+  POST: "bg-green-50 text-green-700",
+  PUT: "bg-yellow-50 text-yellow-700",
+  PATCH: "bg-orange-50 text-orange-700",
+  DELETE: "bg-red-50 text-red-700",
 };
 
 type SpecKind = "openapi" | "asyncapi" | "unknown";
@@ -123,11 +129,11 @@ function SpecBadge({
   const label = kind === "openapi" ? "OpenAPI" : "AsyncAPI";
   const color =
     kind === "openapi"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-      : "bg-violet-50 text-violet-700 border-violet-200";
+      ? "bg-emerald-50 text-emerald-700"
+      : "bg-violet-50 text-violet-700";
   return (
     <span
-      className={`text-xs font-mono px-2 py-0.5 rounded border ${color}`}
+      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-semibold ${color}`}
       title={`${label} specification${version ? ` ${version}` : ""}`}
     >
       {label}
@@ -147,12 +153,11 @@ function AsyncOperationRow({
     direction === "subscribe"
       ? {
           text: "SUBSCRIBE",
-          color: "bg-cyan-50 text-cyan-700 border-cyan-200",
+          color: "bg-cyan-50 text-cyan-700",
         }
       : {
           text: "PUBLISH",
-          color:
-            "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+          color: "bg-fuchsia-50 text-fuchsia-700",
         };
   return (
     <div
@@ -160,16 +165,16 @@ function AsyncOperationRow({
       style={{ gridTemplateColumns: "5.5rem 1fr auto" }}
     >
       <span
-        className={`text-xs font-bold py-0.5 rounded border font-mono uppercase text-center ${badge.color}`}
+        className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-mono font-bold uppercase ${badge.color}`}
       >
         {badge.text}
       </span>
       <div className="min-w-0">
-        <code className="text-sm font-mono text-gray-700 break-all">
+        <code className="text-sm font-mono text-ink break-all">
           {op.path}
         </code>
         {op.summary && (
-          <div className="text-sm text-gray-500 mt-0.5">
+          <div className="text-sm text-ink-secondary mt-0.5">
             {op.summary}
           </div>
         )}
@@ -188,7 +193,7 @@ function AsyncOperationRow({
         )}
       </div>
       {op.operationId && (
-        <span className="text-xs text-gray-400 font-mono self-start">
+        <span className="text-xs text-ink-secondary font-mono self-start">
           {op.operationId}
         </span>
       )}
@@ -218,7 +223,7 @@ export function SubsystemDetailPage({
     subsystem.member.memberClass;
   const classColor =
     MEMBER_CLASS_COLORS[subsystem.member.memberClass] ??
-    "bg-gray-100 text-gray-700";
+    "bg-surface-muted text-ink-secondary";
 
   const totalOperations = services.reduce(
     (n, s) => n + s.operations.length,
@@ -233,44 +238,29 @@ export function SubsystemDetailPage({
       currentPath={currentPath}
       user={user}
     >
-      {/* Breadcrumb */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 text-sm text-gray-500">
-          <a
-            href="/"
-            className="hover:text-[#003366] hover:underline"
-          >
-            Home
-          </a>
-          <span className="mx-2">›</span>
-          <a
-            href="/subsystems"
-            className="hover:text-[#003366] hover:underline"
-          >
-            Subsystems
-          </a>
-          <span className="mx-2">›</span>
-          <span className="text-gray-800 font-medium">
-            {subsystem.clientId}
-          </span>
-        </div>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Subsystems", href: "/subsystems" },
+          { label: subsystem.clientId },
+        ]}
+      />
 
       {/* Subsystem header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-3 text-sm text-blue-300">
+              <div className="flex flex-wrap items-center gap-2 mb-3 text-sm text-ink-invert-secondary">
                 <a
                   href={`/organizations/${subsystem.organization.name}`}
-                  className="hover:text-white hover:underline"
+                  className="hover:text-ink-invert hover:underline"
                 >
                   {subsystem.organization.title}
                 </a>
-                <span>›</span>
+                <span aria-hidden="true">›</span>
                 <span
-                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${classColor}`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${classColor}`}
                 >
                   {classLabel}
                 </span>
@@ -279,7 +269,7 @@ export function SubsystemDetailPage({
                 {subsystem.name}
               </h1>
               {subsystem.description && (
-                <p className="text-blue-200 max-w-2xl">
+                <p className="text-ink-invert-secondary max-w-2xl">
                   {subsystem.description}
                 </p>
               )}
@@ -287,16 +277,16 @@ export function SubsystemDetailPage({
           </div>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Identifier + metadata */}
-      <div className="bg-gray-50 border-b border-gray-200">
+      <div className="bg-surface-muted border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <h2 className="text-xs font-semibold text-ink-secondary uppercase tracking-wide mb-3">
             Identifier in Secure Data Exchange
           </h2>
           <div className="flex items-center gap-2 mb-5">
-            <code className="font-mono text-lg font-semibold text-[#003366] bg-white border border-gray-200 rounded-lg px-4 py-3">
+            <code className="font-mono text-lg font-semibold text-bc-blue bg-white border border-border rounded-lg px-4 py-3">
               {subsystem.clientId}
             </code>
             <CopyButton value={subsystem.clientId} />
@@ -318,22 +308,22 @@ export function SubsystemDetailPage({
 
       {/* Services section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <h2 className="text-2xl font-bold text-[#003366] mb-1">
+        <h2 className="text-2xl font-bold text-bc-blue mb-1">
           Services
-          <span className="ml-2 text-base font-normal text-gray-500">
+          <span className="ml-2 text-base font-normal text-ink-secondary">
             ({services.length} service
             {services.length !== 1 ? "s" : ""},{" "}
             {totalOperations} operation
             {totalOperations !== 1 ? "s" : ""})
           </span>
         </h2>
-        <p className="text-gray-500 text-sm mb-6">
+        <p className="text-ink-secondary text-sm mb-6">
           API services exposed by this subsystem
         </p>
 
         {services.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-500 font-medium">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary font-medium">
               No services registered for this subsystem.
             </p>
           </div>
@@ -351,16 +341,16 @@ export function SubsystemDetailPage({
               return (
                 <div
                   key={service.name}
-                  className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                  className="bg-white rounded-lg border border-border shadow-sm overflow-hidden"
                 >
                   {/* Service header */}
-                  <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50">
+                  <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-border bg-surface-muted">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-[#003366] text-lg">
+                        <h3 className="font-bold text-bc-blue text-lg">
                           {service.title}
                         </h3>
-                        <span className="text-xs bg-[#003366] text-white px-2 py-0.5 rounded font-mono">
+                        <span className="text-xs bg-bc-blue text-white px-2 py-0.5 rounded font-mono">
                           v{service.version}
                         </span>
                         <SpecBadge
@@ -376,12 +366,12 @@ export function SubsystemDetailPage({
                             service.description ??
                             ""
                           }
-                          className="text-gray-600 text-sm mt-1"
+                          className="text-ink-secondary text-sm mt-1"
                         />
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 self-start shrink-0">
-                      <span className="text-xs text-gray-400 font-mono">
+                      <span className="text-xs text-ink-secondary font-mono">
                         {service.name}
                       </span>
                       <CopyButton value={service.name} />
@@ -390,23 +380,21 @@ export function SubsystemDetailPage({
 
                   {/* Operations */}
                   {service.operations.length === 0 ? (
-                    <div className="px-5 py-4 text-sm text-gray-400 italic">
+                    <div className="px-5 py-4 text-sm text-ink-secondary italic">
                       No operations defined
                     </div>
                   ) : isAsync && asyncOps ? (
                     <div>
                       {asyncOps.subscribe.length > 0 && (
                         <div>
-                          <div className="px-5 py-2 bg-cyan-50/60 border-b border-t border-cyan-100 flex items-baseline gap-2">
-                            <span className="text-xs font-semibold text-cyan-800 uppercase tracking-wide">
-                              Subscribe
-                            </span>
-                            <span className="text-xs text-cyan-700/80">
+                          <h4 className="px-5 py-2 bg-cyan-50/60 border-b border-t border-cyan-100 flex items-baseline gap-2 text-xs font-semibold text-cyan-800 uppercase tracking-wide">
+                            Subscribe
+                            <span className="text-xs font-normal normal-case text-cyan-700/80">
                               channels this service
                               publishes — consumers receive
                               these messages
                             </span>
-                            <span className="ml-auto text-xs text-gray-400">
+                            <span className="ml-auto text-xs font-normal normal-case text-ink-secondary">
                               {asyncOps.subscribe.length}{" "}
                               channel
                               {asyncOps.subscribe.length !==
@@ -414,8 +402,8 @@ export function SubsystemDetailPage({
                                 ? "s"
                                 : ""}
                             </span>
-                          </div>
-                          <div className="divide-y divide-gray-100">
+                          </h4>
+                          <div className="divide-y divide-border">
                             {asyncOps.subscribe.map(
                               (op) => (
                                 <AsyncOperationRow
@@ -430,23 +418,21 @@ export function SubsystemDetailPage({
                       )}
                       {asyncOps.publish.length > 0 && (
                         <div>
-                          <div className="px-5 py-2 bg-fuchsia-50/60 border-b border-t border-fuchsia-100 flex items-baseline gap-2">
-                            <span className="text-xs font-semibold text-fuchsia-800 uppercase tracking-wide">
-                              Publish
-                            </span>
-                            <span className="text-xs text-fuchsia-700/80">
+                          <h4 className="px-5 py-2 bg-fuchsia-50/60 border-b border-t border-fuchsia-100 flex items-baseline gap-2 text-xs font-semibold text-fuchsia-800 uppercase tracking-wide">
+                            Publish
+                            <span className="text-xs font-normal normal-case text-fuchsia-700/80">
                               channels this service consumes
                               — producers send messages here
                             </span>
-                            <span className="ml-auto text-xs text-gray-400">
+                            <span className="ml-auto text-xs font-normal normal-case text-ink-secondary">
                               {asyncOps.publish.length}{" "}
                               channel
                               {asyncOps.publish.length !== 1
                                 ? "s"
                                 : ""}
                             </span>
-                          </div>
-                          <div className="divide-y divide-gray-100">
+                          </h4>
+                          <div className="divide-y divide-border">
                             {asyncOps.publish.map((op) => (
                               <AsyncOperationRow
                                 key={`pub-${op.operationId ?? ""}-${op.path}`}
@@ -458,11 +444,11 @@ export function SubsystemDetailPage({
                         </div>
                       )}
                       {asyncOps.other.length > 0 && (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-border">
                           {asyncOps.other.map((op) => (
                             <div
                               key={`other-${op.operationId ?? ""}-${op.path}`}
-                              className="px-5 py-3 text-sm text-gray-500 font-mono"
+                              className="px-5 py-3 text-sm text-ink-secondary font-mono"
                             >
                               {op.method} {op.path}
                             </div>
@@ -476,25 +462,23 @@ export function SubsystemDetailPage({
                         <div key={tag}>
                           {/* Tag header — only shown when there are multiple tags */}
                           {taggedOps!.length > 1 && (
-                            <div className="px-5 py-2 bg-gray-50 border-b border-t border-gray-100 flex items-center gap-2">
-                              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                {tag}
-                              </span>
-                              <span className="text-xs text-gray-400">
+                            <h4 className="px-5 py-2 bg-surface-muted border-b border-t border-border flex items-center gap-2 text-xs font-semibold text-ink-secondary uppercase tracking-wide">
+                              {tag}
+                              <span className="text-xs font-normal normal-case text-ink-secondary">
                                 {ops.length} operation
                                 {ops.length !== 1
                                   ? "s"
                                   : ""}
                               </span>
-                            </div>
+                            </h4>
                           )}
-                          <div className="divide-y divide-gray-100">
+                          <div className="divide-y divide-border">
                             {ops.map((op) => {
                               const methodColor =
                                 METHOD_COLORS[
                                   op.method.toUpperCase()
                                 ] ??
-                                "bg-gray-50 text-gray-700 border-gray-200";
+                                "bg-surface-muted text-ink-secondary";
                               return (
                                 <div
                                   key={`${op.operationId ?? ""}-${op.path}`}
@@ -505,16 +489,16 @@ export function SubsystemDetailPage({
                                   }}
                                 >
                                   <span
-                                    className={`text-xs font-bold py-0.5 rounded border font-mono uppercase text-center ${methodColor}`}
+                                    className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-mono font-bold uppercase ${methodColor}`}
                                   >
                                     {op.method}
                                   </span>
                                   <div className="min-w-0">
-                                    <code className="text-sm font-mono text-gray-700 break-all">
+                                    <code className="text-sm font-mono text-ink break-all">
                                       {op.path}
                                     </code>
                                     {op.summary && (
-                                      <div className="text-sm text-gray-500 mt-0.5">
+                                      <div className="text-sm text-ink-secondary mt-0.5">
                                         {op.summary}
                                       </div>
                                     )}
@@ -540,7 +524,7 @@ export function SubsystemDetailPage({
                                     )}
                                   </div>
                                   {op.operationId && (
-                                    <span className="text-xs text-gray-400 font-mono self-start">
+                                    <span className="text-xs text-ink-secondary font-mono self-start">
                                       {op.operationId}
                                     </span>
                                   )}
