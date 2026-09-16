@@ -8,10 +8,10 @@ const MEMBER_CLASS_LABELS: Record<string, string> = {
 };
 
 const MEMBER_CLASS_COLORS: Record<string, string> = {
-  MIN: "bg-blue-100 text-blue-800",
-  DIV: "bg-green-100 text-green-800",
-  USR: "bg-gray-100 text-gray-700",
-  PUB: "bg-purple-100 text-purple-800",
+  MIN: "bg-support-info-bg text-support-info-border",
+  DIV: "bg-support-success-bg text-support-success-border",
+  USR: "bg-surface-muted text-ink-secondary",
+  PUB: "bg-surface-blue-tint text-bc-blue",
 };
 
 export function OrgCard({
@@ -26,10 +26,10 @@ export function OrgCard({
   showClassBadge?: boolean;
 }) {
   const classLabel = MEMBER_CLASS_LABELS[org.member.memberClass] ?? org.member.memberClass;
-  const classColor = MEMBER_CLASS_COLORS[org.member.memberClass] ?? "bg-gray-100 text-gray-700";
+  const classColor = MEMBER_CLASS_COLORS[org.member.memberClass] ?? "bg-surface-muted text-ink-secondary";
 
   const inner = (
-    <div className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md hover:border-[#003366] transition-all flex flex-col gap-2 h-full">
+    <div className="bg-white rounded-lg border border-border shadow-sm p-5 hover:shadow-md hover:border-border-medium transition-all flex flex-col gap-2 h-full">
       <div className="flex items-start justify-between gap-2">
         {showClassBadge
           ? (
@@ -38,14 +38,14 @@ export function OrgCard({
             </span>
           )
           : <span />}
-        <span className="text-xs text-gray-400 font-mono">{org.member.memberId}</span>
+        <span className="text-xs text-ink-secondary font-mono">{org.member.memberId}</span>
       </div>
-      <h3 className="text-[#003366] font-bold text-lg leading-snug">{org.title}</h3>
+      <h3 className="text-bc-blue font-bold text-lg leading-snug">{org.title}</h3>
       {org.description && (
-        <p className="text-gray-600 text-sm">{org.description}</p>
+        <p className="text-ink-secondary text-sm">{org.description}</p>
       )}
       {subsystemCount !== undefined && (
-        <div className="mt-auto pt-3 text-xs text-gray-400">
+        <div className="mt-auto pt-3 text-xs text-ink-secondary">
           {subsystemCount} subsystem{subsystemCount !== 1 ? "s" : ""}
         </div>
       )}

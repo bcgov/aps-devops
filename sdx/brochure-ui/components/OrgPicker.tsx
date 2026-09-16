@@ -31,11 +31,11 @@ const ORG_PICKER_SCRIPT = `
 
   function applyPinned(isPinned){
     if(!pinBtn) return;
-    pinBtn.classList.toggle('border-[#003366]', isPinned);
-    pinBtn.classList.toggle('text-[#003366]', isPinned);
-    pinBtn.classList.toggle('bg-blue-50', isPinned);
-    pinBtn.classList.toggle('border-gray-300', !isPinned);
-    pinBtn.classList.toggle('text-gray-700', !isPinned);
+    pinBtn.classList.toggle('border-bc-blue', isPinned);
+    pinBtn.classList.toggle('text-bc-blue', isPinned);
+    pinBtn.classList.toggle('bg-surface-blue-tint', isPinned);
+    pinBtn.classList.toggle('border-border-dark', !isPinned);
+    pinBtn.classList.toggle('text-ink', !isPinned);
     var lbl = pinBtn.querySelector('[data-pin-label]');
     if(lbl) lbl.textContent = isPinned ? 'Pinned' : 'Pin organization';
     var ic = pinBtn.querySelector('svg');
@@ -104,14 +104,14 @@ export function OrgPicker({
         data-autosubmit={autoSubmit ? "1" : undefined}
         className="flex flex-wrap items-center gap-2"
       >
-        <label htmlFor="org-select" className="text-sm font-medium text-gray-700">
+        <label htmlFor="org-select" className="text-sm font-medium text-ink-secondary">
           Organization member
         </label>
         <select
           id="org-select"
           name="org"
           defaultValue={selectedOrg?.name ?? ""}
-          className="border border-gray-300 rounded px-3 py-2 text-sm min-w-[260px] bg-white"
+          className="border border-border rounded px-3 py-2 text-sm min-w-[260px] bg-white text-ink focus:border-border-active"
         >
           <option value="">— Select an organization —</option>
           {sorted.map((o) => (
@@ -122,7 +122,7 @@ export function OrgPicker({
         </select>
         <button
           type="submit"
-          className="bg-[#003366] text-white text-sm font-semibold px-4 py-2 rounded hover:bg-[#1a5276]"
+          className="bg-btn-primary text-white text-sm font-semibold px-4 py-2 rounded hover:bg-btn-primary-hover"
         >
           {submitLabel}
         </button>
@@ -131,7 +131,7 @@ export function OrgPicker({
           id="org-pin-btn"
           disabled
           aria-pressed="false"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded border border-border-dark text-ink hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

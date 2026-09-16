@@ -102,8 +102,8 @@ const FEED_SCRIPT = `
     var dps = detailParams(params);
     if(dps.length){
       for(var i=0;i<dps.length;i++){
-        var dt = document.createElement('dt'); dt.className = 'text-gray-500 break-all'; dt.textContent = dps[i][0];
-        var dd = document.createElement('dd'); dd.className = 'text-gray-800 break-all font-mono'; dd.textContent = dps[i][1];
+        var dt = document.createElement('dt'); dt.className = 'text-ink-secondary break-all'; dt.textContent = dps[i][0];
+        var dd = document.createElement('dd'); dd.className = 'text-ink break-all font-mono'; dd.textContent = dps[i][1];
         dlgParams.appendChild(dt); dlgParams.appendChild(dd);
       }
       dlgParams.style.display = '';
@@ -115,16 +115,16 @@ const FEED_SCRIPT = `
     var li = document.createElement('li'); li.className = 'flex items-start gap-3 py-4';
     var isError = isErrorResult(record.result);
     var av = document.createElement('span');
-    av.className = 'shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#b8732a] text-white text-xs font-semibold';
+    av.className = 'shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bc-blue text-white text-xs font-semibold';
     av.title = params.actor || ''; av.textContent = initials(params.actor || '?');
     li.appendChild(av);
     var body = document.createElement('div'); body.className = 'min-w-0 flex-1';
     var top = document.createElement('div'); top.className = 'flex flex-wrap items-baseline gap-x-3 gap-y-1';
-    var p = document.createElement('p'); p.className = 'text-sm text-gray-800';
-    // Show a red warning icon inline before the message when the activity failed.
+    var p = document.createElement('p'); p.className = 'text-sm text-ink';
+    // Show a warning icon inline before the message when the activity failed.
     if(isError){
       var warn = document.createElement('span');
-      warn.className = 'shrink-0 text-red-600 mr-1.5 inline-flex align-text-bottom';
+      warn.className = 'shrink-0 text-danger mr-1.5 inline-flex align-text-bottom';
       warn.setAttribute('role', 'img');
       warn.setAttribute('aria-label', 'Failure');
       warn.title = 'This activity failed';
@@ -143,13 +143,13 @@ const FEED_SCRIPT = `
     var hasBlob = record.blob !== undefined && record.blob !== null;
     if(hasBlob || detailParams(params).length){
       var btn = document.createElement('button'); btn.type = 'button';
-      btn.className = 'text-xs text-[#003366] font-semibold hover:underline';
+      btn.className = 'text-xs text-link font-semibold hover:underline';
       btn.textContent = 'More details';
       (function(rec){ btn.addEventListener('click', function(){ openDialog(rec); }); })(record);
       top.appendChild(btn);
     }
     body.appendChild(top);
-    var tm = document.createElement('p'); tm.className = 'text-sm text-gray-500 mt-0.5 tabular-nums';
+    var tm = document.createElement('p'); tm.className = 'text-sm text-ink-secondary mt-0.5 tabular-nums';
     tm.textContent = timeLabel(new Date(record.activityAt));
     body.appendChild(tm);
     li.appendChild(body);
@@ -162,8 +162,8 @@ const FEED_SCRIPT = `
       var key = dateKey(d);
       if(key !== lastKey){
         var sec = document.createElement('section');
-        var h = document.createElement('h2'); h.className = 'text-base font-bold text-gray-900 mb-1'; h.textContent = dateHeader(d);
-        var ul = document.createElement('ul'); ul.className = 'divide-y divide-gray-100';
+        var h = document.createElement('h2'); h.className = 'text-lg font-bold text-ink mb-1'; h.textContent = dateHeader(d);
+        var ul = document.createElement('ul'); ul.className = 'divide-y divide-border';
         sec.appendChild(h); sec.appendChild(ul);
         listEl.appendChild(sec);
         currentUl = ul; lastKey = key;
@@ -237,25 +237,32 @@ export function ActivityFeed({
 
       <div
         id="activity-error"
+        role="alert"
+        aria-live="polite"
         style={{ display: "none" }}
-        className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm"
+        className="mb-4 rounded-lg border border-support-danger-border bg-support-danger-bg text-ink px-4 py-3 text-sm"
       />
 
       <div
         id="activity-empty"
         style={{ display: "none" }}
-        className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200 text-gray-600"
+        className="text-center py-16 bg-surface-muted rounded-lg border border-border text-ink-secondary"
       >
         No recent activity to show.
       </div>
 
       <noscript>
-        <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+        <div className="rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm text-ink-secondary">
           JavaScript is required to view the activity feed.
         </div>
       </noscript>
 
-      <div id="activity-list" className="space-y-8" />
+      <div
+        id="activity-list"
+        className="space-y-8"
+        aria-live="polite"
+        aria-label="Activity feed"
+      />
 
       <div
         id="activity-more-wrap"
@@ -265,7 +272,7 @@ export function ActivityFeed({
         <button
           type="button"
           id="activity-more"
-          className="text-sm font-semibold px-5 py-2 rounded border border-gray-300 text-[#003366] hover:bg-gray-50"
+          className="inline-flex items-center justify-center gap-2 text-sm font-semibold px-5 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Load more
         </button>
@@ -274,12 +281,13 @@ export function ActivityFeed({
       {/* Details dialog */}
       <dialog
         id="activity-detail"
+        aria-labelledby="activity-detail-title"
         className="sdx-activity-dialog"
       >
-        <div className="px-5 py-4 border-b border-gray-200">
+        <div className="px-5 py-4 border-b border-border">
           <h2
             id="activity-detail-title"
-            className="text-base font-bold text-[#003366]"
+            className="text-lg font-bold text-bc-blue"
           />
         </div>
         <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-auto">
@@ -287,10 +295,10 @@ export function ActivityFeed({
             id="activity-detail-blob-wrap"
             style={{ display: "none" }}
           >
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary mb-1.5">
               Details
             </h3>
-            <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto">
+            <pre className="text-xs bg-surface-muted border border-border rounded p-3 overflow-auto">
               <code
                 id="activity-detail-blob"
                 className="language-yaml whitespace-pre-wrap break-all"
@@ -303,11 +311,11 @@ export function ActivityFeed({
             style={{ display: "none" }}
           />
         </div>
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end">
           <button
             type="button"
             data-close-activity
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+            className="inline-flex items-center justify-center gap-2 text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Close
           </button>

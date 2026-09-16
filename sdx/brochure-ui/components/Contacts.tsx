@@ -24,14 +24,14 @@ export function Contacts({
   if (contacts.length === 0) return null;
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h2 className="text-2xl font-bold text-[#003366] mb-1">
+      <h2 className="text-2xl font-bold text-bc-blue mb-1">
         Contacts
-        <span className="ml-2 text-base font-normal text-gray-500">
+        <span className="ml-2 text-base font-normal text-ink-secondary">
           ({contacts.length}{" "}
           {contacts.length !== 1 ? "people" : "person"})
         </span>
       </h2>
-      <p className="text-gray-500 text-sm mb-6">
+      <p className="text-ink-secondary text-sm mb-6">
         {description}
       </p>
 
@@ -45,15 +45,15 @@ export function Contacts({
           return (
             <div
               key={email ?? name ?? i}
-              className="bg-white rounded-lg border border-gray-200 px-5 py-4"
+              className="bg-white rounded-lg border border-border shadow-sm px-5 py-4"
             >
-              <div className="font-semibold text-gray-800">
+              <div className="font-semibold text-ink">
                 {name}
               </div>
               {email && (
                 <a
                   href={`mailto:${email}`}
-                  className="text-sm text-[#003366] hover:underline break-all"
+                  className="text-sm text-link hover:underline break-all"
                 >
                   {email}
                 </a>
@@ -63,7 +63,7 @@ export function Contacts({
                   {contact.roles.map((role) => (
                     <span
                       key={role}
-                      className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium"
+                      className="text-xs bg-support-info-bg text-support-info-border px-2 py-0.5 rounded-full font-medium"
                     >
                       {roleLabel(role)}
                     </span>

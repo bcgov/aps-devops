@@ -37,10 +37,10 @@ const ENV_FILTER_SCRIPT = `
     for(var i=0;i<opts.length;i++){
       var b=opts[i],on=b.getAttribute('data-env-opt')===env;
       b.classList.toggle('bg-white',on);
-      b.classList.toggle('text-gray-900',on);
+      b.classList.toggle('text-ink',on);
       b.classList.toggle('shadow-sm',on);
-      b.classList.toggle('text-gray-500',!on);
-      b.classList.toggle('hover:text-gray-700',!on);
+      b.classList.toggle('text-ink-secondary',!on);
+      b.classList.toggle('hover:text-ink',!on);
       b.setAttribute('aria-selected',on?'true':'false');
     }
     var groups=document.querySelectorAll('[data-env-group]');
@@ -70,12 +70,12 @@ export function EnvFilter({ label }: { label?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       {label && (
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <span className="text-sm font-medium text-ink-secondary">{label}</span>
       )}
       <div
         role="tablist"
         aria-label="Environment"
-        className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1"
+        className="inline-flex items-center gap-1 rounded-lg bg-surface-muted border border-border p-1"
       >
         {ENVIRONMENTS.map((e) => {
           const on = e.id === DEFAULT_ENV;
@@ -89,8 +89,8 @@ export function EnvFilter({ label }: { label?: string }) {
               className={[
                 "env-opt px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors",
                 on
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700",
+                  ? "bg-white text-ink shadow-sm"
+                  : "text-ink-secondary hover:text-ink",
               ].join(" ")}
             >
               {e.label}
