@@ -16,8 +16,8 @@ interface OrgSubsystemsPageProps {
 }
 
 const DIALOG_STYLE = `
-dialog.sdx-subsystem-dialog { border: none; border-radius: 8px; padding: 0; max-width: 760px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
-dialog.sdx-subsystem-dialog::backdrop { background: rgba(0,0,0,0.45); }
+dialog.sdx-subsystem-dialog { border: none; border-radius: var(--layout-border-radius-large); padding: 0; max-width: 760px; width: 92%; box-shadow: var(--surface-shadow-large); }
+dialog.sdx-subsystem-dialog::backdrop { background: var(--surface-color-overlay-default); }
 `;
 
 // Detail is fetched on demand (and cached) when a panel is opened, rather than
@@ -91,10 +91,10 @@ function SubsystemRow({ subsystem }: { subsystem: Subsystem }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
-        <p className="font-semibold text-[#003366] truncate">
+        <p className="font-semibold text-bc-blue truncate">
           {subsystem.name}
         </p>
-        <p className="text-xs text-gray-500 font-mono truncate">
+        <p className="text-xs text-ink-secondary font-mono truncate">
           {subsystem.clientId}
         </p>
       </div>
@@ -103,7 +103,7 @@ function SubsystemRow({ subsystem }: { subsystem: Subsystem }) {
         data-view-subsystem
         data-client-id={subsystem.clientId}
         data-subsystem-name={subsystem.name}
-        className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded border border-[#003366] text-[#003366] hover:bg-blue-50"
+        className="shrink-0 inline-flex items-center justify-center gap-2 rounded font-medium transition-colors bg-transparent border border-bc-blue text-bc-blue hover:bg-btn-tertiary-hover text-xs px-3 py-1.5"
       >
         View detail
       </button>
@@ -143,21 +143,21 @@ export function OrgSubsystemsPage({
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <h1 className="text-3xl font-bold mb-2">
             Subsystems
           </h1>
-          <p className="text-blue-200 max-w-2xl">
+          <p className="text-ink-invert-secondary max-w-2xl">
             Subsystems registered to an organization member.
             Open a subsystem to view its full client detail.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
           <OrgPicker
             organizations={organizations}
@@ -171,28 +171,28 @@ export function OrgSubsystemsPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div className="mb-4 rounded-md border-l-4 border-support-danger-border bg-support-danger-bg text-ink px-4 py-3 text-sm">
             {error}
           </div>
         )}
 
         {!selectedOrg ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">
               Select an organization member above to view its
               subsystems.
             </p>
           </div>
         ) : sorted.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">
               This organization has no registered
               subsystems.
             </p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <ul className="divide-y divide-gray-100">
+          <div className="bg-white border border-border rounded-lg overflow-hidden">
+            <ul className="divide-y divide-border">
               {sorted.map((s) => (
                 <SubsystemRow key={s.clientId} subsystem={s} />
               ))}
@@ -213,35 +213,39 @@ export function OrgSubsystemsPage({
       <style dangerouslySetInnerHTML={{ __html: DIALOG_STYLE }} />
 
       {/* Detail panel */}
-      <dialog id="subsystem-detail" className="sdx-subsystem-dialog">
-        <div className="px-5 py-4 border-b border-gray-200">
+      <dialog
+        id="subsystem-detail"
+        className="sdx-subsystem-dialog"
+        aria-labelledby="subsystem-detail-title"
+      >
+        <div className="px-5 py-4 border-b border-border">
           <h2
             id="subsystem-detail-title"
-            className="text-lg font-bold text-[#003366]"
+            className="text-lg font-bold text-bc-blue"
           />
           <p
             id="subsystem-detail-subtitle"
-            className="text-xs text-gray-500 font-mono mt-0.5"
+            className="text-xs text-ink-secondary font-mono mt-0.5"
           />
         </div>
         <div className="px-5 py-4 space-y-3 max-h-[70vh] overflow-auto">
           <div
             id="subsystem-detail-error"
             style={{ display: "none" }}
-            className="rounded border border-red-200 bg-red-50 text-red-800 px-3 py-2 text-sm"
+            className="rounded-md border-l-4 border-support-danger-border bg-support-danger-bg text-ink px-3 py-2 text-sm"
           />
-          <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto">
+          <pre className="text-xs bg-surface-muted border border-border rounded p-3 overflow-auto">
             <code
               id="subsystem-detail-body"
               className="language-yaml whitespace-pre-wrap break-all"
             />
           </pre>
         </div>
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end">
           <button
             type="button"
             data-close-subsystem
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+            className="inline-flex items-center justify-center gap-2 rounded font-medium transition-colors bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover text-sm px-3 py-2"
           >
             Close
           </button>

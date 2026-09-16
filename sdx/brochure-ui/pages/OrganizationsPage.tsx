@@ -40,23 +40,23 @@ export function OrganizationsPage({
   return (
     <Layout title="Organizations" currentPath={currentPath} user={user}>
       {/* Page header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <h1 className="text-3xl font-bold mb-2">Organizations</h1>
-          <p className="text-blue-200">
+          <p className="text-ink-invert-secondary">
             {organizations.length} organization{organizations.length !== 1 ? "s" : ""} participating in the
             BC Government Secure Data Exchange
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {orderedClasses.map((memberClass) => (
           <section key={memberClass} className="mb-10">
-            <h2 className="text-xl font-bold text-[#003366] mb-4 flex items-center gap-3">
+            <h2 className="text-xl font-bold text-bc-blue mb-4 flex items-center gap-3">
               {MEMBER_CLASS_LABELS[memberClass] ?? memberClass}
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-ink-secondary">
                 ({byClass[memberClass].length})
               </span>
             </h2>
@@ -75,7 +75,7 @@ export function OrganizationsPage({
         ))}
 
         {organizations.length === 0 && (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-ink-secondary">
             <p className="text-lg font-medium">No organizations available.</p>
           </div>
         )}

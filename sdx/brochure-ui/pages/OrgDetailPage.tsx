@@ -1,4 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
+import { Breadcrumb, type Crumb } from "../components/Breadcrumb.tsx";
 import { SubsystemCard } from "../components/SubsystemCard.tsx";
 import { ActivityFeed } from "../components/ActivityFeed.tsx";
 import { Contacts } from "../components/Contacts.tsx";
@@ -26,10 +27,10 @@ const MEMBER_CLASS_LABELS: Record<string, string> = {
 };
 
 const MEMBER_CLASS_COLORS: Record<string, string> = {
-  MIN: "bg-blue-100 text-blue-800",
-  DIV: "bg-green-100 text-green-800",
-  USR: "bg-gray-100 text-gray-700",
-  PUB: "bg-purple-100 text-purple-800",
+  MIN: "bg-support-info-bg text-support-info-border",
+  DIV: "bg-support-success-bg text-support-success-border",
+  USR: "bg-surface-muted text-ink-secondary",
+  PUB: "bg-surface-blue-tint text-bc-blue",
 };
 
 interface OrgDetailPageProps {
@@ -58,10 +59,10 @@ function PublicBodyField({
   mono?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-      <dt className="text-xs text-gray-500 mb-1">{label}</dt>
+    <div className="bg-white rounded-lg border border-border px-4 py-3">
+      <dt className="text-xs text-ink-secondary mb-1">{label}</dt>
       <dd
-        className={`font-semibold text-gray-800 break-all ${mono ? "font-mono text-sm" : ""}`}
+        className={`font-semibold text-ink break-all ${mono ? "font-mono text-sm" : ""}`}
       >
         {value}
       </dd>
@@ -71,7 +72,7 @@ function PublicBodyField({
 
 export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publicBodyType, publicBodyError, activity = [], activityPageSize = 20, activityError, orgKeys = [], config: _config, currentPath, user }: OrgDetailPageProps) {
   const classLabel = MEMBER_CLASS_LABELS[org.member.memberClass] ?? org.member.memberClass;
-  const classColor = MEMBER_CLASS_COLORS[org.member.memberClass] ?? "bg-gray-100 text-gray-700";
+  const classColor = MEMBER_CLASS_COLORS[org.member.memberClass] ?? "bg-surface-muted text-ink-secondary";
 
   const businessId = publicBody?.businessIdValue
     ? `${publicBody.businessIdValue}${
@@ -89,55 +90,51 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
       : publicBodyType.name
     : null;
   const contacts = org.access ?? [];
+  const breadcrumbItems: Crumb[] = [
+    { label: "Home", href: "/" },
+    { label: "Organizations", href: "/organizations" },
+    { label: org.title },
+  ];
 
   return (
     <Layout title={org.title} currentPath={currentPath} user={user}>
-      {/* Breadcrumb */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 text-sm text-gray-500">
-          <a href="/" className="hover:text-[#003366] hover:underline">Home</a>
-          <span className="mx-2">›</span>
-          <a href="/organizations" className="hover:text-[#003366] hover:underline">Organizations</a>
-          <span className="mx-2">›</span>
-          <span className="text-gray-800 font-medium">{org.title}</span>
-        </div>
-      </div>
+      <Breadcrumb items={breadcrumbItems} />
 
       {/* Org header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex flex-wrap items-start gap-3 mb-3">
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${classColor}`}>
               {classLabel}
             </span>
-            <span className="text-xs text-blue-300 font-mono self-center">{org.member.memberId}</span>
+            <span className="text-xs text-ink-invert-secondary font-mono self-center">{org.member.memberId}</span>
           </div>
           <h1 className="text-3xl font-bold mb-2">{org.title}</h1>
           {org.description && (
-            <p className="text-blue-200 max-w-2xl">{org.description}</p>
+            <p className="text-ink-invert-secondary max-w-2xl">{org.description}</p>
           )}
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* About section */}
-      <div className="bg-gray-50 border-b border-gray-200">
+      <div className="bg-surface-muted border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-ink-secondary uppercase tracking-wide mb-3">
             Organization Details
           </h2>
           <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">SDX Member Class</dt>
-              <dd className="font-mono font-semibold text-gray-800">{org.member.memberClass}</dd>
+            <div className="bg-white rounded-lg border border-border px-4 py-3">
+              <dt className="text-xs text-ink-secondary mb-1">SDX Member Class</dt>
+              <dd className="font-mono font-semibold text-ink">{org.member.memberClass}</dd>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">SDX Member ID</dt>
-              <dd className="font-mono font-semibold text-gray-800">{org.member.memberId}</dd>
+            <div className="bg-white rounded-lg border border-border px-4 py-3">
+              <dt className="text-xs text-ink-secondary mb-1">SDX Member ID</dt>
+              <dd className="font-mono font-semibold text-ink">{org.member.memberId}</dd>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
-              <dt className="text-xs text-gray-500 mb-1">Subsystems</dt>
-              <dd className="font-semibold text-gray-800">{subsystems.length}</dd>
+            <div className="bg-white rounded-lg border border-border px-4 py-3">
+              <dt className="text-xs text-ink-secondary mb-1">Subsystems</dt>
+              <dd className="font-semibold text-ink">{subsystems.length}</dd>
             </div>
 
             {/* Public body details (when the organization maps to one) */}
@@ -175,10 +172,12 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
           </dl>
 
           {org.publicBodyId && publicBodyError && (
-            <p className="text-sm text-amber-700 mt-3">{publicBodyError}</p>
+            <div className="mt-3 rounded-md border-l-4 border-support-warning-border bg-support-warning-bg text-ink px-3 py-2 text-sm">
+              {publicBodyError}
+            </div>
           )}
           {org.publicBodyId && !publicBody && !publicBodyError && (
-            <p className="text-sm text-gray-500 mt-3">
+            <p className="text-sm text-ink-secondary mt-3">
               No public body record found for{" "}
               <span className="font-mono">{org.publicBodyId}</span>.
             </p>
@@ -200,11 +199,11 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
 
       {/* Recent Activity section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <h2 className="text-2xl font-bold text-[#003366] mb-6">
+        <h2 className="text-2xl font-bold text-bc-blue mb-6">
           Recent Activity
         </h2>
         {activityError && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div className="mb-4 rounded-md border-l-4 border-support-danger-border bg-support-danger-bg text-ink px-4 py-3 text-sm">
             {activityError}
           </div>
         )}
@@ -217,14 +216,14 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
 
       {/* Subsystems section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <h2 className="text-2xl font-bold text-[#003366] mb-6">
+        <h2 className="text-2xl font-bold text-bc-blue mb-6">
           Subsystems
-          <span className="ml-2 text-base font-normal text-gray-500">({subsystems.length})</span>
+          <span className="ml-2 text-base font-normal text-ink-secondary">({subsystems.length})</span>
         </h2>
 
         {subsystems.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-500">No subsystems registered for this organization.</p>
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">No subsystems registered for this organization.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
