@@ -9,7 +9,7 @@ export function CopyButton({ value, className = "" }: CopyButtonProps) {
       type="button"
       data-copy={value}
       aria-label="Copy to clipboard"
-      className={`sdx-copy-btn inline-flex items-center text-gray-300 hover:text-[#003366] transition-colors ${className}`}
+      className={`sdx-copy-btn inline-flex items-center text-ink-placeholder hover:text-bc-blue transition-colors rounded-sm ${className}`}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

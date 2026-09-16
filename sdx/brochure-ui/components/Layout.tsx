@@ -192,12 +192,12 @@ export function Layout({
             navigator.clipboard.writeText(btn.dataset.copy).then(function () {
               var svg = btn.querySelector('svg');
               svg.innerHTML = CHECK_ICON;
-              btn.classList.add('text-green-500');
-              btn.classList.remove('text-gray-300');
+              btn.classList.remove('text-ink-placeholder');
+              btn.classList.add('text-support-success-border');
               setTimeout(function () {
                 svg.innerHTML = CLIP_ICON;
-                btn.classList.remove('text-green-500');
-                btn.classList.add('text-gray-300');
+                btn.classList.remove('text-support-success-border');
+                btn.classList.add('text-ink-placeholder');
               }, 1800);
             });
           });

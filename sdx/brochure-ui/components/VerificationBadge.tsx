@@ -13,27 +13,27 @@ const STATUS_STYLES: Record<
   { ring: string; fg: string; bg: string; label: string }
 > = {
   valid: {
-    ring: "border-green-300",
-    fg: "text-green-700",
-    bg: "bg-green-50",
+    ring: "border-support-success-border",
+    fg: "text-support-success-border",
+    bg: "bg-support-success-bg",
     label: "verified",
   },
   invalid: {
-    ring: "border-red-300",
-    fg: "text-red-700",
-    bg: "bg-red-50",
+    ring: "border-support-danger-border",
+    fg: "text-support-danger-border",
+    bg: "bg-support-danger-bg",
     label: "invalid",
   },
   error: {
-    ring: "border-amber-300",
-    fg: "text-amber-700",
-    bg: "bg-amber-50",
+    ring: "border-support-warning-border",
+    fg: "text-ink",
+    bg: "bg-support-warning-bg",
     label: "unverifiable",
   },
   missing: {
-    ring: "border-gray-200",
-    fg: "text-gray-500",
-    bg: "bg-gray-50",
+    ring: "border-border",
+    fg: "text-ink-secondary",
+    bg: "bg-surface-muted",
     label: "absent",
   },
 };
@@ -101,8 +101,8 @@ function ShieldIcon({ status }: { status: VerificationStatus }) {
 function CertChainPill({ pass, depth }: { pass: string; depth?: string }) {
   const ok = pass === "true";
   const cls = ok
-    ? "border-green-400 text-green-800 bg-green-100"
-    : "border-red-400 text-red-800 bg-red-100";
+    ? "border-support-success-border text-support-success-border bg-support-success-bg"
+    : "border-support-danger-border text-support-danger-border bg-support-danger-bg";
   const depthLabel = depth ? ` (${depth})` : "";
   return (
     <span
@@ -117,7 +117,7 @@ function CertChainPill({ pass, depth }: { pass: string; depth?: string }) {
 function LeafOrgPill({ attr, value }: { attr: "O" | "CN"; value: string }) {
   return (
     <span
-      className="inline-flex items-center px-1 py-px rounded border border-blue-300 text-blue-800 bg-blue-50 text-xs font-semibold leading-none"
+      className="inline-flex items-center px-1 py-px rounded border border-support-info-border text-support-info-border bg-support-info-bg text-xs font-semibold leading-none"
       title={`leaf cert ${attr}=${value}`}
     >
       {attr}={value}
@@ -184,7 +184,7 @@ function SideColumn({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-gray-500 text-xs uppercase tracking-wide font-semibold">
+      <span className="text-ink-secondary text-xs uppercase tracking-wide font-semibold">
         {heading}
       </span>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -200,7 +200,7 @@ function SideColumn({
 export function VerificationBadge({ verification }: VerificationBadgeProps) {
   return (
     <div className="col-span-2 lg:col-span-4 pt-1">
-      <span className="text-gray-400 text-xs">verification</span>
+      <span className="text-ink-placeholder text-xs">verification</span>
       <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
         <SideColumn
           heading="request"
