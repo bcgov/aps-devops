@@ -62,12 +62,12 @@ export function Nav({
   return (
     <header className="sticky top-0 z-50 shadow-sm">
       {/* BC Gov blue banner: logo + title + help/login */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[65px] flex items-center justify-between gap-4">
           <div className="flex items-center gap-5 min-w-0">
             <a
               href="https://sdx.gov.bc.ca"
-              className="flex items-center shrink-0 hover:opacity-90 transition-opacity"
+              className="flex items-center shrink-0 hover:opacity-90 transition-opacity rounded-sm"
             >
               <img
                 src="/public/bc_logo_header.svg"
@@ -77,7 +77,7 @@ export function Nav({
             </a>
             <a
               href={bannerHref}
-              className="text-white font-bold text-xl sm:text-2xl truncate hover:text-blue-200 transition-colors"
+              className="text-ink-invert font-bold text-xl sm:text-2xl truncate hover:text-ink-invert-secondary transition-colors rounded-sm"
             >
               {bannerTitle}
             </a>
@@ -104,15 +104,15 @@ export function Nav({
                   </span>
                   <Chevron />
                 </summary>
-                <div className="absolute right-0 top-full bg-white text-gray-800 shadow-lg rounded border border-gray-200 min-w-[200px] z-50 py-1">
+                <div className="absolute right-0 top-full bg-white text-ink shadow-lg rounded border border-border min-w-[200px] z-50 py-1">
                   {user.email && (
-                    <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 truncate">
+                    <div className="px-4 py-2 text-xs text-ink-secondary border-b border-border truncate">
                       {user.email}
                     </div>
                   )}
                   <a
                     href="/auth/logout"
-                    className="block px-4 py-2 text-sm hover:bg-gray-50"
+                    className="block px-4 py-2 text-sm hover:bg-surface-muted"
                   >
                     Logout
                   </a>
@@ -131,11 +131,11 @@ export function Nav({
       </div>
 
       {/* Gold accent line */}
-      <div className="h-[3px] bg-[#FCBA19]" />
+      <div className="h-[3px] bg-bc-gold" />
 
       {/* Secondary white nav bar */}
       {!hideMainNav && (
-        <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="bg-white border-b border-border shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <nav
               className="flex flex-wrap gap-0"
@@ -156,11 +156,12 @@ export function Nav({
                   <a
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? "page" : undefined}
                     className={[
                       "px-4 py-4 text-sm font-medium border-b-[3px] transition-colors",
                       isActive
-                        ? "border-[#FCBA19] text-[#003366]"
-                        : "border-transparent text-gray-600 hover:text-[#003366] hover:border-gray-300",
+                        ? "border-bc-gold text-bc-blue"
+                        : "border-transparent text-ink-secondary hover:text-bc-blue hover:border-border-medium",
                     ].join(" ")}
                   >
                     {item.label}

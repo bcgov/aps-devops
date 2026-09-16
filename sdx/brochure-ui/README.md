@@ -39,6 +39,10 @@
 - update the org details page so that the "subsystem" card has an indication of whether it is a  
   "client only" vs has related services.
 
+### Iteration - design system review
+
+Get a deep understanding of the UX design system at https://github.com/bcgov/design-system and at https://www2.gov.bc.ca/gov/content/digital/design-system/components and refactor the components and pages so that they conform to all the standards described in the design system.
+
 ### Verification
 
 - add to the activity log detail a "verification" - which will show various verification statuses (perhaps with a "security shield checkmark/cross")
