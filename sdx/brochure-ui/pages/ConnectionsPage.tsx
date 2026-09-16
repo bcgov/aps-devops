@@ -45,23 +45,23 @@ function StatusPill({
 }) {
   if (connection.isApproved && connection.isActive) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
         Active
       </span>
     );
   }
   if (connection.isApproved) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-info-bg text-support-info-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-info-border" />
         Approved
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-      <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
+      <span className="w-1.5 h-1.5 rounded-full bg-support-warning-border" />
       Pending
     </span>
   );
@@ -74,23 +74,23 @@ function ProvisionerStatusPill({
 }) {
   if (status.status === "provisioned") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
         Provisioned
       </span>
     );
   }
   if (status.status === "failed") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-danger-bg text-support-danger-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-danger-border" />
         Provisioning failed
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-      <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
+      <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
       {status.status}
     </span>
   );
@@ -124,14 +124,14 @@ const WIZARD_SCRIPT = `
       var pn = parseInt(pills[j].getAttribute('data-step-pill'), 10);
       var num = pills[j].querySelector('.wiz-pill-num');
       if (pn < n) {
-        if (num) { num.style.backgroundColor = '#003366'; num.style.color = 'white'; }
-        pills[j].style.color = '#003366';
+        if (num) { num.style.backgroundColor = 'var(--theme-primary-blue)'; num.style.color = 'white'; }
+        pills[j].style.color = 'var(--theme-primary-blue)';
       } else if (pn === n) {
-        if (num) { num.style.backgroundColor = '#FCBA19'; num.style.color = '#003366'; }
-        pills[j].style.color = '#003366';
+        if (num) { num.style.backgroundColor = 'var(--theme-primary-gold)'; num.style.color = 'var(--theme-primary-blue)'; }
+        pills[j].style.color = 'var(--theme-primary-blue)';
       } else {
-        if (num) { num.style.backgroundColor = '#e5e7eb'; num.style.color = '#4b5563'; }
-        pills[j].style.color = '#6b7280';
+        if (num) { num.style.backgroundColor = 'var(--surface-color-border-default)'; num.style.color = 'var(--typography-color-secondary)'; }
+        pills[j].style.color = 'var(--typography-color-secondary)';
       }
     }
     var step1Hidden = (form.querySelector('[data-step="1"]') || {}).classList && form.querySelector('[data-step="1"]').classList.contains('hidden');
@@ -236,22 +236,22 @@ const WIZARD_SCRIPT = `
     try { sel = JSON.parse(selectionsInput.value || '[]'); } catch(_) { sel = []; }
     reviewClientEl.textContent = clientInput.value || '(client)';
     if (!sel.length) {
-      reviewEl.innerHTML = '<p class="text-sm text-gray-500 italic">No services selected.</p>';
+      reviewEl.innerHTML = '<p class="text-sm text-ink-secondary italic">No services selected.</p>';
       return;
     }
     var html = '<ul class="space-y-2">';
     for (var i = 0; i < sel.length; i++) {
       var s = sel[i];
-      html += '<li class="border border-gray-200 rounded p-3">';
-      html += '<div class="font-mono text-xs text-[#003366]">' + escHtml(s.serviceId) + '</div>';
+      html += '<li class="border border-border rounded p-3">';
+      html += '<div class="font-mono text-xs text-bc-blue">' + escHtml(s.serviceId) + '</div>';
       if (s.scopes && s.scopes.length) {
         html += '<div class="mt-1 flex flex-wrap gap-1">';
         for (var j = 0; j < s.scopes.length; j++) {
-          html += '<span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono">' + escHtml(s.scopes[j]) + '</span>';
+          html += '<span class="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono">' + escHtml(s.scopes[j]) + '</span>';
         }
         html += '</div>';
       } else {
-        html += '<div class="mt-1 text-xs text-gray-500 italic">No scopes &mdash; request access to all operations</div>';
+        html += '<div class="mt-1 text-xs text-ink-secondary italic">No scopes &mdash; request access to all operations</div>';
       }
       html += '</li>';
     }
@@ -289,10 +289,10 @@ const WIZARD_SCRIPT = `
     for (var i = 0; i < opts.length; i++) {
       var b = opts[i], on = b.getAttribute('data-wiz-env-opt') === env;
       b.classList.toggle('bg-white', on);
-      b.classList.toggle('text-gray-900', on);
+      b.classList.toggle('text-ink', on);
       b.classList.toggle('shadow-sm', on);
-      b.classList.toggle('text-gray-500', !on);
-      b.classList.toggle('hover:text-gray-700', !on);
+      b.classList.toggle('text-ink-secondary', !on);
+      b.classList.toggle('hover:text-ink', !on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     }
     var svcNodes = form.querySelectorAll('.wz-node[data-node-type="service"]');
@@ -374,14 +374,14 @@ const WIZARD_SCRIPT = `
 `;
 
 const DIALOG_STYLE = `
-dialog.sdx-dialog { border: none; border-radius: 8px; padding: 0; max-width: 560px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+dialog.sdx-dialog { border: none; border-radius: var(--layout-border-radius-large); padding: 0; max-width: 560px; width: 92%; box-shadow: var(--surface-shadow-large); }
 dialog.sdx-dialog.sdx-dialog-wide { max-width: 760px; }
-dialog.sdx-dialog::backdrop { background: rgba(0,0,0,0.45); }
+dialog.sdx-dialog::backdrop { background: var(--surface-color-overlay-default); }
 .wiz-tree ul { list-style: none; padding: 0; margin: 0; }
 .wiz-tree > ul > li { margin-bottom: 0.5rem; }
-.wiz-tree li > ul { margin-left: 1.25rem; border-left: 1px dashed #e5e7eb; padding-left: 0.5rem; }
-.wiz-tree .wz-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
-.wiz-tree .wz-label:hover { background-color: #f9fafb; }
+.wiz-tree li > ul { margin-left: 1.25rem; border-left: 1px dashed var(--surface-color-border-default); padding-left: 0.5rem; }
+.wiz-tree .wz-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 2px 4px; border-radius: var(--layout-border-radius-small); }
+.wiz-tree .wz-label:hover { background-color: var(--surface-color-background-light-gray); }
 .wiz-tree.policy-hide-scopes .wz-node[data-node-type="scope"] { display: none; }
 `;
 
@@ -501,7 +501,7 @@ function fmtBool(v?: boolean): string | undefined {
 
 function MetaBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-mono">
+    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-surface-muted text-ink-secondary font-mono">
       {label}
     </span>
   );
@@ -520,12 +520,12 @@ function FieldRow({
     return null;
   return (
     <>
-      <dt className="text-gray-500">{label}</dt>
+      <dt className="text-ink-secondary">{label}</dt>
       <dd
         className={
           mono
-            ? "font-mono text-gray-800 break-all"
-            : "text-gray-800 break-all"
+            ? "font-mono text-ink break-all"
+            : "text-ink break-all"
         }
       >
         {value}
@@ -537,7 +537,7 @@ function FieldRow({
 function ScopeChips({ scopes }: { scopes?: string[] }) {
   if (!scopes || scopes.length === 0) {
     return (
-      <span className="text-gray-400 italic">none</span>
+      <span className="text-ink-placeholder italic">none</span>
     );
   }
   return (
@@ -545,7 +545,7 @@ function ScopeChips({ scopes }: { scopes?: string[] }) {
       {scopes.map((s) => (
         <span
           key={s}
-          className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono"
+          className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
         >
           {s}
         </span>
@@ -574,7 +574,7 @@ function UpgradesView({
           {flags.map((f) => (
             <span
               key={f}
-              className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-mono"
+              className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
             >
               {f}
             </span>
@@ -582,8 +582,8 @@ function UpgradesView({
         </div>
       )}
       {token && (
-        <div className="border border-gray-100 rounded p-2 bg-gray-50/60">
-          <div className="text-xs font-semibold text-gray-600 mb-1">
+        <div className="border border-border rounded p-2 bg-surface-muted">
+          <div className="text-xs font-semibold text-ink-secondary mb-1">
             token
           </div>
           <dl className="grid grid-cols-[200px,1fr] gap-x-3 gap-y-0.5">
@@ -630,8 +630,8 @@ function UpgradesView({
         </div>
       )}
       {tx && (
-        <div className="border border-gray-100 rounded p-2 bg-gray-50/60">
-          <div className="text-xs font-semibold text-gray-600 mb-1">
+        <div className="border border-border rounded p-2 bg-surface-muted">
+          <div className="text-xs font-semibold text-ink-secondary mb-1">
             token_exchange
           </div>
           <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-0.5">
@@ -652,7 +652,7 @@ function UpgradesView({
             />
           </dl>
           <div className="mt-1">
-            <span className="text-gray-500">scopes </span>
+            <span className="text-ink-secondary">scopes </span>
             <ScopeChips scopes={tx.scopes} />
           </div>
         </div>
@@ -669,7 +669,7 @@ function GatewayPatterns({
   const entries = patterns ? Object.entries(patterns) : [];
   if (entries.length === 0) {
     return (
-      <p className="text-gray-400 italic">
+      <p className="text-ink-placeholder italic">
         No gateway patterns.
       </p>
     );
@@ -679,9 +679,9 @@ function GatewayPatterns({
       {entries.map(([name, p]) => (
         <div
           key={name}
-          className="border border-gray-200 rounded bg-white"
+          className="border border-border rounded bg-white"
         >
-          <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100 font-mono text-xs text-[#003366]">
+          <div className="px-3 py-1.5 bg-surface-muted border-b border-border font-mono text-xs text-bc-blue">
             {name}
           </div>
           <div className="px-3 py-2">
@@ -741,7 +741,7 @@ function DetailSection({
 }) {
   return (
     <section>
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary mb-1.5">
         {title}
       </h4>
       {children}
@@ -758,16 +758,16 @@ function submittedByLabel(policyVersion?: string): {
   if (policyVersion === "SDX.R0.00")
     return {
       label: "SDX",
-      cls: "bg-blue-100 text-blue-800 border-blue-200",
+      cls: "bg-surface-blue-tint text-bc-blue border-border",
     };
   if (policyVersion === "SDX.R1.00")
     return {
       label: "Common SSO",
-      cls: "bg-purple-100 text-purple-800 border-purple-200",
+      cls: "bg-white text-ink border-border-dark",
     };
   return {
     label: policyVersion,
-    cls: "bg-gray-100 text-gray-700 border-gray-200",
+    cls: "bg-surface-muted text-ink-secondary border-border",
   };
 }
 
@@ -1075,9 +1075,9 @@ function EditFieldInput({
           defaultChecked={Boolean(
             pickKey(source, field.key),
           )}
-          className="rounded border-gray-300"
+          className="rounded border-border"
         />
-        <span className="text-xs text-gray-700">
+        <span className="text-xs text-ink-secondary">
           {field.label}
         </span>
       </label>
@@ -1086,7 +1086,7 @@ function EditFieldInput({
   const value = fieldDefaultString(source, field);
   return (
     <label className="block py-0.5">
-      <span className="block text-xs font-medium text-gray-600 mb-0.5">
+      <span className="block text-xs font-medium text-ink-secondary mb-0.5">
         {field.label}
       </span>
       {field.type === "set" ? (
@@ -1096,7 +1096,7 @@ function EditFieldInput({
           defaultValue={value}
           rows={2}
           placeholder={field.placeholder}
-          className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+          className="w-full text-xs font-mono border border-border rounded px-2 py-1"
         />
       ) : (
         <input
@@ -1105,11 +1105,11 @@ function EditFieldInput({
           data-field-type="string"
           defaultValue={value}
           placeholder={field.placeholder}
-          className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+          className="w-full text-xs font-mono border border-border rounded px-2 py-1"
         />
       )}
       {field.hint && (
-        <span className="block text-[11px] text-gray-400 mt-0.5">
+        <span className="block text-[11px] text-ink-placeholder mt-0.5">
           {field.hint}
         </span>
       )}
@@ -1132,23 +1132,23 @@ function UpgradeCard({
     <div
       data-upgrade
       data-upgrade-key={upgrade.key}
-      className="border border-gray-200 rounded-lg bg-white"
+      className="border border-border rounded-lg bg-white"
     >
       <label className="flex items-start gap-3 px-3 py-2 cursor-pointer">
         <input
           type="checkbox"
           data-upgrade-include
           defaultChecked={included}
-          className="mt-0.5 rounded border-gray-300"
+          className="mt-0.5 rounded border-border"
         />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-[#003366]">
+          <span className="block text-sm font-semibold text-bc-blue">
             {upgrade.label}{" "}
-            <span className="font-mono text-xs text-gray-400">
+            <span className="font-mono text-xs text-ink-placeholder">
               {upgrade.key}
             </span>
           </span>
-          <span className="block text-xs text-gray-500">
+          <span className="block text-xs text-ink-secondary">
             {upgrade.description}
           </span>
         </span>
@@ -1157,7 +1157,7 @@ function UpgradeCard({
         <div
           data-upgrade-body
           className={[
-            "px-3 pb-3 pt-1 border-t border-gray-100 space-y-1",
+            "px-3 pb-3 pt-1 border-t border-border space-y-1",
             included ? "" : "hidden",
           ].join(" ")}
         >
@@ -1192,23 +1192,23 @@ function PatternBlock({
       data-pattern
       data-res={res}
       data-pattern-key={pattern.key}
-      className="border border-gray-200 rounded-lg overflow-hidden"
+      className="border border-border rounded-lg overflow-hidden"
     >
-      <label className="flex items-start gap-3 px-3 py-2 bg-gray-50 cursor-pointer">
+      <label className="flex items-start gap-3 px-3 py-2 bg-surface-muted cursor-pointer">
         <input
           type="checkbox"
           data-pattern-include
           defaultChecked={included}
-          className="mt-0.5 rounded border-gray-300"
+          className="mt-0.5 rounded border-border"
         />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-[#003366]">
+          <span className="block text-sm font-semibold text-bc-blue">
             {pattern.label}{" "}
-            <span className="font-mono text-xs text-gray-400">
+            <span className="font-mono text-xs text-ink-placeholder">
               {pattern.key}
             </span>
           </span>
-          <span className="block text-xs text-gray-500">
+          <span className="block text-xs text-ink-secondary">
             {pattern.description}
           </span>
         </span>
@@ -1235,7 +1235,7 @@ function PatternBlock({
           )}
           {pattern.upgrades.length > 0 && (
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <div className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
                 Upgrades
               </div>
               {pattern.upgrades.map((u) => (
@@ -1307,15 +1307,15 @@ function EditDialog({
           defaultValue=""
         />
 
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-[#003366]">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="text-lg font-bold text-bc-blue">
             Customize connection
           </h2>
-          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-[#003366] break-all">
+          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-bc-blue break-all">
             <span className="font-semibold">
               {conn.clientId}
             </span>
-            <span className="text-gray-400">→</span>
+            <span className="text-ink-placeholder">→</span>
             <span className="font-semibold">
               {conn.serviceId}
             </span>
@@ -1323,29 +1323,29 @@ function EditDialog({
         </div>
 
         <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-auto">
-          <label className="flex items-center gap-3 border border-gray-200 rounded-lg px-3 py-2">
+          <label className="flex items-center gap-3 border border-border rounded-lg px-3 py-2">
             <input
               type="checkbox"
               data-active-toggle
               defaultChecked={Boolean(conn.isActive)}
-              className="rounded border-gray-300"
+              className="rounded border-border"
             />
             <span>
-              <span className="block text-sm font-semibold text-gray-800">
+              <span className="block text-sm font-semibold text-ink">
                 Active
               </span>
-              <span className="block text-xs text-gray-500">
+              <span className="block text-xs text-ink-secondary">
                 Whether this connection is enabled.
               </span>
             </span>
           </label>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
               Client resources
             </h3>
             <label className="block py-0.5">
-              <span className="block text-xs font-medium text-gray-600 mb-0.5">
+              <span className="block text-xs font-medium text-ink-secondary mb-0.5">
                 Comment
               </span>
               <input
@@ -1355,7 +1355,7 @@ function EditDialog({
                 defaultValue={
                   conn.clientResources?.comment ?? ""
                 }
-                className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+                className="w-full text-xs font-mono border border-border rounded px-2 py-1"
               />
             </label>
             {CLIENT_PATTERNS.map((p) => (
@@ -1369,11 +1369,11 @@ function EditDialog({
           </section>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
               Service resources
             </h3>
             <label className="block py-0.5">
-              <span className="block text-xs font-medium text-gray-600 mb-0.5">
+              <span className="block text-xs font-medium text-ink-secondary mb-0.5">
                 Comment
               </span>
               <input
@@ -1383,7 +1383,7 @@ function EditDialog({
                 defaultValue={
                   conn.serviceResources?.comment ?? ""
                 }
-                className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+                className="w-full text-xs font-mono border border-border rounded px-2 py-1"
               />
             </label>
             {SERVICE_PATTERNS.map((p) => (
@@ -1397,17 +1397,17 @@ function EditDialog({
           </section>
         </div>
 
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
           <button
             type="button"
             data-dialog-close
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+            className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-[#003366] text-white hover:bg-[#1a5276]"
+            className="text-sm font-semibold px-4 py-2 rounded bg-bc-blue text-white hover:bg-bc-blue-hover"
           >
             Save
           </button>
@@ -1470,10 +1470,10 @@ function ConnectionCard({
     (conn.scopes && conn.scopes.length > 0),
   );
   return (
-    <article className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <article className="bg-white border border-border rounded-lg overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <div className="font-mono text-sm text-gray-800 break-all">
+          <div className="font-mono text-sm text-ink break-all">
             {conn.serviceId}
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -1487,9 +1487,9 @@ function ConnectionCard({
               policyVersion={conn.policyVersion}
             />
             {rd?.requester && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-ink-secondary">
                 Requested by{" "}
-                <span className="text-gray-700 font-medium">
+                <span className="text-ink-secondary font-medium">
                   {rd.requester}
                 </span>
               </span>
@@ -1500,7 +1500,7 @@ function ConnectionCard({
           <button
             type="button"
             data-dialog-open={editId}
-            className="text-xs font-semibold px-3 py-1 rounded border border-[#003366] text-[#003366] hover:bg-blue-50"
+            className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Customize...
           </button>
@@ -1508,7 +1508,7 @@ function ConnectionCard({
             <button
               type="button"
               data-dialog-open={reviewId}
-              className="text-xs font-semibold px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+              className="text-xs font-semibold px-3 py-1 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
             >
               Approve / Reject
             </button>
@@ -1517,7 +1517,7 @@ function ConnectionCard({
               <button
                 type="button"
                 data-dialog-open={confirmId}
-                className="text-xs font-semibold px-3 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                className="text-xs font-semibold px-3 py-1 rounded border border-danger text-danger hover:bg-support-danger-bg"
               >
                 {destructiveAction.label}
               </button>
@@ -1527,11 +1527,11 @@ function ConnectionCard({
       </div>
 
       {hasDetails && (
-        <details className="border-t border-gray-100">
-          <summary className="cursor-pointer list-none px-4 py-2 text-xs font-medium text-[#003366] hover:bg-gray-50 select-none">
+        <details className="border-t border-border">
+          <summary className="cursor-pointer list-none px-4 py-2 text-xs font-medium text-bc-blue hover:bg-surface-muted select-none">
             ▸ Connection details
           </summary>
-          <div className="px-4 py-3 bg-gray-50/50 space-y-4 text-xs">
+          <div className="px-4 py-3 bg-surface-muted space-y-4 text-xs">
             {provisionerStatus && (
               <DetailSection title="Provisioner status">
                 <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1">
@@ -1546,15 +1546,15 @@ function ConnectionCard({
                   />
                   {provisionerStatus.endpoint && (
                     <>
-                      <dt className="text-gray-500">
+                      <dt className="text-ink-secondary">
                         Endpoint
                       </dt>
-                      <dd className="font-mono text-gray-800 break-all">
+                      <dd className="font-mono text-ink break-all">
                         <a
                           href={provisionerStatus.endpoint}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#003366] underline hover:no-underline"
+                          className="text-bc-blue underline hover:no-underline"
                         >
                           {provisionerStatus.endpoint}
                         </a>
@@ -1613,7 +1613,7 @@ function ConnectionCard({
                   />
                 </dl>
                 <div className="mt-2">
-                  <span className="text-gray-500">
+                  <span className="text-ink-secondary">
                     Scopes{" "}
                   </span>
                   <ScopeChips scopes={rd.scopes} />
@@ -1710,31 +1710,31 @@ function ConfirmDialog({
 }) {
   return (
     <dialog id={dialogId} className="sdx-dialog">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-[#003366]">
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-lg font-bold text-bc-blue">
           {action.title}
         </h2>
       </div>
       <div className="px-5 py-4 space-y-3 text-sm">
-        <p className="text-gray-600">{action.message}</p>
+        <p className="text-ink-secondary">{action.message}</p>
         <div className="flex flex-wrap items-center gap-2 font-mono text-sm break-all">
-          <span className="text-[#003366] font-semibold">
+          <span className="text-bc-blue font-semibold">
             {conn.clientId}
           </span>
-          <span className="text-gray-400">→</span>
-          <span className="text-[#003366] font-semibold">
+          <span className="text-ink-placeholder">→</span>
+          <span className="text-bc-blue font-semibold">
             {conn.serviceId}
           </span>
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-ink-placeholder">
           This action cannot be undone.
         </p>
       </div>
-      <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
         <button
           type="button"
           data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
         >
           Cancel
         </button>
@@ -1761,7 +1761,7 @@ function ConfirmDialog({
           />
           <button
             type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+            className="text-sm font-semibold px-4 py-2 rounded bg-btn-danger text-white hover:bg-btn-danger-hover"
           >
             {action.label}
           </button>
@@ -1804,11 +1804,11 @@ function ReviewDialog({
   );
   return (
     <dialog id={dialogId} className="sdx-dialog">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-[#003366]">
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-lg font-bold text-bc-blue">
           Review connection request
         </h2>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-ink-secondary mt-1">
           A consumer has requested access to a service you
           provide. Approve to grant access, or reject to
           remove the request.
@@ -1816,11 +1816,11 @@ function ReviewDialog({
       </div>
       <div className="px-5 py-4 space-y-4 text-sm max-h-[60vh] overflow-auto">
         <div className="flex flex-wrap items-center gap-2 font-mono text-sm break-all">
-          <span className="text-[#003366] font-semibold">
+          <span className="text-bc-blue font-semibold">
             {conn.clientId}
           </span>
-          <span className="text-gray-400">→</span>
-          <span className="text-[#003366] font-semibold">
+          <span className="text-ink-placeholder">→</span>
+          <span className="text-bc-blue font-semibold">
             {conn.serviceId}
           </span>
         </div>
@@ -1873,17 +1873,17 @@ function ReviewDialog({
           </dl>
         )}
         <div className="text-xs">
-          <span className="text-gray-500">
+          <span className="text-ink-secondary">
             Scopes requested{" "}
           </span>
           <ScopeChips scopes={scopes} />
         </div>
       </div>
-      <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
         <button
           type="button"
           data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
         >
           Cancel
         </button>
@@ -1896,7 +1896,7 @@ function ReviewDialog({
             {hidden}
             <button
               type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded border border-red-300 text-red-700 hover:bg-red-50"
+              className="text-sm font-semibold px-4 py-2 rounded border border-danger text-danger hover:bg-support-danger-bg"
             >
               Reject
             </button>
@@ -1909,7 +1909,7 @@ function ReviewDialog({
             {hidden}
             <button
               type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+              className="text-sm font-semibold px-4 py-2 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
             >
               Approve
             </button>
@@ -2052,14 +2052,14 @@ function StepPill({
   return (
     <li
       data-step-pill={String(stepId)}
-      className="wiz-pill flex items-center gap-2 text-gray-500"
+      className="wiz-pill flex items-center gap-2 text-ink-secondary"
     >
-      <span className="wiz-pill-num inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-gray-600 font-semibold">
+      <span className="wiz-pill-num inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-muted text-ink-secondary font-semibold">
         {displayNum}
       </span>
       <span className="wiz-pill-label">{label}</span>
       {!last && (
-        <span className="text-gray-300 ml-1">›</span>
+        <span className="text-ink-disabled ml-1">›</span>
       )}
     </li>
   );
@@ -2121,26 +2121,26 @@ function AddConnectionWizard({
           value="[]"
         />
 
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-[#003366]">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="text-lg font-bold text-bc-blue">
             Request connections
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            <span className="text-gray-500">
+          <p className="text-xs text-ink-secondary mt-1">
+            <span className="text-ink-secondary">
               Organization:
             </span>{" "}
-            <span className="text-gray-800 font-medium">
+            <span className="text-ink font-medium">
               {selectedOrg.title}
             </span>
             {defaultSubsystem && (
               <>
-                <span className="mx-2 text-gray-300">
+                <span className="mx-2 text-ink-disabled">
                   •
                 </span>
-                <span className="text-gray-500">
+                <span className="text-ink-secondary">
                   Subsystem:
                 </span>{" "}
-                <span className="text-gray-800 font-medium">
+                <span className="text-ink font-medium">
                   {defaultSubsystem.name}
                 </span>
               </>
@@ -2175,19 +2175,19 @@ function AddConnectionWizard({
 
         {/* Step 1: client picker */}
         <div data-step="1" className="wiz-step px-5 py-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
+          <h3 className="text-sm font-semibold text-ink mb-2">
             Choose the client system requesting access
           </h3>
           {clientIds.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">
+            <p className="text-sm text-ink-secondary italic">
               No subsystems registered for{" "}
               {selectedOrg.title}.
             </p>
           ) : (
-            <ul className="max-h-[50vh] overflow-auto border border-gray-200 rounded divide-y divide-gray-100">
+            <ul className="max-h-[50vh] overflow-auto border border-border rounded divide-y divide-border">
               {clientIds.map((s) => (
                 <li key={s.clientId}>
-                  <label className="flex items-start gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                  <label className="flex items-start gap-3 px-3 py-2 hover:bg-surface-muted cursor-pointer">
                     <input
                       type="radio"
                       name="wiz-client-radio"
@@ -2195,10 +2195,10 @@ function AddConnectionWizard({
                       className="mt-1"
                     />
                     <span>
-                      <span className="block font-mono text-sm text-[#003366]">
+                      <span className="block font-mono text-sm text-bc-blue">
                         {s.clientId}
                       </span>
-                      <span className="block text-xs text-gray-500">
+                      <span className="block text-xs text-ink-secondary">
                         {s.name}
                       </span>
                     </span>
@@ -2214,17 +2214,17 @@ function AddConnectionWizard({
           data-step="2"
           className="wiz-step hidden px-5 py-4"
         >
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
+          <h3 className="text-sm font-semibold text-ink mb-2">
             Choose the auth policy for this connection
           </h3>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-ink-secondary mb-3">
             SDX and Common SSO grant access to all
             operations on the selected service(s). Scoped
             access lets you request specific OAuth scopes.
           </p>
-          <ul className="border border-gray-200 rounded divide-y divide-gray-100">
+          <ul className="border border-border rounded divide-y divide-border">
             <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-surface-muted cursor-pointer">
                 <input
                   type="radio"
                   name="wiz-policy-radio"
@@ -2232,20 +2232,20 @@ function AddConnectionWizard({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm font-semibold text-gray-800">
+                  <span className="block text-sm font-semibold text-ink">
                     SDX{" "}
-                    <span className="font-mono text-xs text-gray-400 font-normal">
+                    <span className="font-mono text-xs text-ink-placeholder font-normal">
                       SDX.R0.00
                     </span>
                   </span>
-                  <span className="block text-xs text-gray-500">
+                  <span className="block text-xs text-ink-secondary">
                     Service-level access, no scopes.
                   </span>
                 </span>
               </label>
             </li>
             <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-surface-muted cursor-pointer">
                 <input
                   type="radio"
                   name="wiz-policy-radio"
@@ -2253,20 +2253,20 @@ function AddConnectionWizard({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm font-semibold text-gray-800">
+                  <span className="block text-sm font-semibold text-ink">
                     Common SSO{" "}
-                    <span className="font-mono text-xs text-gray-400 font-normal">
+                    <span className="font-mono text-xs text-ink-placeholder font-normal">
                       SDX.R1.00
                     </span>
                   </span>
-                  <span className="block text-xs text-gray-500">
+                  <span className="block text-xs text-ink-secondary">
                     Service-level access, no scopes.
                   </span>
                 </span>
               </label>
             </li>
             <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-surface-muted cursor-pointer">
                 <input
                   type="radio"
                   name="wiz-policy-radio"
@@ -2274,13 +2274,13 @@ function AddConnectionWizard({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm font-semibold text-gray-800">
+                  <span className="block text-sm font-semibold text-ink">
                     Scoped access{" "}
-                    <span className="font-mono text-xs text-gray-400 font-normal">
+                    <span className="font-mono text-xs text-ink-placeholder font-normal">
                       SDX.R2.00
                     </span>
                   </span>
-                  <span className="block text-xs text-gray-500">
+                  <span className="block text-xs text-ink-secondary">
                     Request specific OAuth scopes for the
                     selected service(s).
                   </span>
@@ -2295,29 +2295,29 @@ function AddConnectionWizard({
           data-step="3"
           className="wiz-step hidden px-5 py-4"
         >
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
+          <h3 className="text-sm font-semibold text-ink mb-2">
             Choose the APIs and scopes to request
           </h3>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-ink-secondary mb-3">
             Checking an organization or subsystem selects
             everything beneath it. Uncheck individual scopes
             to narrow a request.
           </p>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-ink-secondary">
               Environment
             </span>
             <div
               role="tablist"
               aria-label="Environment"
-              className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1"
+              className="inline-flex items-center gap-1 rounded-full bg-surface-muted p-1"
             >
               <button
                 type="button"
                 role="tab"
                 data-wiz-env-opt=""
                 aria-selected="true"
-                className="wiz-env-opt px-3 py-1 rounded-lg text-xs font-semibold transition-colors bg-white text-gray-900 shadow-sm"
+                className="wiz-env-opt px-3 py-1 rounded-lg text-xs font-semibold transition-colors bg-white text-ink shadow-sm"
               >
                 All
               </button>
@@ -2328,16 +2328,16 @@ function AddConnectionWizard({
                   role="tab"
                   data-wiz-env-opt={e.id}
                   aria-selected="false"
-                  className="wiz-env-opt px-3 py-1 rounded-lg text-xs font-semibold transition-colors text-gray-500 hover:text-gray-700"
+                  className="wiz-env-opt px-3 py-1 rounded-lg text-xs font-semibold transition-colors text-ink-secondary hover:text-ink"
                 >
                   {e.label}
                 </button>
               ))}
             </div>
           </div>
-          <div className="wiz-tree border border-gray-200 rounded p-3 max-h-[55vh] overflow-auto">
+          <div className="wiz-tree border border-border rounded p-3 max-h-[55vh] overflow-auto">
             {tree.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
+              <p className="text-sm text-ink-secondary italic">
                 No services available to request access to.
               </p>
             ) : (
@@ -2356,7 +2356,7 @@ function AddConnectionWizard({
                         data-node-type="org"
                         data-org={o.orgName}
                       />
-                      <span className="font-semibold text-[#003366]">
+                      <span className="font-semibold text-bc-blue">
                         {o.orgTitle}
                       </span>
                     </label>
@@ -2375,7 +2375,7 @@ function AddConnectionWizard({
                               data-node-type="subsystem"
                               data-subsystem={sub.clientId}
                             />
-                            <span className="text-sm text-gray-800">
+                            <span className="text-sm text-ink">
                               {sub.name}
                             </span>
                           </label>
@@ -2403,12 +2403,12 @@ function AddConnectionWizard({
                                       sub.clientId
                                     }
                                   />
-                                  <span className="text-sm text-gray-800">
+                                  <span className="text-sm text-ink">
                                     {svc.serviceTitle} v
                                     {svc.serviceVersion}
                                   </span>
                                   {svc.env && (
-                                    <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                                    <span className="inline-flex items-center rounded-full bg-surface-muted text-ink-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                                       {svc.env}
                                     </span>
                                   )}
@@ -2440,11 +2440,11 @@ function AddConnectionWizard({
                                                 scope.name
                                               }
                                             />
-                                            <span className="font-mono text-xs text-purple-700">
+                                            <span className="font-mono text-xs text-bc-blue">
                                               {scope.name}
                                             </span>
                                             {scope.description && (
-                                              <span className="text-xs text-gray-500">
+                                              <span className="text-xs text-ink-secondary">
                                                 {
                                                   scope.description
                                                 }
@@ -2474,15 +2474,15 @@ function AddConnectionWizard({
           data-step="4"
           className="wiz-step hidden px-5 py-4"
         >
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
+          <h3 className="text-sm font-semibold text-ink mb-2">
             Review the connection requests
           </h3>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-ink-secondary mb-3">
             The following connection requests will be
             created for{" "}
             <span
               id="wiz-review-client"
-              className="font-mono text-[#003366]"
+              className="font-mono text-bc-blue"
             >
               (client)
             </span>
@@ -2490,18 +2490,18 @@ function AddConnectionWizard({
           </p>
           <div
             id="wiz-review"
-            className="border border-gray-200 rounded p-3 max-h-[55vh] overflow-auto text-sm text-gray-500"
+            className="border border-border rounded p-3 max-h-[55vh] overflow-auto text-sm text-ink-secondary"
           >
             (Selections will appear here.)
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
           <button
             type="button"
             data-close-dialog
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+            className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Cancel
           </button>
@@ -2509,21 +2509,21 @@ function AddConnectionWizard({
             <button
               type="button"
               id="wiz-back"
-              className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+              className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
             >
               Back
             </button>
             <button
               type="button"
               id="wiz-next"
-              className="text-sm font-semibold px-4 py-2 rounded bg-[#003366] text-white hover:bg-[#1a5276]"
+              className="text-sm font-semibold px-4 py-2 rounded bg-bc-blue text-white hover:bg-bc-blue-hover"
             >
               Next
             </button>
             <button
               type="submit"
               id="wiz-submit"
-              className="text-sm font-semibold px-4 py-2 rounded bg-[#003366] text-white hover:bg-[#1a5276] hidden"
+              className="text-sm font-semibold px-4 py-2 rounded bg-bc-blue text-white hover:bg-bc-blue-hover hidden"
             >
               Submit
             </button>
@@ -2551,9 +2551,9 @@ function ClientGroupSection({
 }) {
   const { clientId, subsystem, items } = group;
   return (
-    <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <header className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-        <h3 className="font-semibold text-[#003366] break-all">
+    <section className="bg-white border border-border rounded-lg overflow-hidden">
+      <header className="bg-surface-muted border-b border-border px-4 py-3">
+        <h3 className="font-semibold text-bc-blue break-all">
           <a
             href={`/subsystems/${encodeURIComponent(clientId)}`}
             target="_blank"
@@ -2564,7 +2564,7 @@ function ClientGroupSection({
           </a>
         </h3>
         {subsystem?.name && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-secondary">
             {subsystem.name}
           </p>
         )}
@@ -2665,22 +2665,22 @@ export function ConnectionsPage({
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-5xl font-bold mb-2">
             Connection Requests
           </h1>
-          <p className="text-blue-200">
+          <p className="text-ink-invert-secondary">
             Connection requests for an organization member,
             grouped by subsystem — each subsystem appears
             where it is the client or the service provider.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
           <OrgPicker
             organizations={organizations}
@@ -2695,25 +2695,29 @@ export function ConnectionsPage({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {flash && (
           <div
+            role="status"
             className={[
-              "mb-4 rounded border px-4 py-3 text-sm",
+              "mb-4 rounded-md border-l-4 px-4 py-3 text-sm text-ink",
               flash.kind === "success"
-                ? "border-green-200 bg-green-50 text-green-800"
-                : "border-red-200 bg-red-50 text-red-800",
+                ? "border-support-success-border bg-support-success-bg"
+                : "border-support-danger-border bg-support-danger-bg",
             ].join(" ")}
           >
             {flash.message}
           </div>
         )}
         {error && !flash && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div
+            role="alert"
+            className="mb-4 rounded-md border-l-4 border-support-danger-border bg-support-danger-bg text-ink px-4 py-3 text-sm"
+          >
             {error}
           </div>
         )}
 
         {!selectedOrg ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">
               Select an organization member above to view
               its connections.
             </p>
@@ -2722,14 +2726,14 @@ export function ConnectionsPage({
           <>
             <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
               <div>
-                <h2 className="text-2xl font-bold text-[#003366]">
+                <h2 className="text-2xl font-bold text-bc-blue">
                   {selectedOrg.title}
                 </h2>
-                <p className="text-xs text-gray-500 font-mono">
+                <p className="text-xs text-ink-secondary font-mono">
                   {selectedOrg.member.memberClass}/
                   {selectedOrg.member.memberId}
                 </p>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-ink-secondary text-sm mt-1">
                   {connections.length} connection
                   {connections.length === 1 ? "" : "s"}{" "}
                   across {groups.length} client
@@ -2740,7 +2744,7 @@ export function ConnectionsPage({
                 <button
                   type="button"
                   data-open-dialog="add-dialog"
-                  className="bg-[#003366] text-white text-sm font-semibold px-4 py-2 rounded hover:bg-[#1a5276]"
+                  className="bg-bc-blue text-white text-sm font-semibold px-4 py-2 rounded hover:bg-bc-blue-hover"
                 >
                   + Add connection
                 </button>
@@ -2748,8 +2752,8 @@ export function ConnectionsPage({
             </div>
 
             {connections.length === 0 ? (
-              <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-gray-600">
+              <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+                <p className="text-ink-secondary">
                   No connections yet for this organization.
                 </p>
               </div>
