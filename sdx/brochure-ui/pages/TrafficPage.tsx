@@ -36,49 +36,49 @@ export function TrafficPage({
         ]}
       />
 
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-          <h1 className="text-3xl font-bold mb-2">Traffic</h1>
-          <p className="text-blue-200">
+          <h1 className="text-4xl font-bold mb-2">Traffic</h1>
+          <p className="text-ink-invert-secondary">
             End-to-end flows from a client, through its runtime group, to the
             service runtime group and service. Each flow correlates the
             consumer and provider log records.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-border shadow-sm overflow-hidden">
           {/* Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-surface-muted">
             <div className="flex items-center gap-3 min-w-0">
               <span className="flex items-center gap-2 text-sm shrink-0">
                 <span
                   id="tf-dot"
-                  className="inline-block w-2.5 h-2.5 rounded-full bg-gray-300 animate-pulse"
+                  className="inline-block w-2.5 h-2.5 rounded-full bg-ink-disabled animate-pulse"
                 />
-                <span id="tf-status" className="font-medium text-gray-700">
+                <span id="tf-status" className="font-medium text-ink">
                   connecting…
                 </span>
               </span>
-              <span className="flex items-center gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-3 text-xs text-ink-secondary">
                 <span>
-                  <span className="inline-block w-3 h-3 rounded-full bg-[#003366] align-middle mr-1" />
+                  <span className="inline-block w-3 h-3 rounded-full bg-bc-blue align-middle mr-1" />
                   consumer
                 </span>
                 <span>
-                  <span className="inline-block w-3 h-3 rounded-full bg-[#FCBA19] align-middle mr-1" />
+                  <span className="inline-block w-3 h-3 rounded-full bg-bc-gold align-middle mr-1" />
                   provider
                 </span>
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs shrink-0">
-              <span className="text-gray-500">
+              <span className="text-ink-secondary">
                 flows{" "}
                 <span
                   id="tf-count"
-                  className="font-semibold text-gray-800 tabular-nums"
+                  className="font-semibold text-ink tabular-nums"
                 >
                   0
                 </span>
@@ -86,14 +86,14 @@ export function TrafficPage({
               <button
                 id="tf-pause"
                 type="button"
-                className="px-3 py-1 bg-[#003366] text-white rounded font-medium hover:bg-[#002a52]"
+                className="px-3 py-1 bg-btn-primary text-white rounded font-medium hover:bg-btn-primary-hover"
               >
                 Pause
               </button>
               <button
                 id="tf-clear"
                 type="button"
-                className="px-3 py-1 bg-white border border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50"
+                className="px-3 py-1 bg-btn-secondary border border-border-dark text-ink rounded font-medium hover:bg-btn-secondary-hover"
               >
                 Clear
               </button>
@@ -103,14 +103,14 @@ export function TrafficPage({
           {/* Empty state */}
           <div
             id="tf-empty"
-            className="px-4 py-12 text-center text-sm text-gray-400"
+            className="px-4 py-12 text-center text-sm text-ink-placeholder"
           >
             Waiting for correlated traffic… (rows appear once both the consumer
             and provider log records arrive)
           </div>
 
           {/* Flow list */}
-          <ul id="tf-list" className="divide-y divide-gray-100 text-xs" />
+          <ul id="tf-list" className="divide-y divide-border text-xs" />
         </div>
       </div>
 
@@ -131,19 +131,19 @@ export function TrafficPage({
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
   function statusBadge(code){
-    var n=parseInt(code,10),cls='bg-gray-100 text-gray-700';
-    if(n>=200&&n<300)cls='bg-green-100 text-green-800';
-    else if(n>=300&&n<400)cls='bg-blue-100 text-blue-800';
-    else if(n>=400&&n<500)cls='bg-red-100 text-red-800';
-    else if(n>=500)cls='bg-orange-100 text-orange-800';
+    var n=parseInt(code,10),cls='bg-surface-muted text-ink-secondary';
+    if(n>=200&&n<300)cls='bg-support-success-bg text-support-success-border';
+    else if(n>=300&&n<400)cls='bg-support-info-bg text-support-info-border';
+    else if(n>=400&&n<500)cls='bg-support-danger-bg text-danger';
+    else if(n>=500)cls='bg-support-warning-bg text-ink';
     return '<span class="inline-block px-1.5 py-0.5 rounded text-xs font-semibold '+cls+'">'+esc(code)+'</span>';
   }
   function methodBadge(m){
-    var cls='bg-gray-100 text-gray-700';
-    if(m==='GET')cls='bg-blue-50 text-blue-700';
-    else if(m==='POST')cls='bg-green-50 text-green-700';
-    else if(m==='PUT'||m==='PATCH')cls='bg-yellow-50 text-yellow-700';
-    else if(m==='DELETE')cls='bg-red-50 text-red-700';
+    var cls='bg-surface-muted text-ink-secondary';
+    if(m==='GET')cls='bg-support-info-bg text-support-info-border';
+    else if(m==='POST')cls='bg-support-success-bg text-support-success-border';
+    else if(m==='PUT'||m==='PATCH')cls='bg-support-warning-bg text-ink';
+    else if(m==='DELETE')cls='bg-support-danger-bg text-danger';
     return '<span class="inline-block px-1.5 py-0.5 rounded text-xs font-semibold '+cls+'">'+esc(m||'?')+'</span>';
   }
   function fmtTime(ms){var d=new Date(ms);return d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
@@ -187,18 +187,18 @@ export function TrafficPage({
   function pluginChip(p){
     if(!p||typeof p!=='object')return '';
     var ok=p.continued===true;
-    var cls=ok?'bg-emerald-50 border-emerald-200 text-emerald-800':'bg-red-50 border-red-200 text-red-800';
+    var cls=ok?'bg-support-success-bg border-support-success-border text-support-success-border':'bg-support-danger-bg border-support-danger-border text-danger';
     var icon=ok?'✓':'✗';
     return '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-xs '+cls+'"><span class="font-bold">'+icon+'</span><span class="font-semibold font-mono">'+esc(p.plugin||'?')+'</span><span class="opacity-80">'+esc(p.reason||'')+'</span></span>';
   }
   function pluginRow(arr){
     if(!Array.isArray(arr)||arr.length===0)return '';
     var chips='';for(var i=0;i<arr.length;i++){chips+=pluginChip(arr[i]);}
-    return '<div class="col-span-2 lg:col-span-4 flex items-start gap-2 mt-1"><span class="text-gray-400 shrink-0 pt-0.5">controls</span><span class="flex flex-wrap gap-1.5">'+chips+'</span></div>';
+    return '<div class="col-span-2 lg:col-span-4 flex items-start gap-2 mt-1"><span class="text-ink-placeholder shrink-0 pt-0.5">controls</span><span class="flex flex-wrap gap-1.5">'+chips+'</span></div>';
   }
 
   function chip(text,cls){return '<span class="px-2 py-0.5 rounded text-xs font-mono truncate max-w-[180px] '+cls+'" title="'+esc(text)+'">'+esc(text||'?')+'</span>';}
-  function arrow(sym){return '<span class="text-gray-400 shrink-0">'+(sym||'→')+'</span>';}
+  function arrow(sym){return '<span class="text-ink-placeholder shrink-0">'+(sym||'→')+'</span>';}
 
   // One log record's detail block — mirrors the /logs expanding panel.
   function legBlock(title,accent,leg){
@@ -207,28 +207,28 @@ export function TrafficPage({
     var corr=corrOf(v),corrColor=groupColor(corr);
     var verifHtml=evt&&typeof evt.verificationHtml==='string'?evt.verificationHtml:'';
     var raw=JSON.stringify(evt,null,2);
-    return '<div class="border border-gray-200 rounded overflow-hidden">'+
-      '<div class="px-3 py-1.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2 text-xs">'+
+    return '<div class="border border-border rounded overflow-hidden">'+
+      '<div class="px-3 py-1.5 bg-surface-muted border-b border-border flex items-center gap-2 text-xs">'+
         '<span class="inline-block w-2 h-2 rounded-full '+accent+' shrink-0"></span>'+
-        '<span class="font-semibold text-[#003366]">'+esc(title)+'</span>'+
+        '<span class="font-semibold text-bc-blue">'+esc(title)+'</span>'+
         methodBadge(req.method||'')+
         statusBadge(res.status==null?'—':String(res.status))+
-        '<span class="text-gray-500 truncate flex-1 min-w-0" title="'+esc(svc.name||'')+'">'+esc(svc.name||'')+'</span>'+
-        '<span class="text-gray-400 shrink-0">'+esc(v.namespace||'')+'</span>'+
+        '<span class="text-ink-secondary truncate flex-1 min-w-0" title="'+esc(svc.name||'')+'">'+esc(svc.name||'')+'</span>'+
+        '<span class="text-ink-placeholder shrink-0">'+esc(v.namespace||'')+'</span>'+
       '</div>'+
-      '<div class="px-3 py-2 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1 text-xs text-gray-600">'+
-        '<div><span class="text-gray-400">client ip</span> '+esc(v.client_ip||'—')+'</div>'+
-        '<div><span class="text-gray-400">size</span> '+esc(fmtBytes(res.size))+'</div>'+
-        '<div><span class="text-gray-400">kong lat</span> '+esc(fmtLat(lat.kong))+'</div>'+
-        '<div><span class="text-gray-400">proxy lat</span> '+esc(fmtLat(lat.proxy))+'</div>'+
-        '<div class="col-span-2"><span class="text-gray-400">route</span> '+esc(route.name||'—')+'</div>'+
-        '<div class="col-span-2"><span class="text-gray-400">gateway</span> '+esc(v.namespace||'—')+' · <span class="text-gray-400">dc</span> '+esc(v.datacenter||'—')+(v.app_version?' · <span class="text-gray-400">app</span> <span class="font-mono">'+esc(v.app_version)+'</span>':'')+'</div>'+
-        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(req.id||'')+'"><span class="text-gray-400">request id</span> '+esc(req.id||'—')+'</div>'+
-        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(corr||'')+'"><span class="text-gray-400">correlation id</span> '+(corr?'<span style="color:'+corrColor+';font-weight:600">'+esc(corr)+'</span>':'—')+'</div>'+
+      '<div class="px-3 py-2 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1 text-xs text-ink-secondary">'+
+        '<div><span class="text-ink-placeholder">client ip</span> '+esc(v.client_ip||'—')+'</div>'+
+        '<div><span class="text-ink-placeholder">size</span> '+esc(fmtBytes(res.size))+'</div>'+
+        '<div><span class="text-ink-placeholder">kong lat</span> '+esc(fmtLat(lat.kong))+'</div>'+
+        '<div><span class="text-ink-placeholder">proxy lat</span> '+esc(fmtLat(lat.proxy))+'</div>'+
+        '<div class="col-span-2"><span class="text-ink-placeholder">route</span> '+esc(route.name||'—')+'</div>'+
+        '<div class="col-span-2"><span class="text-ink-placeholder">gateway</span> '+esc(v.namespace||'—')+' · <span class="text-ink-placeholder">dc</span> '+esc(v.datacenter||'—')+(v.app_version?' · <span class="text-ink-placeholder">app</span> <span class="font-mono">'+esc(v.app_version)+'</span>':'')+'</div>'+
+        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(req.id||'')+'"><span class="text-ink-placeholder">request id</span> '+esc(req.id||'—')+'</div>'+
+        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(corr||'')+'"><span class="text-ink-placeholder">correlation id</span> '+(corr?'<span style="color:'+corrColor+';font-weight:600">'+esc(corr)+'</span>':'—')+'</div>'+
         pluginRow(v.plugin_results)+
         verifHtml+
       '</div>'+
-      '<pre class="mx-3 mb-3 p-2 bg-gray-50 border border-gray-200 rounded overflow-auto text-xs leading-snug max-h-60">'+esc(raw)+'</pre>'+
+      '<pre class="mx-3 mb-3 p-2 bg-surface-muted border border-border rounded overflow-auto text-xs leading-snug max-h-60">'+esc(raw)+'</pre>'+
     '</div>';
   }
 
@@ -243,29 +243,29 @@ export function TrafficPage({
     var corr=corrOf(cv),corrColor=groupColor(corr);
 
     var li=document.createElement('li');
-    li.className='hover:bg-gray-50/60 transition-colors';
+    li.className='hover:bg-surface-muted transition-colors';
     li.style.borderLeft='3px solid '+corrColor;
     li.innerHTML=
       '<details class="group">'+
         '<summary class="px-4 py-2 cursor-pointer list-none flex items-center gap-3">'+
-          '<span class="text-gray-400 tabular-nums shrink-0 font-mono">'+esc(time)+'</span>'+
+          '<span class="text-ink-placeholder tabular-nums shrink-0 font-mono">'+esc(time)+'</span>'+
           methodBadge(req.method||(pv.request&&pv.request.method)||'')+
           statusBadge(res.status==null?'—':String(res.status))+
           '<span class="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">'+
-            chip(client,'bg-[#003366] text-white')+
+            chip(client,'bg-bc-blue text-white')+
             arrow('→')+
-            chip(cRG,'bg-blue-50 text-blue-800 border border-blue-200')+
+            chip(cRG,'bg-support-info-bg text-support-info-border border border-support-info-border')+
             arrow('⇒')+
-            chip(pRG,'bg-amber-50 text-amber-800 border border-amber-200')+
+            chip(pRG,'bg-support-warning-bg text-ink border border-support-warning-border')+
             arrow('→')+
-            chip(service,'bg-[#FCBA19] text-[#003366]')+
+            chip(service,'bg-bc-gold text-bc-blue-pressed')+
           '</span>'+
-          '<span class="text-gray-500 tabular-nums shrink-0 hidden sm:inline">c '+esc(fmtLat(lat.request))+' · p '+esc(fmtLat(pLat))+'</span>'+
-          '<span class="text-gray-300 group-open:rotate-90 transition-transform">›</span>'+
+          '<span class="text-ink-secondary tabular-nums shrink-0 hidden sm:inline">c '+esc(fmtLat(lat.request))+' · p '+esc(fmtLat(pLat))+'</span>'+
+          '<span class="text-ink-placeholder group-open:rotate-90 transition-transform">›</span>'+
         '</summary>'+
         '<div class="px-4 pb-3 pt-1 space-y-2">'+
-          legBlock('Consumer leg','bg-[#003366]',c)+
-          legBlock('Provider leg','bg-[#FCBA19]',p)+
+          legBlock('Consumer leg','bg-bc-blue',c)+
+          legBlock('Provider leg','bg-bc-gold',p)+
         '</div>'+
       '</details>';
     return li;
@@ -292,17 +292,17 @@ export function TrafficPage({
     paused=!paused;
     pauseBtn.textContent=paused?'Resume':'Pause';
     pauseBtn.className=paused
-      ?'px-3 py-1 bg-[#FCBA19] text-[#003366] rounded font-medium hover:opacity-90'
-      :'px-3 py-1 bg-[#003366] text-white rounded font-medium hover:bg-[#002a52]';
+      ?'px-3 py-1 bg-bc-gold text-bc-blue-pressed rounded font-medium hover:opacity-90'
+      :'px-3 py-1 bg-btn-primary text-white rounded font-medium hover:bg-btn-primary-hover';
   });
   clearBtn.addEventListener('click',function(){
     list.innerHTML='';count=0;countEl.textContent='0';empty.style.display='';pending={};pendingOrder=[];
   });
 
-  setStatus('connecting…','bg-gray-300 animate-pulse');
+  setStatus('connecting…','bg-ink-disabled animate-pulse');
   var es=new EventSource(URL);
-  es.onopen=function(){setStatus('connected','bg-green-500');};
-  es.onerror=function(){setStatus('reconnecting…','bg-orange-400 animate-pulse');};
+  es.onopen=function(){setStatus('connected','bg-support-success-border');};
+  es.onerror=function(){setStatus('reconnecting…','bg-support-warning-border animate-pulse');};
   es.onmessage=function(ev){
     if(paused)return;
     var data;try{data=JSON.parse(ev.data);}catch(_){return;}

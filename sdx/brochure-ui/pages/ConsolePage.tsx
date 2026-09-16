@@ -152,7 +152,7 @@ function CardChevron() {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className="text-gray-300 group-hover:text-[#003366] transition-colors shrink-0"
+      className="text-border-medium group-hover:text-bc-blue transition-colors shrink-0"
     >
       <path d="M9 18l6-6-6-6" />
     </svg>
@@ -163,16 +163,16 @@ function ResourceCard({ card }: { card: ConsoleCard }) {
   return (
     <a
       href={card.href}
-      className="group bg-white border border-gray-200 rounded-lg p-6 hover:border-[#003366] hover:shadow-md transition-all flex items-center gap-5"
+      className="group bg-white border border-border rounded-lg p-6 hover:border-bc-blue hover:shadow-md transition-all flex items-center gap-5"
     >
-      <span className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#003366]/5 text-[#003366] shrink-0">
+      <span className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-surface-blue-tint text-bc-blue shrink-0">
         <CardIcon icon={card.icon} size={26} />
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block text-xl font-bold text-[#003366] group-hover:underline">
+        <span className="block text-xl font-bold text-bc-blue group-hover:underline">
           {card.label}
         </span>
-        <span className="block text-sm text-gray-600 mt-0.5">
+        <span className="block text-sm text-ink-secondary mt-0.5">
           {card.description}
         </span>
       </span>
@@ -185,16 +185,16 @@ function TelemetryCard({ card }: { card: ConsoleCard }) {
   return (
     <a
       href={card.href}
-      className="group bg-white border border-gray-200 rounded-lg px-4 py-3.5 hover:border-[#003366] hover:shadow-md transition-all flex items-center gap-3"
+      className="group bg-white border border-border rounded-lg px-4 py-3.5 hover:border-bc-blue hover:shadow-md transition-all flex items-center gap-3"
     >
-      <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#003366]/5 text-[#003366] shrink-0">
+      <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-surface-blue-tint text-bc-blue shrink-0">
         <CardIcon icon={card.icon} size={18} />
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block font-semibold text-[#003366] group-hover:underline">
+        <span className="block font-semibold text-bc-blue group-hover:underline">
           {card.label}
         </span>
-        <span className="block text-xs text-gray-500 truncate">
+        <span className="block text-xs text-ink-secondary truncate">
           {card.description}
         </span>
       </span>
@@ -218,22 +218,22 @@ export function ConsolePage({
       />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-          <h1 className="text-3xl font-bold mb-2">Member Console</h1>
-          <p className="text-blue-200">
+          <h1 className="text-5xl font-bold mb-2">Member Console</h1>
+          <p className="text-ink-invert-secondary">
             Operational tools for organization members — runtime groups, live
             traffic, logs, and connection requests.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Resources — long horizontal boxes */}
           <div className="lg:col-span-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
               Resources
             </h2>
             <div className="space-y-4">
@@ -245,7 +245,7 @@ export function ConsolePage({
 
           {/* Telemetry — compact column */}
           <div className="lg:col-span-1">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
               Telemetry
             </h2>
             <div className="space-y-3">

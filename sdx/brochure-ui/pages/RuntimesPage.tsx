@@ -31,10 +31,10 @@ function RuntimeGroupCard({
     <article
       data-env-item
       data-env={envAttr(group.environment)}
-      className="bg-white border border-gray-200 rounded-lg p-4 space-y-2"
+      className="bg-white border border-border rounded-lg shadow-sm p-4 space-y-2"
     >
       <header className="flex items-baseline justify-between gap-2">
-        <h3 className="font-semibold text-[#003366] font-mono text-sm">
+        <h3 className="font-semibold text-bc-blue font-mono text-sm">
           {group.name}{" "}
           {group.environment && `(${group.environment})`}
         </h3>
@@ -42,49 +42,49 @@ function RuntimeGroupCard({
       <dl className="grid grid-cols-1 sm:grid-cols-[140px,1fr] gap-x-3 gap-y-1 text-xs">
         {group.environment && (
           <>
-            <dt className="text-gray-500">Environment</dt>
-            <dd className="font-mono text-gray-800 break-all">
+            <dt className="text-ink-secondary">Environment</dt>
+            <dd className="font-mono text-ink break-all">
               {group.environment}
             </dd>
           </>
         )}
         {group.host && (
           <>
-            <dt className="text-gray-500">Host</dt>
-            <dd className="font-mono text-gray-800 break-all">
+            <dt className="text-ink-secondary">Host</dt>
+            <dd className="font-mono text-ink break-all">
               {group.host}
             </dd>
           </>
         )}
         {group.sdxEndpoint && (
           <>
-            <dt className="text-gray-500">SDX endpoint</dt>
-            <dd className="font-mono text-gray-800 break-all">
+            <dt className="text-ink-secondary">SDX endpoint</dt>
+            <dd className="font-mono text-ink break-all">
               {group.sdxEndpoint}
             </dd>
           </>
         )}
         {group.consumerEndpoint && (
           <>
-            <dt className="text-gray-500">
+            <dt className="text-ink-secondary">
               Consumer endpoint
             </dt>
-            <dd className="font-mono text-gray-800 break-all">
+            <dd className="font-mono text-ink break-all">
               {group.consumerEndpoint}
             </dd>
           </>
         )}
         {hosted.length > 0 && (
           <>
-            <dt className="text-gray-500">
+            <dt className="text-ink-secondary">
               Hosted organizations
             </dt>
-            <dd className="text-gray-800">
+            <dd className="text-ink">
               <ul className="flex flex-wrap gap-1">
                 {hosted.map((h) => (
                   <li
                     key={h}
-                    className="inline-block bg-gray-100 text-gray-700 rounded px-2 py-0.5 font-mono text-xs"
+                    className="inline-block bg-surface-muted text-ink-secondary rounded px-2 py-0.5 font-mono text-xs"
                   >
                     {h}
                   </li>
@@ -116,25 +116,25 @@ function GroupSection({
   );
   const accentClass =
     accent === "gold"
-      ? "border-l-[#FCBA19]"
-      : "border-l-[#003366]";
+      ? "border-l-bc-gold"
+      : "border-l-bc-blue";
   const isEmpty = sorted.length === 0;
   return (
     <section
       data-env-group
-      className={`bg-white border border-gray-200 border-l-4 ${accentClass} rounded-lg overflow-hidden`}
+      className={`bg-white border border-border border-l-4 ${accentClass} rounded-lg overflow-hidden`}
     >
-      <header className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex flex-wrap items-baseline justify-between gap-2">
+      <header className="bg-surface-muted border-b border-border px-4 py-3 flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 className="font-semibold text-[#003366]">
+          <h2 className="font-semibold text-bc-blue">
             {title}
           </h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-secondary">
             {description}
           </p>
         </div>
         <span
-          className="text-xs text-gray-500"
+          className="text-xs text-ink-secondary"
           data-env-count
           data-env-noun="group"
         >
@@ -155,7 +155,7 @@ function GroupSection({
         <p
           data-env-empty
           style={isEmpty ? undefined : { display: "none" }}
-          className="text-sm text-gray-500 italic"
+          className="text-sm text-ink-secondary italic"
         >
           {emptyMessage}
         </p>
@@ -192,21 +192,21 @@ export function RuntimesPage({
       />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-4xl font-bold mb-2">
             Runtime Groups
           </h1>
-          <p className="text-blue-200 max-w-2xl">
+          <p className="text-ink-invert-secondary max-w-2xl">
             Runtime groups owned by, and available to, an
             organization member.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-4">
           <OrgPicker
             organizations={organizations}
@@ -221,14 +221,17 @@ export function RuntimesPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div
+            role="alert"
+            className="mb-4 rounded border border-support-danger-border bg-support-danger-bg text-danger px-4 py-3 text-sm"
+          >
             {error}
           </div>
         )}
 
         {!selectedOrg ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">
               Select an organization member above to view
               its runtime groups.
             </p>
@@ -236,10 +239,10 @@ export function RuntimesPage({
         ) : (
           <>
             <div className="mb-5">
-              <h2 className="text-2xl font-bold text-[#003366]">
+              <h2 className="text-2xl font-bold text-bc-blue">
                 {selectedOrg.title}
               </h2>
-              <p className="text-xs text-gray-500 font-mono">
+              <p className="text-xs text-ink-secondary font-mono">
                 {selectedOrg.member.memberClass}/
                 {selectedOrg.member.memberId}
               </p>

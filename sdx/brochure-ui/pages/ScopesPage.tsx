@@ -61,8 +61,8 @@ function MetaBadge({
   value: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-xs">
-      <span className="text-gray-400">{label}</span>
+    <span className="inline-flex items-center gap-1 rounded bg-surface-muted text-ink-secondary px-2 py-0.5 text-xs">
+      <span className="text-ink-placeholder">{label}</span>
       <span className="font-medium">{value}</span>
     </span>
   );
@@ -138,21 +138,21 @@ function ScopeCard({ scope }: { scope: ResourceScope }) {
       data-env-item
       data-env={scopeEnv(scope)}
       data-search={searchText(scope)}
-      className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+      className="bg-white border border-border rounded-lg shadow-sm overflow-hidden"
     >
-      <header className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+      <header className="px-4 py-3 border-b border-border bg-surface-muted">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-mono font-semibold text-[#003366] break-all">
+          <h2 className="font-mono font-semibold text-bc-blue break-all">
             {scope.name}
           </h2>
           {scope.action && (
-            <span className="inline-flex items-center rounded-full bg-[#003366]/10 text-[#003366] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
+            <span className="inline-flex items-center rounded-full bg-surface-blue-tint text-bc-blue px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
               {scope.action}
             </span>
           )}
         </div>
         {scope.description && (
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-ink-secondary mt-1">
             {scope.description}
           </p>
         )}
@@ -173,9 +173,9 @@ function ScopeCard({ scope }: { scope: ResourceScope }) {
       </header>
 
       <div className="px-4 py-3" data-env-group>
-        <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-2">
+        <h3 className="text-xs uppercase tracking-wide text-ink-secondary mb-2">
           Grants access to{" "}
-          <span className="text-gray-400 normal-case">
+          <span className="text-ink-placeholder normal-case">
             (
             <span data-env-count data-env-noun="service">
               {services.length} service
@@ -185,7 +185,7 @@ function ScopeCard({ scope }: { scope: ResourceScope }) {
           </span>
         </h3>
         {services.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">
+          <p className="text-sm text-ink-secondary italic">
             No services are mapped to this scope.
           </p>
         ) : (
@@ -199,23 +199,23 @@ function ScopeCard({ scope }: { scope: ResourceScope }) {
                   key={svc.name}
                   data-env-item
                   data-env={serviceEnvToken(svc)}
-                  className="border-l-2 border-gray-200 pl-3"
+                  className="border-l-2 border-border pl-3"
                 >
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     {clientId ? (
                       <a
                         href={`/subsystems/${encodeURIComponent(clientId)}`}
-                        className="font-mono text-sm text-[#003366] hover:underline break-all"
+                        className="font-mono text-sm text-link hover:underline break-all"
                       >
                         {svc.name}
                       </a>
                     ) : (
-                      <span className="font-mono text-sm text-gray-800 break-all">
+                      <span className="font-mono text-sm text-ink break-all">
                         {svc.name}
                       </span>
                     )}
                     {orgName && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-ink-secondary">
                         {orgName}
                       </span>
                     )}
@@ -226,14 +226,14 @@ function ScopeCard({ scope }: { scope: ResourceScope }) {
                       {svc.operationIds.map((op) => (
                         <li
                           key={op}
-                          className="inline-block bg-purple-50 text-purple-700 border border-purple-200 rounded px-1.5 py-0.5 font-mono text-xs"
+                          className="inline-block bg-support-info-bg text-support-info-border border border-support-info-border rounded px-1.5 py-0.5 font-mono text-xs"
                         >
                           {op}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-gray-500 italic mt-1">
+                    <p className="text-xs text-ink-secondary italic mt-1">
                       All operations
                     </p>
                   )}
@@ -278,25 +278,25 @@ export function ScopesPage({
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-4xl font-bold mb-2">
             Resource Scopes
           </h1>
-          <p className="text-blue-200">
+          <p className="text-ink-invert-secondary">
             Each scope grants an application access to a
             specific set of service operations.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Search */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-start justify-between gap-4">
           <div className="flex-1 min-w-[260px]">
           <div className="relative max-w-xl">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-placeholder">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -319,14 +319,14 @@ export function ScopesPage({
               autoComplete="off"
               placeholder="Filter scopes…"
               aria-label="Filter scopes"
-              className="w-full border border-gray-300 rounded pl-9 pr-9 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#003366]/30 focus:border-[#003366]"
+              className="w-full border border-border rounded pl-9 pr-9 py-2 text-sm bg-white text-ink placeholder:text-ink-placeholder focus:border-border-active"
             />
             <button
               type="button"
               id="scope-search-clear"
               aria-label="Clear search"
               style={{ display: "none" }}
-              className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-700"
+              className="absolute inset-y-0 right-2 flex items-center text-ink-placeholder hover:text-ink"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -347,7 +347,7 @@ export function ScopesPage({
           </div>
           <p
             id="scope-count"
-            className="text-xs text-gray-500 mt-2"
+            className="text-xs text-ink-secondary mt-2"
           />
           </div>
           <EnvFilter label="Environment" />
@@ -356,13 +356,16 @@ export function ScopesPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div
+            role="alert"
+            className="mb-4 rounded border border-support-danger-border bg-support-danger-bg text-danger px-4 py-3 text-sm"
+          >
             {error}
           </div>
         )}
 
         {sorted.length === 0 && !error ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200 text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border text-ink-secondary">
             No resource scopes are defined.
           </div>
         ) : (
@@ -375,7 +378,7 @@ export function ScopesPage({
             <div
               id="scope-empty"
               style={{ display: "none" }}
-              className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200 text-gray-600"
+              className="text-center py-16 bg-surface-muted rounded-lg border border-border text-ink-secondary"
             >
               No scopes match your search.
             </div>
