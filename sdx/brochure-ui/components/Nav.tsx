@@ -79,7 +79,12 @@ export function Nav({
   };
 
   return (
-    <header
+    // A plain, non-landmark <div> mount point - NOT a <header> itself. The
+    // real client-rendered <Header>/<Subheader> (client/AppChrome.tsx) each
+    // render their own <header>/nav landmark, same as the static fallback
+    // below; mounting onto a <header> here would nest one <header> inside
+    // another once the island replaces this element's children.
+    <div
       data-bcds-island="AppChrome"
       data-bcds-props={JSON.stringify(islandProps)}
     >
@@ -92,6 +97,7 @@ export function Nav({
           the library ships no CSS of its own until its React tree actually
           runs in the browser, so this fallback is what no-JS users, and
           everyone else before that script loads, will see. */}
+      <header>
       <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex items-center gap-4 min-w-0">
@@ -160,10 +166,13 @@ export function Nav({
           </nav>
         </div>
       </div>
+      </header>
 
       {/* B.C. Design System Subheader: padding aligned with the header,
           solid bottom border, items as a horizontal list with vertical
-          dividers automatically rendered between each item. */}
+          dividers automatically rendered between each item. Sibling of
+          <header> above, not nested inside it - matches the real
+          <Header>/<Subheader> component structure (client/AppChrome.tsx). */}
       {!hideMainNav && (
         <div className="bg-white border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -207,6 +216,6 @@ export function Nav({
           </div>
         </div>
       )}
-    </header>
+    </div>
   );
 }

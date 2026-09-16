@@ -10,10 +10,16 @@
 //   5. A copyright statement line at the bottom.
 export function Footer() {
   return (
-    <footer className="mt-16" data-bcds-island="AppFooter" data-bcds-props="{}">
-      {/* Server-rendered fallback - see the equivalent comment in Nav.tsx.
-          Replaced by the real <Footer> (client/AppFooter.tsx) once
-          public/js/client.js loads. */}
+    // A plain, non-landmark <div> mount point (not <footer> itself) - the
+    // real client-rendered <Footer> (client/AppFooter.tsx) renders its own
+    // <footer> landmark, same as the fallback below; mounting onto a
+    // <footer> here would nest one inside the other once the island
+    // replaces this element's children. See the equivalent comment in
+    // components/Nav.tsx.
+    <div className="mt-16" data-bcds-island="AppFooter" data-bcds-props="{}">
+      {/* Server-rendered fallback. Replaced by the real <Footer>
+          (client/AppFooter.tsx) once public/js/client.js loads. */}
+      <footer>
       <div className="bg-[#292929] border-y-4 border-bc-gold">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <p className="text-sm text-ink-invert-secondary max-w-4xl">
@@ -103,6 +109,7 @@ export function Footer() {
           </div>
         </div>
       </div>
-    </footer>
+      </footer>
+    </div>
   );
 }

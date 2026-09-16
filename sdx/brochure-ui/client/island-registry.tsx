@@ -5,9 +5,15 @@
 import type { ComponentType } from "react";
 import { AppChrome } from "./AppChrome.tsx";
 import { AppFooter } from "./AppFooter.tsx";
+import { IslandLink } from "./IslandLink.tsx";
+import { IslandButton } from "./IslandButton.tsx";
+import { IslandTagGroup } from "./IslandTagGroup.tsx";
 
 // deno-lint-ignore no-explicit-any
 export const ISLAND_REGISTRY: Record<string, ComponentType<any>> = {
   AppChrome,
   AppFooter,
+  IslandLink,
+  IslandButton,
+  IslandTagGroup,
 };

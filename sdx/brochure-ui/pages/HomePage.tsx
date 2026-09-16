@@ -1,4 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
+import { Btn } from "../components/Btn.tsx";
 import { StatCard } from "../components/custom/StatCard.tsx";
 import { SubsystemCard } from "../components/custom/SubsystemCard.tsx";
 import type { Subsystem, Organization, Service, SiteConfig } from "../types.ts";
@@ -109,12 +110,9 @@ export function HomePage({ subsystems, organizations, services, config, currentP
 
           {subsystems.length > 6 && (
             <div className="mt-8 text-center">
-              <a
-                href="/subsystems"
-                className="inline-flex items-center justify-center gap-2 rounded font-medium transition-colors bg-btn-primary text-white hover:bg-btn-primary-hover px-6 py-3 text-base"
-              >
-                Browse all {subsystems.length} subsystems
-              </a>
+              <Btn href="/subsystems" size="large">
+                {`Browse all ${subsystems.length} subsystems`}
+              </Btn>
             </div>
           )}
         </div>
