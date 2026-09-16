@@ -1,6 +1,6 @@
 import { Layout } from "../components/Layout.tsx";
-import { StatCard } from "../components/StatCard.tsx";
-import { SubsystemCard } from "../components/SubsystemCard.tsx";
+import { StatCard } from "../components/custom/StatCard.tsx";
+import { SubsystemCard } from "../components/custom/SubsystemCard.tsx";
 import type { Subsystem, Organization, Service, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 

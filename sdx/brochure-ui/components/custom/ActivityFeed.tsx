@@ -1,4 +1,4 @@
-import type { ActivityRecord } from "../types.ts";
+import type { ActivityRecord } from "../../types.ts";
 
 interface ActivityFeedProps {
   activity: ActivityRecord[];

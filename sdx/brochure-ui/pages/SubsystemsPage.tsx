@@ -1,5 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
-import { SubsystemCard } from "../components/SubsystemCard.tsx";
+import { SubsystemCard } from "../components/custom/SubsystemCard.tsx";
 import type { Subsystem, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 

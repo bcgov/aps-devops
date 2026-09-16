@@ -1,4 +1,4 @@
-import type { Organization } from "../types.ts";
+import type { Organization } from "../../types.ts";
 
 interface OrgPickerProps {
   organizations: Organization[];

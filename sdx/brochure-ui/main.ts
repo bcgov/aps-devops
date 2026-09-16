@@ -24,7 +24,7 @@ import { OrgSubsystemsPage } from "./pages/OrgSubsystemsPage.tsx";
 import { TrafficPage } from "./pages/TrafficPage.tsx";
 import { TrustPage } from "./pages/TrustPage.tsx";
 import { ConnectionsPage } from "./pages/ConnectionsPage.tsx";
-import { VerificationBadge } from "./components/VerificationBadge.tsx";
+import { VerificationBadge } from "./components/custom/VerificationBadge.tsx";
 import { loadJwks } from "./lib/jwks.ts";
 import {
   MetricsQueryNotFoundError,

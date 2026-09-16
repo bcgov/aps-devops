@@ -1,5 +1,5 @@
 import type { SessionUser } from "../lib/auth.ts";
-import { isConsolePath } from "./ConsoleNav.tsx";
+import { isConsolePath } from "./custom/ConsoleNav.tsx";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/" },
@@ -59,11 +59,39 @@ export function Nav({
     user?.sub ||
     "Account";
 
+  // Passed to the real Header/Subheader components (client/AppChrome.tsx),
+  // which take over this element once public/js/client.js loads - see the
+  // comment on <header> below.
+  const islandProps = {
+    currentPath,
+    bannerTitle,
+    bannerHref,
+    helpUrl: HELP_URL,
+    hideMainNav,
+    authEnabled,
+    loginHref: `/auth/login?returnTo=${encodeURIComponent(currentPath)}`,
+    logoutHref: "/auth/logout",
+    userDisplayName: authEnabled && user ? displayName : undefined,
+    userEmail: authEnabled && user ? user.email : undefined,
+    navItems: NAV_ITEMS.filter((item) => !item.authRequired || user).map(
+      ({ label, href }) => ({ label, href }),
+    ),
+  };
+
   return (
-    <header>
-      {/* B.C. Design System Header: solid white background, solid grey
-          bottom border, hyperlinked logo on the left, title to its right,
-          nav container on the right. Not sticky by default. */}
+    <header
+      data-bcds-island="AppChrome"
+      data-bcds-props={JSON.stringify(islandProps)}
+    >
+      {/* Server-rendered fallback, matching the B.C. Design System Header/
+          Subheader anatomy (solid white background, solid grey bottom
+          border, hyperlinked logo left, title beside it, nav container
+          right; subheader items as a horizontal list with vertical
+          dividers). Visible until public/js/client.js mounts the real
+          <Header>/<Subheader> components here (see client/AppChrome.tsx) -
+          the library ships no CSS of its own until its React tree actually
+          runs in the browser, so this fallback is what no-JS users, and
+          everyone else before that script loads, will see. */}
       <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex items-center gap-4 min-w-0">

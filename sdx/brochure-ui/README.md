@@ -61,6 +61,15 @@ Get a deep understanding of the UX design system at https://github.com/bcgov/des
 
 ## Running the Application
 
+Build the client bundle first (only needed after changing anything under
+`client/`, or once before the first run) — this is what mounts the real
+`@bcgov/design-system-react-components` Header/Footer/Subheader in the
+browser; see `client/entry.tsx`:
+
+```sh
+deno task build:client
+```
+
 ```sh
 deno run --allow-net --allow-read --allow-env --allow-write main.ts
 ```

@@ -14,9 +14,16 @@ COPY main.ts types.ts verify.ts metrics-queries.yaml ./
 COPY lib ./lib
 COPY pages ./pages
 COPY components ./components
+COPY client ./client
+COPY scripts ./scripts
 COPY public ./public
 
-RUN deno cache main.ts \
+# Bundle the B.C. Design System client islands (client/entry.tsx) into
+# public/js/client.js - see scripts/build-client.ts. Needs --allow-run since
+# esbuild's Go binary runs as a subprocess; only used at build time, not by
+# the running server.
+RUN deno task build:client \
+    && deno cache main.ts \
     && chown -R deno:deno /app
 
 USER deno

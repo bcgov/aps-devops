@@ -2,9 +2,9 @@ import { Layout } from "../components/Layout.tsx";
 import {
   Breadcrumb,
   type Crumb,
-} from "../components/Breadcrumb.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
-import { EnvFilter } from "../components/EnvFilter.tsx";
+} from "../components/custom/Breadcrumb.tsx";
+import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
+import { EnvFilter } from "../components/custom/EnvFilter.tsx";
 import { normalizeEnv } from "../lib/environments.ts";
 import type {
   ResourceScope,

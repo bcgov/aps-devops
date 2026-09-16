@@ -1,4 +1,4 @@
-import type { Subsystem } from "../types.ts";
+import type { Subsystem } from "../../types.ts";
 
 const MEMBER_CLASS_LABELS: Record<string, string> = {
   MIN: "Ministry",

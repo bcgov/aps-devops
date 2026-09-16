@@ -1,4 +1,4 @@
-import type { Organization } from "../types.ts";
+import type { Organization } from "../../types.ts";
 
 const MEMBER_CLASS_LABELS: Record<string, string> = {
   MIN: "Ministry",

@@ -1,4 +1,4 @@
-import { DEFAULT_ENV, ENVIRONMENTS } from "../lib/environments.ts";
+import { DEFAULT_ENV, ENVIRONMENTS } from "../../lib/environments.ts";
 
 // Client-side environment filter. Renders the Dev / Test / Prod pill switch and
 // drives a purely client-side filter over any element tagged with

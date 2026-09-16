@@ -2,7 +2,7 @@ import type {
   ActivityVerification,
   VerificationResult,
   VerificationStatus,
-} from "../lib/verification.ts";
+} from "../../lib/verification.ts";
 
 interface VerificationBadgeProps {
   verification: ActivityVerification;

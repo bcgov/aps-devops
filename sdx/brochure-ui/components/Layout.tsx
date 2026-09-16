@@ -188,6 +188,10 @@ export function Layout({
         />
         <main id="main-content" className="flex-1">{children}</main>
         <Footer />
+        {/* Mounts the real B.C. Design System Header/Footer (client/
+            entry.tsx) into the data-bcds-island elements above - see the
+            comment on Nav.tsx's <header>. */}
+        <script type="module" src="/public/js/client.js" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

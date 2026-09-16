@@ -1,5 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
-import { OrgCard } from "../components/OrgCard.tsx";
+import { OrgCard } from "../components/custom/OrgCard.tsx";
 import type { Organization, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 

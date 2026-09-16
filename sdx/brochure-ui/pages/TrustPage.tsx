@@ -1,6 +1,6 @@
 import { Layout } from "../components/Layout.tsx";
-import { CopyButton } from "../components/CopyButton.tsx";
-import { EnvFilter } from "../components/EnvFilter.tsx";
+import { CopyButton } from "../components/custom/CopyButton.tsx";
+import { EnvFilter } from "../components/custom/EnvFilter.tsx";
 import { envAttr } from "../lib/environments.ts";
 import type { CertInfo, JwkRecord, JwksData, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";

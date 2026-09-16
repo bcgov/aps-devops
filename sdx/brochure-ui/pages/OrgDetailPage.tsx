@@ -1,12 +1,12 @@
 import { Layout } from "../components/Layout.tsx";
-import { Breadcrumb, type Crumb } from "../components/Breadcrumb.tsx";
-import { SubsystemCard } from "../components/SubsystemCard.tsx";
-import { ActivityFeed } from "../components/ActivityFeed.tsx";
-import { Contacts } from "../components/Contacts.tsx";
+import { Breadcrumb, type Crumb } from "../components/custom/Breadcrumb.tsx";
+import { SubsystemCard } from "../components/custom/SubsystemCard.tsx";
+import { ActivityFeed } from "../components/custom/ActivityFeed.tsx";
+import { Contacts } from "../components/custom/Contacts.tsx";
 import {
   type EnvKeyset,
   TrustKeysets,
-} from "../components/TrustKeysets.tsx";
+} from "../components/custom/TrustKeysets.tsx";
 import type {
   ActivityRecord,
   Organization,

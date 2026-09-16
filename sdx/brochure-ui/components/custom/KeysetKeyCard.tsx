@@ -1,5 +1,5 @@
 import { CopyButton } from "./CopyButton.tsx";
-import type { JwkRecord } from "../types.ts";
+import type { JwkRecord } from "../../types.ts";
 
 function jwkAlgorithmLabel(k: JwkRecord): string {
   if (k.kty === "EC" && k.crv) return `EC (${k.crv})`;

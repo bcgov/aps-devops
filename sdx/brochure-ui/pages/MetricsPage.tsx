@@ -1,8 +1,8 @@
 import { Layout } from "../components/Layout.tsx";
-import { Breadcrumb } from "../components/Breadcrumb.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
-import { TimeSeriesChart } from "../components/TimeSeriesChart.tsx";
-import type { MetricSeries } from "../components/TimeSeriesChart.tsx";
+import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
+import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
+import { TimeSeriesChart } from "../components/custom/TimeSeriesChart.tsx";
+import type { MetricSeries } from "../components/custom/TimeSeriesChart.tsx";
 import type { SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 

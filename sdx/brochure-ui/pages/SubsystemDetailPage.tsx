@@ -1,12 +1,12 @@
 import { Layout } from "../components/Layout.tsx";
-import { Breadcrumb } from "../components/Breadcrumb.tsx";
-import { Markdown } from "../components/Markdown.tsx";
-import { CopyButton } from "../components/CopyButton.tsx";
-import { Contacts } from "../components/Contacts.tsx";
+import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
+import { Markdown } from "../components/custom/Markdown.tsx";
+import { CopyButton } from "../components/custom/CopyButton.tsx";
+import { Contacts } from "../components/custom/Contacts.tsx";
 import {
   type EnvKeyset,
   TrustKeysets,
-} from "../components/TrustKeysets.tsx";
+} from "../components/custom/TrustKeysets.tsx";
 import type {
   Service,
   ServiceOperation,

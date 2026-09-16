@@ -2,9 +2,9 @@ import { Layout } from "../components/Layout.tsx";
 import {
   Breadcrumb,
   type Crumb,
-} from "../components/Breadcrumb.tsx";
-import { OrgPicker } from "../components/OrgPicker.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
+} from "../components/custom/Breadcrumb.tsx";
+import { OrgPicker } from "../components/custom/OrgPicker.tsx";
+import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import type {
   ConnectionGatewayPattern,
   ConnectionProvisionerStatus,

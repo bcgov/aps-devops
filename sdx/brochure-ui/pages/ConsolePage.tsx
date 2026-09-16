@@ -1,5 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
-import { Breadcrumb } from "../components/Breadcrumb.tsx";
+import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
 import type { SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 

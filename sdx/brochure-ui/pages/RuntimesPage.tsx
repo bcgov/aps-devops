@@ -1,8 +1,8 @@
 import { Layout } from "../components/Layout.tsx";
-import { Breadcrumb } from "../components/Breadcrumb.tsx";
-import { OrgPicker } from "../components/OrgPicker.tsx";
-import { EnvFilter } from "../components/EnvFilter.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
+import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
+import { OrgPicker } from "../components/custom/OrgPicker.tsx";
+import { EnvFilter } from "../components/custom/EnvFilter.tsx";
+import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import { envAttr } from "../lib/environments.ts";
 import type { Organization, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";

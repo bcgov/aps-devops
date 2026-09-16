@@ -1,6 +1,6 @@
 import { CopyButton } from "./CopyButton.tsx";
 import { KeysetKeyCard } from "./KeysetKeyCard.tsx";
-import type { JwkRecord } from "../types.ts";
+import type { JwkRecord } from "../../types.ts";
 
 /** A keyset published for one environment (SDX publishes one keyset per env). */
 export interface EnvKeyset {

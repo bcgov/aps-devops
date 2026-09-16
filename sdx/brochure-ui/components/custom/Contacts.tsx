@@ -1,4 +1,4 @@
-import type { SubsystemAccess } from "../types.ts";
+import type { SubsystemAccess } from "../../types.ts";
 
 const ROLE_LABELS: Record<string, string> = {
   "access-manager": "Access Manager",

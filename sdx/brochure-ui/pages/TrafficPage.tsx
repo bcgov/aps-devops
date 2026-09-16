@@ -1,6 +1,6 @@
 import { Layout } from "../components/Layout.tsx";
-import { Breadcrumb } from "../components/Breadcrumb.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
+import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
+import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import type { Service, Subsystem } from "../types.ts";
 import type { SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
