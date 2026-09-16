@@ -60,24 +60,27 @@ export function Nav({
     "Account";
 
   return (
-    <header className="sticky top-0 z-50 shadow-sm">
-      {/* BC Gov blue banner: logo + title + help/login */}
-      <div className="bg-bc-blue text-ink-invert">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[65px] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-5 min-w-0">
-            <a
-              href="https://sdx.gov.bc.ca"
-              className="flex items-center shrink-0 hover:opacity-90 transition-opacity rounded-sm"
-            >
-              <img
-                src="/public/bc_logo_header.svg"
-                alt="Government of British Columbia"
-                className="h-10 w-auto"
-              />
-            </a>
+    <header>
+      {/* B.C. Design System Header: solid white background, solid grey
+          bottom border, hyperlinked logo on the left, title to its right,
+          nav container on the right. Not sticky by default. */}
+      <div className="bg-white border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex items-center gap-4 min-w-0">
             <a
               href={bannerHref}
-              className="text-ink-invert font-bold text-xl sm:text-2xl truncate hover:text-ink-invert-secondary transition-colors rounded-sm"
+              className="flex items-center shrink-0 rounded-sm"
+            >
+              <img
+                src="/public/bcid-logo-positive.png"
+                alt="Government of British Columbia"
+                className="h-9 w-auto"
+              />
+            </a>
+            <span className="w-px self-stretch bg-border" aria-hidden="true" />
+            <a
+              href={bannerHref}
+              className="text-bc-blue font-bold text-lg sm:text-xl truncate hover:text-bc-blue-hover transition-colors rounded-sm"
             >
               {bannerTitle}
             </a>
@@ -91,14 +94,14 @@ export function Nav({
               href={HELP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-4 hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors"
             >
               Help <Chevron />
             </a>
 
             {authEnabled && user ? (
               <details className="relative group">
-                <summary className="list-none cursor-pointer inline-flex items-center gap-1 px-3 py-4 hover:bg-white/10 transition-colors">
+                <summary className="list-none cursor-pointer inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors">
                   <span className="truncate max-w-[160px]">
                     {displayName}
                   </span>
@@ -121,7 +124,7 @@ export function Nav({
             ) : (
               <a
                 href={`/auth/login?returnTo=${encodeURIComponent(currentPath)}`}
-                className="inline-flex items-center gap-1 px-3 py-4 hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors"
               >
                 Login <Chevron />
               </a>
@@ -130,44 +133,48 @@ export function Nav({
         </div>
       </div>
 
-      {/* Gold accent line */}
-      <div className="h-[3px] bg-bc-gold" />
-
-      {/* Secondary white nav bar */}
+      {/* B.C. Design System Subheader: padding aligned with the header,
+          solid bottom border, items as a horizontal list with vertical
+          dividers automatically rendered between each item. */}
       {!hideMainNav && (
-        <div className="bg-white border-b border-border shadow-sm">
+        <div className="bg-white border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <nav
-              className="flex flex-wrap gap-0"
-              aria-label="Main navigation"
-            >
-              {NAV_ITEMS.filter(
-                (item) => !item.authRequired || user,
-              ).map((item) => {
-                const isActive =
-                  item.href === "/console"
-                    ? isConsolePath(currentPath)
-                    : currentPath === item.href ||
-                      (item.href !== "/" &&
-                        currentPath.startsWith(
-                          item.href + "/",
-                        ));
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={[
-                      "px-4 py-4 text-sm font-medium border-b-[3px] transition-colors",
-                      isActive
-                        ? "border-bc-gold text-bc-blue"
-                        : "border-transparent text-ink-secondary hover:text-bc-blue hover:border-border-medium",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </a>
-                );
-              })}
+            <nav aria-label="Main navigation">
+              <ul className="flex flex-wrap">
+                {NAV_ITEMS.filter(
+                  (item) => !item.authRequired || user,
+                ).map((item, i) => {
+                  const isActive =
+                    item.href === "/console"
+                      ? isConsolePath(currentPath)
+                      : currentPath === item.href ||
+                        (item.href !== "/" &&
+                          currentPath.startsWith(
+                            item.href + "/",
+                          ));
+                  return (
+                    <li
+                      key={item.href}
+                      className={
+                        i > 0 ? "border-l border-border" : undefined
+                      }
+                    >
+                      <a
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={[
+                          "block px-4 py-3 text-sm font-medium transition-colors",
+                          isActive
+                            ? "text-bc-blue font-semibold"
+                            : "text-ink-secondary hover:text-bc-blue hover:bg-surface-muted",
+                        ].join(" ")}
+                      >
+                        {item.label}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
             </nav>
           </div>
         </div>

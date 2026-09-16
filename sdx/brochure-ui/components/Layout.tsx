@@ -140,6 +140,13 @@ export function Layout({
             outline: 2px solid var(--surface-color-border-active);
             outline-offset: 2px;
           }
+          /* Button anatomy requires a border stroke on every variant, even
+             filled ones — applied globally so every bg-btn-primary/
+             bg-btn-danger call site gets it for free. */
+          .bg-btn-primary { border: 1px solid var(--surface-color-primary-button-default); }
+          .bg-btn-primary:hover { border-color: var(--surface-color-primary-button-hover); }
+          .bg-btn-danger { border: 1px solid var(--surface-color-primary-danger-button-default); }
+          .bg-btn-danger:hover { border-color: var(--surface-color-primary-danger-button-hover); }
           .sdx-prose p { margin-bottom: 0.75em; }
           .sdx-prose p:last-child { margin-bottom: 0; }
           .sdx-prose a { color: var(--typography-color-link); text-decoration: underline; }
