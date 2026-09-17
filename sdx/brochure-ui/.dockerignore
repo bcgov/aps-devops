@@ -11,4 +11,3 @@ chart.yaml
 config*.yaml
 .values-*.yaml
 samples
-scripts
