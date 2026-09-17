@@ -15,6 +15,22 @@
 // data-bcds-island="<Name>" - each one client-rendered fresh via
 // createRoot(), replacing the plain, accessible server-rendered fallback
 // that was there until this script ran.
+//
+// IMPORTANT constraint this discovered the hard way: createRoot(el).render()
+// throws away and rebuilds el's entire subtree as new DOM nodes - it does
+// NOT mutate the fallback's existing elements in place. Any other script on
+// the page that captures a reference to an element *inside* an island's
+// fallback (via getElementById/querySelector, run before this script mounts
+// the island) will hold a stale, now-detached node once the island replaces
+// it - its event listeners and reads/writes silently stop affecting what's
+// on screen. This is why components/custom/OrgPicker.tsx still uses a plain
+// native <select> instead of the real Select: its pin-organization script
+// looks up the select by CSS selector, and converting it broke that lookup
+// (confirmed via a real interaction test, not just theory) with no fix
+// short of moving that script's logic into the island itself. Before
+// converting anything else, check whether any *other* script on the page
+// references an element inside its fallback by id/selector - if so, either
+// move that logic into the island component too, or leave it unconverted.
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { ISLAND_REGISTRY } from "./island-registry.tsx";
