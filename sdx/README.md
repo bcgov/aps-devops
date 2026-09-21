@@ -6,7 +6,7 @@ A Kubernetes deployment for running SDX (Secure Data Exchange) Edge Servers as h
 
 ### Helm Chart (`chart/sdx-edge`)
 
-**Chart Version:** 0.3.7
+**Chart Version:** 0.3.8
 **App Version:** 3.9.1
 
 Deploys a Kong Gateway data plane node configured for secure data exchange operations. The chart includes:
