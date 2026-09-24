@@ -57,6 +57,9 @@ sdx_control_url_by_env:
   dev: sdx-cluster.dev.api.gov.bc.ca:443
   test: sdx-cluster.test.api.gov.bc.ca:443
   prod: sdx-cluster.api.gov.bc.ca:443
+  stg: sdx-cluster.dev.api.gov.bc.ca:443
+  bct: sdx-cluster.test.api.gov.bc.ca:443
+  bc: sdx-cluster.api.gov.bc.ca:443
 
 client_ca_url_by_env:
   apsdev: https://sdx-ca-api-gov-bc-ca.dev.api.gov.bc.ca
@@ -64,6 +67,9 @@ client_ca_url_by_env:
   dev: https://sdx-ca.dev.api.gov.bc.ca
   test: https://sdx-ca.test.api.gov.bc.ca
   prod: https://sdx-ca.api.gov.bc.ca
+  stg: https://sdx-ca.dev.api.gov.bc.ca
+  bct: https://sdx-ca.test.api.gov.bc.ca
+  bc: https://sdx-ca.api.gov.bc.ca
 
 sdx_aggregator_url_by_env:
   apsdev: gwaggregator-api-gov-bc-ca.dev.api.gov.bc.ca
@@ -71,6 +77,9 @@ sdx_aggregator_url_by_env:
   dev: gwaggregator.api.gov.bc.ca
   test: gwaggregator.api.gov.bc.ca
   prod: gwaggregator.api.gov.bc.ca
+  stg: gwaggregator.api.gov.bc.ca
+  bct: gwaggregator.api.gov.bc.ca
+  bc: gwaggregator.api.gov.bc.ca
 
 # Ship the Edge Prometheus time series to a remote Prometheus (e.g. on Gold)
 # via the Prometheus remote_write protocol.
@@ -81,6 +90,9 @@ prom_remote_write:
     dev: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
     test: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
     prod: "https://gw-metrics-aggregator.gov.bc.ca/api/v1/write"
+    stg: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
+    bct: "https://gw-metrics-aggregator.api.gov.bc.ca/api/v1/write"
+    bc: "https://gw-metrics-aggregator.gov.bc.ca/api/v1/write"
 
   # mTLS to Gold gwmetricsaggregator (same client cert material as Fluent Bit → gwaggregator)
   tls:
