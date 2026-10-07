@@ -2,7 +2,6 @@ ARG KONG_VERSION="3.9.1"
 FROM docker.io/kong:${KONG_VERSION}
 
 ARG APP_VERSION
-ARG KONG_OSS_PLUGINS_REF="b9c7e4264006de764f168eb747b1e1d93ddf4a54"
 ENV APP_VERSION=${APP_VERSION}
 
 USER root
@@ -10,9 +9,8 @@ USER root
 RUN apt-get update && apt-get -y install unzip curl
 
 RUN echo with pep and plugin-log
-RUN git clone https://github.com/bcgov/kong-oss-plugins.git \
+RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
-  && git checkout "${KONG_OSS_PLUGINS_REF}" \
   && (cd plugins/dpop && luarocks make) \
   && (cd plugins/jwt-keycloak && luarocks make) \
   && (cd plugins/mtls-acl && luarocks make) \
