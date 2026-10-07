@@ -83,8 +83,6 @@ spec:
           value: "{{- if .Values.mtls_required }}3{{- else }}1{{- end }}"
         - name: KONG_PROXY_ACCESS_LOG
           value: "off"
-        - name: KONG_HEADERS
-          value: "latency_tokens, X-Kong-Request-Id"
         - name: KONG_PROXY_LISTEN
           value: 0.0.0.0:8000, [::]:8000, 0.0.0.0:8443 http2 ssl, [::]:8443 http2 ssl, 0.0.0.0:3443 http2 ssl
         - name: KONG_LUA_SSL_TRUSTED_CERTIFICATE
