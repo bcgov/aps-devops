@@ -55,6 +55,9 @@ USER kong
 # Specifies this instance runs as a data plane node in a hybrid deployment
 ENV KONG_ROLE="data_plane"
 
+# Exposes the request identifier without Kong server or latency headers
+ENV KONG_HEADERS="X-Kong-Request-Id"
+
 # Disables local database - data planes sync config from control plane
 ENV KONG_DATABASE="off"
 
