@@ -214,8 +214,24 @@ export interface ConnectionRequesterDetails {
   service: {
     clientId: string;
     privacyZone: string;
+    version?: string;
   };
   submissionId: string;
+}
+
+export type ConnectionClientGrantStatus =
+  | "pending"
+  | "approved"
+  | "rejected";
+
+export interface ConnectionClientGrant {
+  id: string;
+  integrationId: string;
+  oauthClientId: string;
+  submissionId?: string;
+  requesterDetails?: ConnectionRequesterDetails;
+  scopes: string[];
+  status: ConnectionClientGrantStatus;
 }
 
 export interface ConnectionClientResources {
@@ -250,6 +266,7 @@ export interface ConnectionRequest {
   clientResources?: ConnectionClientResources;
   serviceResources?: ConnectionServiceResources;
   provisionerStatus?: ConnectionProvisionerStatus;
+  grants?: ConnectionClientGrant[];
 }
 
 export interface ConnectionRequestInput {

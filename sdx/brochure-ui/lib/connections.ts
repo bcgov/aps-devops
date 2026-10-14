@@ -1,6 +1,9 @@
 import type {
   ActivityRecord,
+  ConnectionClientGrant,
+  ConnectionClientGrantStatus,
   ConnectionRequest,
+  ConnectionRequesterDetails,
   ConnectionRequestInput,
 } from "../types.ts";
 
@@ -41,6 +44,22 @@ export async function listConnections(
   if (!res.ok) throw new SdxApiError(res.status, await res.text());
   const data = await res.json();
   return Array.isArray(data) ? data.map(normalizeConnection) : [];
+}
+
+export async function listConnectionClientGrants(
+  org: string,
+  connectionId: string,
+  opts: SdxCallOpts = {},
+): Promise<ConnectionClientGrant[]> {
+  const url =
+    `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections/${encodeURIComponent(connectionId)}/grants`;
+  const res = await fetch(url, {
+    headers: authHeaders(opts.accessToken),
+    signal: opts.signal,
+  });
+  if (!res.ok) throw new SdxApiError(res.status, await res.text());
+  const data = await res.json();
+  return Array.isArray(data) ? data.map(normalizeGrant) : [];
 }
 
 // Full client (subsystem) detail, scoped to the owning organization — unlike
@@ -92,19 +111,32 @@ function normalizeScopes(v: unknown): string[] | undefined {
   return v.map(toName).filter((s) => s !== "");
 }
 
+function normalizeRequesterDetails(
+  rd?: ConnectionRequesterDetails,
+): ConnectionRequesterDetails | undefined {
+  return rd
+    ? {
+        ...rd,
+        requester: toName(rd.requester),
+        requesterEmail: toEmail(rd.requester) ?? rd.requesterEmail,
+        scopes: normalizeScopes(rd.scopes) ?? rd.scopes,
+      }
+    : rd;
+}
+
 function normalizeConnection(c: ConnectionRequest): ConnectionRequest {
-  const rd = c.requesterDetails;
   return {
     ...c,
     scopes: normalizeScopes(c.scopes) ?? c.scopes,
-    requesterDetails: rd
-      ? {
-          ...rd,
-          requester: toName(rd.requester),
-          requesterEmail: toEmail(rd.requester) ?? rd.requesterEmail,
-          scopes: normalizeScopes(rd.scopes) ?? rd.scopes,
-        }
-      : rd,
+    requesterDetails: normalizeRequesterDetails(c.requesterDetails),
+  };
+}
+
+function normalizeGrant(g: ConnectionClientGrant): ConnectionClientGrant {
+  return {
+    ...g,
+    scopes: normalizeScopes(g.scopes) ?? [],
+    requesterDetails: normalizeRequesterDetails(g.requesterDetails),
   };
 }
 
@@ -125,6 +157,25 @@ export async function listOrgActivity(
   if (!res.ok) throw new SdxApiError(res.status, await res.text());
   const data = await res.json();
   return Array.isArray(data) ? (data as ActivityRecord[]) : [];
+}
+
+export async function setConnectionClientGrantApproval(
+  org: string,
+  connectionId: string,
+  grantId: string,
+  status: Exclude<ConnectionClientGrantStatus, "pending">,
+  opts: SdxCallOpts = {},
+): Promise<unknown> {
+  const url =
+    `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections/${encodeURIComponent(connectionId)}/grants/${encodeURIComponent(grantId)}/approval`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: authHeaders(opts.accessToken),
+    body: JSON.stringify({ status }),
+    signal: opts.signal,
+  });
+  if (!res.ok) throw new SdxApiError(res.status, await res.text());
+  return await res.json();
 }
 
 export async function deleteConnection(

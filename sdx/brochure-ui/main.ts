@@ -44,10 +44,12 @@ import {
 import {
   deleteConnection,
   getClientDetail,
+  listConnectionClientGrants,
   listConnections,
   listOrgActivity,
   SdxApiError,
   setConnectionApproval,
+  setConnectionClientGrantApproval,
   upsertConnection,
 } from "./lib/connections.ts";
 import { listRuntimeGroups } from "./lib/runtime-groups.ts";
@@ -996,6 +998,12 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   if (path === "/connections/reject") {
     return await handleConnectionsReject(req, user);
   }
+  if (path === "/connections/grants/approve") {
+    return await handleConnectionGrantApprove(req, user);
+  }
+  if (path === "/connections/grants/reject") {
+    return await handleConnectionGrantReject(req, user);
+  }
   if (path === "/connections/revoke") {
     return await handleConnectionsRevoke(req, user);
   }
@@ -1257,6 +1265,39 @@ async function handleConnections(
           accessToken: user!.accessToken,
         },
       );
+      const grantResults = await Promise.allSettled(
+        connections.map((connection) => {
+          if (!connection.id) {
+            return Promise.reject(
+              new Error(
+                `Connection ${connection.clientId} → ${connection.serviceId} has no id`,
+              ),
+            );
+          }
+          return listConnectionClientGrants(
+            selectedOrg.name,
+            connection.id,
+            { accessToken: user!.accessToken },
+          );
+        }),
+      );
+      let failedGrantLoads = 0;
+      connections = connections.map((connection, index) => {
+        const result = grantResults[index];
+        if (result.status === "fulfilled") {
+          return { ...connection, grants: result.value };
+        }
+        failedGrantLoads += 1;
+        console.error(
+          `Failed to load grants for connection ${connection.id ?? "unknown"}:`,
+          result.reason,
+        );
+        return connection;
+      });
+      if (failedGrantLoads > 0) {
+        error =
+          `Failed to load client grants for ${failedGrantLoads} connection${failedGrantLoads === 1 ? "" : "s"}. Connection details may be incomplete.`;
+      }
     } catch (e) {
       error =
         e instanceof SdxApiError
@@ -1565,6 +1606,94 @@ async function handleConnectionsEdit(
       clientId,
     );
   }
+}
+
+async function handleConnectionGrantApproval(
+  req: Request,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  status: "approved" | "rejected",
+): Promise<Response> {
+  const gate = requireAuth(req, user);
+  if (gate) return gate;
+  if (req.method !== "POST")
+    return new Response("method not allowed", {
+      status: 405,
+    });
+
+  const form = await req.formData();
+  const org = String(form.get("org") ?? "");
+  const connectionId = String(form.get("connectionId") ?? "");
+  const grantId = String(form.get("grantId") ?? "");
+  const clientId = String(form.get("clientId") ?? "");
+  const serviceId = String(form.get("serviceId") ?? "");
+  if (!org || !connectionId || !grantId || !clientId || !serviceId) {
+    return connectionsRedirect(
+      org,
+      { kind: "error", message: "Missing required grant fields" },
+      clientId,
+    );
+  }
+
+  const service = services.find(
+    (item) => item.name === serviceId,
+  );
+  if (
+    !service ||
+    service.subsystem.organization.name !== org
+  ) {
+    return connectionsRedirect(
+      org,
+      {
+        kind: "error",
+        message: `Only the service owner can review grants for ${serviceId}.`,
+      },
+      clientId,
+    );
+  }
+
+  const action = status === "approved" ? "Approve" : "Reject";
+  try {
+    await setConnectionClientGrantApproval(
+      org,
+      connectionId,
+      grantId,
+      status,
+      { accessToken: user!.accessToken },
+    );
+    return connectionsRedirect(
+      org,
+      {
+        kind: "success",
+        message:
+          `${status === "approved" ? "Approved" : "Rejected"} client grant for ${clientId} → ${serviceId}`,
+      },
+      clientId,
+    );
+  } catch (e) {
+    const message =
+      e instanceof SdxApiError
+        ? `${action} grant failed (${e.status}): ${e.body}`
+        : (e as Error).message;
+    return connectionsRedirect(
+      org,
+      { kind: "error", message },
+      clientId,
+    );
+  }
+}
+
+function handleConnectionGrantApprove(
+  req: Request,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<Response> {
+  return handleConnectionGrantApproval(req, user, "approved");
+}
+
+function handleConnectionGrantReject(
+  req: Request,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<Response> {
+  return handleConnectionGrantApproval(req, user, "rejected");
 }
 
 async function handleConnectionsApprove(

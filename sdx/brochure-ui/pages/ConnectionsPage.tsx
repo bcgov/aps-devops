@@ -6,6 +6,7 @@ import {
 import { OrgPicker } from "../components/OrgPicker.tsx";
 import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
 import type {
+  ConnectionClientGrant,
   ConnectionGatewayPattern,
   ConnectionProvisionerStatus,
   ConnectionRequest,
@@ -1417,6 +1418,139 @@ function EditDialog({
   );
 }
 
+function GrantStatusPill({
+  status,
+}: {
+  status: ConnectionClientGrant["status"];
+}) {
+  const styles = {
+    approved: "bg-green-100 text-green-800",
+    pending: "bg-yellow-100 text-yellow-800",
+    rejected: "bg-red-100 text-red-800",
+  };
+  const dots = {
+    approved: "bg-green-600",
+    pending: "bg-yellow-600",
+    rejected: "bg-red-600",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${styles[status]}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${dots[status]}`} />
+      {status[0].toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+function ClientGrantRow({
+  grant,
+  connection,
+  org,
+  canApprove,
+}: {
+  grant: ConnectionClientGrant;
+  connection: ConnectionRequest;
+  org: string;
+  canApprove: boolean;
+}) {
+  const details = grant.requesterDetails;
+  const canReview =
+    canApprove && grant.status === "pending" && Boolean(connection.id);
+  const hidden = (
+    <>
+      <input type="hidden" name="org" value={org} />
+      <input
+        type="hidden"
+        name="connectionId"
+        value={connection.id ?? ""}
+      />
+      <input type="hidden" name="grantId" value={grant.id} />
+      <input
+        type="hidden"
+        name="clientId"
+        value={connection.clientId}
+      />
+      <input
+        type="hidden"
+        name="serviceId"
+        value={connection.serviceId}
+      />
+    </>
+  );
+
+  return (
+    <article className="rounded border border-gray-200 bg-gray-50/60 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <GrantStatusPill status={grant.status} />
+            {connection.environment && (
+              <MetaBadge label={connection.environment} />
+            )}
+            {!connection.isApproved && (
+              <span className="text-xs text-gray-500">
+                Waiting for connection approval
+              </span>
+            )}
+          </div>
+          <dl className="grid grid-cols-[110px,1fr] gap-x-3 gap-y-1 text-xs">
+            <FieldRow label="Integration" value={grant.integrationId} mono />
+            <FieldRow label="OAuth client" value={grant.oauthClientId} mono />
+            <FieldRow label="Requester" value={details?.requester} />
+            <FieldRow
+              label="Requester email"
+              value={details?.requesterEmail}
+            />
+            <FieldRow
+              label="Submission"
+              value={grant.submissionId ?? details?.submissionId}
+              mono
+            />
+            <FieldRow
+              label="Service version"
+              value={details?.service?.version}
+              mono
+            />
+          </dl>
+        </div>
+        {canReview && (
+          <div className="flex shrink-0 gap-2">
+            <form method="post" action="/connections/grants/reject">
+              {hidden}
+              <button
+                type="submit"
+                className="text-xs font-semibold px-3 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+              >
+                Reject grant
+              </button>
+            </form>
+            <form method="post" action="/connections/grants/approve">
+              {hidden}
+              <button
+                type="submit"
+                className="text-xs font-semibold px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+              >
+                Approve grant
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+      <div className="mt-2 text-xs">
+        <span className="text-gray-500">Scopes </span>
+        {grant.scopes.length === 0 ? (
+          <span className="text-gray-600 italic">
+            All service operations (no individual scopes)
+          </span>
+        ) : (
+          <ScopeChips scopes={grant.scopes} />
+        )}
+      </div>
+    </article>
+  );
+}
+
 function ConnectionCard({
   conn,
   org,
@@ -1455,6 +1589,7 @@ function ConnectionCard({
   const confirmId = `confirm-${slug}`;
   const editId = `edit-${slug}`;
   const rd = conn.requesterDetails;
+  const grants = conn.grants ?? [];
   const clientPatterns =
     conn.clientResources?.gatewayPatterns;
   const servicePatterns =
@@ -1462,7 +1597,7 @@ function ConnectionCard({
   const subsystemId = conn.serviceResources?.subsystemId;
   const provisionerStatus = conn.provisionerStatus;
   const hasDetails = Boolean(
-    rd ||
+    (rd && grants.length === 0) ||
     clientPatterns ||
     servicePatterns ||
     subsystemId ||
@@ -1486,7 +1621,7 @@ function ConnectionCard({
             <SubmittedByBadge
               policyVersion={conn.policyVersion}
             />
-            {rd?.requester && (
+            {grants.length === 0 && rd?.requester && (
               <span className="text-xs text-gray-500">
                 Requested by{" "}
                 <span className="text-gray-700 font-medium">
@@ -1570,7 +1705,7 @@ function ConnectionCard({
               </DetailSection>
             )}
 
-            {rd && (
+            {rd && grants.length === 0 && (
               <DetailSection title="Requester details">
                 <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1">
                   <FieldRow
@@ -1621,7 +1756,7 @@ function ConnectionCard({
               </DetailSection>
             )}
 
-            {!rd &&
+            {grants.length === 0 && !rd &&
               conn.scopes &&
               conn.scopes.length > 0 && (
                 <DetailSection title="Scopes">
@@ -1670,6 +1805,36 @@ function ConnectionCard({
             )}
           </div>
         </details>
+      )}
+
+      {conn.grants !== undefined && (
+        <section className="border-t border-gray-200 bg-white px-4 py-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+              Client grants
+            </h4>
+            <span className="text-xs text-gray-500">
+              {grants.length} grant{grants.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {grants.length === 0 ? (
+            <p className="text-xs text-gray-500 italic">
+              No client grants are recorded for this shared connection.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {grants.map((grant) => (
+                <ClientGrantRow
+                  key={grant.id}
+                  grant={grant}
+                  connection={conn}
+                  org={org}
+                  canApprove={canApprove}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       <EditDialog conn={conn} org={org} dialogId={editId} />
@@ -1809,9 +1974,8 @@ function ReviewDialog({
           Review connection request
         </h2>
         <p className="text-xs text-gray-500 mt-1">
-          A consumer has requested access to a service you
-          provide. Approve to grant access, or reject to
-          remove the request.
+          Review the shared subsystem-to-service connection.
+          Client grants are approved or rejected separately.
         </p>
       </div>
       <div className="px-5 py-4 space-y-4 text-sm max-h-[60vh] overflow-auto">
@@ -2638,6 +2802,10 @@ export function ConnectionsPage({
         ),
     }))
     .sort((a, b) => a.clientId.localeCompare(b.clientId));
+  const grantCount = connections.reduce(
+    (total, connection) => total + (connection.grants?.length ?? 0),
+    0,
+  );
 
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
@@ -2671,9 +2839,8 @@ export function ConnectionsPage({
             Connection Requests
           </h1>
           <p className="text-blue-200">
-            Connection requests for an organization member,
-            grouped by subsystem — each subsystem appears
-            where it is the client or the service provider.
+            Shared subsystem-to-service connections, with each
+            integration and OAuth client shown as a separate grant.
           </p>
         </div>
       </div>
@@ -2730,9 +2897,11 @@ export function ConnectionsPage({
                   {selectedOrg.member.memberId}
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
-                  {connections.length} connection
-                  {connections.length === 1 ? "" : "s"}{" "}
-                  across {groups.length} client
+                  {connections.length} shared connection
+                  {connections.length === 1 ? "" : "s"} and{" "}
+                  {grantCount} client grant
+                  {grantCount === 1 ? "" : "s"} across{" "}
+                  {groups.length} subsystem
                   {groups.length === 1 ? "" : "s"}.
                 </p>
               </div>
