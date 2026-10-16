@@ -103,52 +103,52 @@ function CertCard({
           </span>
         </span>
       </div>
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 text-sm">
-        <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 text-sm">
+        <dl>
           <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Subject
           </dt>
           <dd className="font-mono text-xs text-ink break-all">
             {cert.subject}
           </dd>
-        </div>
-        <div>
+        </dl>
+        <dl>
           <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Issuer
           </dt>
           <dd className="font-mono text-xs text-ink break-all">
             {cert.issuer}
           </dd>
-        </div>
-        <div>
+        </dl>
+        <dl>
           <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Valid from
           </dt>
           <dd className="text-ink">{formatDate(cert.notBefore)}</dd>
-        </div>
-        <div>
+        </dl>
+        <dl>
           <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Valid until
           </dt>
           <dd className="text-ink">{formatDate(cert.notAfter)}</dd>
-        </div>
+        </dl>
         {publicKeyLabel(cert) && (
-          <div>
+          <dl>
             <dt className="text-xs text-ink-secondary uppercase tracking-wide">
               Public key
             </dt>
             <dd className="text-ink">{publicKeyLabel(cert)}</dd>
-          </div>
+          </dl>
         )}
-        <div>
+        <dl>
           <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             Serial
           </dt>
           <dd className="font-mono text-xs text-ink break-all">
             {cert.serial}
           </dd>
-        </div>
-        <div className="sm:col-span-2">
+        </dl>
+        <dl className="sm:col-span-2">
           <dt className="text-xs text-ink-secondary uppercase tracking-wide">
             SHA-256 fingerprint
           </dt>
@@ -158,9 +158,9 @@ function CertCard({
             </code>
             <CopyButton value={cert.fingerprintSha256} />
           </dd>
-        </div>
+        </dl>
         {cert.sans.length > 0 && (
-          <div className="sm:col-span-2">
+          <dl className="sm:col-span-2">
             <dt className="text-xs text-ink-secondary uppercase tracking-wide">
               Subject alternative names
             </dt>
@@ -174,9 +174,9 @@ function CertCard({
                 </span>
               ))}
             </dd>
-          </div>
+          </dl>
         )}
-      </dl>
+      </div>
     </div>
   );
 }
@@ -243,35 +243,35 @@ function KeyCard({ k, index }: { k: JwkRecord; index: number }) {
       </div>
 
       <div className="px-5 py-4">
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-3">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-3">
+          <dl>
             <dt className="text-xs text-ink-secondary uppercase tracking-wide">
               Key type
             </dt>
             <dd className="font-mono text-ink">{k.kty}</dd>
-          </div>
+          </dl>
           {k.crv && (
-            <div>
+            <dl>
               <dt className="text-xs text-ink-secondary uppercase tracking-wide">
                 Curve
               </dt>
               <dd className="font-mono text-ink">{k.crv}</dd>
-            </div>
+            </dl>
           )}
-        </dl>
+        </div>
 
         {k.pem && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <dt className="text-xs text-ink-secondary uppercase tracking-wide">
-                Public key (PEM)
-              </dt>
+          <dl className="mb-3">
+            <dt className="flex items-center justify-between gap-2 mb-1 text-xs text-ink-secondary uppercase tracking-wide">
+              <span>Public key (PEM)</span>
               <CopyButton value={k.pem} />
-            </div>
-            <pre className="font-mono text-xs text-ink bg-surface-muted border border-border rounded px-3 py-2 overflow-x-auto whitespace-pre">
-              {k.pem}
-            </pre>
-          </div>
+            </dt>
+            <dd>
+              <pre className="font-mono text-xs text-ink bg-surface-muted border border-border rounded px-3 py-2 overflow-x-auto whitespace-pre">
+                {k.pem}
+              </pre>
+            </dd>
+          </dl>
         )}
 
         {k.pemError && !k.pem && (
