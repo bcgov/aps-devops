@@ -192,6 +192,12 @@ export function Layout({
             entry.tsx) into the data-bcds-island elements above - see the
             comment on Nav.tsx's <header>. */}
         <script type="module" src="/public/js/client.js" />
+        <div
+          id="sdx-copy-status"
+          role="status"
+          aria-live="polite"
+          className="sr-only"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -205,10 +211,16 @@ export function Layout({
               svg.innerHTML = CHECK_ICON;
               btn.classList.remove('text-ink-placeholder');
               btn.classList.add('text-support-success-border');
+              var status = document.getElementById('sdx-copy-status');
+              if (status) {
+                status.textContent = '';
+                setTimeout(function () { status.textContent = 'Copied to clipboard'; }, 50);
+              }
               setTimeout(function () {
                 svg.innerHTML = CLIP_ICON;
                 btn.classList.remove('text-support-success-border');
                 btn.classList.add('text-ink-placeholder');
+                if (status) status.textContent = '';
               }, 1800);
             });
           });
