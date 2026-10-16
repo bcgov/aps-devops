@@ -18,7 +18,7 @@ For a standard/full export, or when no domain subset is specified, search and ex
 - `dev.apps.gov.bc.ca`
 - `test.apps.gov.bc.ca`
 
-Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search, completeness check and `dns/<domain>.csv` / `dns/<domain>.json` pair. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any requested domain fails verification, retain its prior snapshot and report the partial result before committing a partial refresh.
+Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search and completeness check. Combine the three API domain captures into `dns/api.gov.bc.ca.csv` and `.json`, and the three apps captures into `dns/apps.gov.bc.ca.csv` and `.json`. Preserve each record's original Domain; do not relabel development/test records as production or deduplicate across domains. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any family member fails verification, retain the prior combined family snapshot and report the incomplete family. An explicit subset can be exported to a temporary destination for inspection, but must not overwrite a combined family snapshot.
 
 Resolve the infrastructure repository from the prompt or established conversation; `api-serv-infra` and `aps-infra-platform` are different repositories. Confirm the destination if ambiguous. Inspect its repository instructions and Git state. Use an isolated worktree for changes when the shared checkout contains unrelated work. Never switch a shared checkout. The skill is stored in aps-devops `.agents/skills` for repository discovery; from another workspace, explicitly reference this SKILL.md if it is not in the available skill catalog.
 
@@ -51,12 +51,16 @@ Use only browser APIs available in the active environment. Never access hidden a
 
 ## Validate, save and commit
 
-Run the bundled helper with the raw row JSON, the displayed total, and the destination repo. It validates layout and completeness before writing `<repo>/dns/<domain>.csv` and `.json`:
+For each family, save a temporary JSON array containing three objects, each with `domain`, `expected_total` (the displayed result total), and `rows` (the exact captured table array including its header). Run the helper only after all three searches are verified:
 
 ```sh
-python3 <skill-directory>/scripts/export_dns.py --rows <temporary-rows.json> \
-  --domain api.gov.bc.ca --expected-total 59 --repo <infra-repo>
+python3 <skill-directory>/scripts/export_dns.py --captures <api-captures.json> \
+  --domain api.gov.bc.ca --repo <infra-repo>
+python3 <skill-directory>/scripts/export_dns.py --captures <apps-captures.json> \
+  --domain apps.gov.bc.ca --repo <infra-repo>
 ```
+
+The helper validates all three captures before writing a family pair. JSON includes the three domain names, per-search counts and a combined record count. CSV retains the Domain column. Do not create separate dev/test export files for the standard workflow.
 
 The total is evidence from this run, not a hard-coded expected number. For an empty result, verify the page reports zero and capture the header. Snapshots describe Remedy inventory, not authoritative live DNS resolution. The strict new-record validator in `remedy-dns/remedy_dns.py` has a different schema and must not validate or filter lossless snapshots.
 

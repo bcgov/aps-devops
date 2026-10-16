@@ -1,5 +1,5 @@
 import unittest
-from export_dns import HEADERS, convert
+from export_dns import HEADERS, convert, combine
 
 
 class ExportTests(unittest.TestCase):
@@ -23,6 +23,18 @@ class ExportTests(unittest.TestCase):
         for rows, total in [([HEADERS, self.row()], 2), ([HEADERS[:-1]], 0), ([HEADERS, self.row()[:-1]], 1)]:
             with self.assertRaises(ValueError):
                 convert(rows, 'example.test', total)
+
+    def test_family_combines_domains_without_deduplicating_names(self):
+        domains = ['api.gov.bc.ca', 'dev.api.gov.bc.ca', 'test.api.gov.bc.ca']
+        captures = [dict(domain=d, expected_total=1, rows=[HEADERS, self.row(domain=d)]) for d in domains]
+        result = combine(captures, 'api.gov.bc.ca')
+        self.assertEqual(result['exported_record_count'], 3)
+        self.assertEqual([r['domain'] for r in result['records']], domains)
+        self.assertEqual(len(result['searches']), 3)
+        for invalid in [captures[:2], [captures[0]] * 3,
+                        captures[:2] + [dict(domain=domains[2], expected_total=2, rows=[HEADERS])]]:
+            with self.assertRaises(ValueError):
+                combine(invalid, 'api.gov.bc.ca')
 
     def test_empty_export(self):
         self.assertEqual(convert([HEADERS], 'example.test', 0)['records'], [])

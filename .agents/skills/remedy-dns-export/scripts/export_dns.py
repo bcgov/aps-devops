@@ -46,18 +46,51 @@ def convert(rows, domain, total):
                 records=records)
 
 
+def combine(captures, family):
+    if family not in ('api.gov.bc.ca', 'apps.gov.bc.ca'):
+        raise ValueError('Unknown domain family')
+    domains = [family, 'dev.' + family, 'test.' + family]
+    if not isinstance(captures, list) or len(captures) != 3:
+        raise ValueError('A family export requires all three domain captures')
+    by_domain = {}
+    for capture in captures:
+        snapshot = convert(capture['rows'], capture['domain'], capture['expected_total'])
+        domain = snapshot['domain']
+        if domain not in domains or domain in by_domain:
+            raise ValueError('Unexpected or duplicate domain capture')
+        by_domain[domain] = snapshot
+    if set(by_domain) != set(domains):
+        raise ValueError('Missing domain capture')
+    ordered = [by_domain[d] for d in domains]
+    return dict(domain=family, domains=domains, source=ordered[0]['source'],
+                searches=[{k: item[k] for k in ('domain', 'displayed_result_count',
+                          'exported_record_count', 'excluded_record_count')} for item in ordered],
+                exported_record_count=sum(item['exported_record_count'] for item in ordered),
+                excluded_record_count=sum(item['excluded_record_count'] for item in ordered),
+                scope=ordered[0]['scope'],
+                records=[record for item in ordered for record in item['records']])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--rows', type=Path, required=True)
+    parser.add_argument('--rows', type=Path)
+    parser.add_argument('--captures', type=Path, help='JSON array of domain, expected_total and rows for all three family domains')
     parser.add_argument('--domain', required=True)
-    parser.add_argument('--expected-total', type=int, required=True)
+    parser.add_argument('--expected-total', type=int)
     parser.add_argument('--repo', type=Path, required=True)
     args = parser.parse_args()
     if not (args.repo / '.git').exists():
         parser.error('--repo must be a Git checkout or worktree')
     try:
-        snapshot = convert(json.loads(args.rows.read_text()), args.domain, args.expected_total)
-    except (OSError, ValueError, TypeError, AttributeError) as error:
+        if args.captures:
+            if args.rows or args.expected_total is not None:
+                raise ValueError('Use --captures alone for grouped input')
+            snapshot = combine(json.loads(args.captures.read_text()), args.domain)
+        else:
+            if not args.rows or args.expected_total is None:
+                raise ValueError('--rows and --expected-total are required for single-domain input')
+            snapshot = convert(json.loads(args.rows.read_text()), args.domain, args.expected_total)
+    except (OSError, ValueError, TypeError, AttributeError, KeyError) as error:
         parser.error(str(error))
     stream = io.StringIO(newline='')
     writer = csv.DictWriter(stream, fieldnames=FIELDS, lineterminator='\n')
