@@ -15,11 +15,12 @@ const MEMBER_CLASS_COLORS: Record<string, string> = {
 };
 
 export function SubsystemCard(
-  { subsystem, href, serviceCount, showOrganization = true }: {
+  { subsystem, href, serviceCount, showOrganization = true, heading = "h3" }: {
     subsystem: Subsystem;
     href?: string;
     serviceCount?: number;
     showOrganization?: boolean;
+    heading?: "h2" | "h3";
   },
 ) {
   const classLabel = MEMBER_CLASS_LABELS[subsystem.member.memberClass] ?? subsystem.member.memberClass;
@@ -46,7 +47,11 @@ export function SubsystemCard(
           </span>
         </div>
       )}
-      <h3 className="text-bc-blue font-bold text-lg leading-snug">{subsystem.name}</h3>
+      {heading === "h2" ? (
+        <h2 className="text-bc-blue font-bold text-lg leading-snug">{subsystem.name}</h2>
+      ) : (
+        <h3 className="text-bc-blue font-bold text-lg leading-snug">{subsystem.name}</h3>
+      )}
       {subsystem.description && (
         <p className="text-ink-secondary text-sm line-clamp-3">{subsystem.description}</p>
       )}

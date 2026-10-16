@@ -78,6 +78,7 @@ export function SubsystemsPage({ subsystems, serviceCounts, query, config: _conf
                 subsystem={subsystem}
                 href={`/subsystems/${subsystem.clientId}`}
                 serviceCount={serviceCounts[subsystem.clientId] ?? 0}
+                heading="h2"
               />
             ))}
           </div>
