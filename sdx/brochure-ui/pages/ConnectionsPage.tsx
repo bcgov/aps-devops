@@ -138,6 +138,7 @@ const WIZARD_SCRIPT = `
     var step1Hidden = (form.querySelector('[data-step="1"]') || {}).classList && form.querySelector('[data-step="1"]').classList.contains('hidden');
     var minStep = step1Hidden ? 2 : 1;
     backBtn.style.visibility = n === minStep ? 'hidden' : 'visible';
+    submitBtn.disabled = n !== 4;
     if (n === 4) {
       nextBtn.classList.add('hidden');
       submitBtn.classList.remove('hidden');
@@ -260,28 +261,76 @@ const WIZARD_SCRIPT = `
     reviewEl.innerHTML = html;
   }
 
-  backBtn.addEventListener('click', function() {
-    var step1Hidden = form.querySelector('[data-step="1"]').classList.contains('hidden');
-    var minStep = step1Hidden ? 2 : 1;
-    if (current > minStep) setStep(current - 1);
-  });
-  nextBtn.addEventListener('click', function() {
+  function showWizardError(msg, focusEl) {
+    var el = document.getElementById('wiz-error');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    if (focusEl && focusEl.focus) focusEl.focus();
+  }
+  function clearWizardError() {
+    var el = document.getElementById('wiz-error');
+    if (!el) return;
+    el.textContent = '';
+    el.classList.add('hidden');
+  }
+  function advance() {
+    clearWizardError();
     if (current === 1) {
       var picked = form.querySelector('input[name="wiz-client-radio"]:checked');
-      if (!picked) { alert('Choose a client subsystem first.'); return; }
+      if (!picked) {
+        showWizardError('Choose a client subsystem before continuing.', form.querySelector('input[name="wiz-client-radio"]'));
+        return;
+      }
       clientInput.value = picked.value;
       setStep(2);
     } else if (current === 2) {
       var pickedPolicy = form.querySelector('input[name="wiz-policy-radio"]:checked');
-      if (!pickedPolicy) { alert('Choose an auth policy first.'); return; }
+      if (!pickedPolicy) {
+        showWizardError('Choose an auth policy before continuing.', form.querySelector('input[name="wiz-policy-radio"]'));
+        return;
+      }
       policyInput.value = pickedPolicy.value;
       applyPolicyMode(pickedPolicy.value);
       setStep(3);
     } else if (current === 3) {
       var sel = buildSelections();
-      if (sel.length === 0) { alert('Select at least one API to request.'); return; }
+      if (sel.length === 0) {
+        showWizardError('Select at least one API to request before continuing.', form.querySelector('.wz-cb'));
+        return;
+      }
       selectionsInput.value = JSON.stringify(sel);
       setStep(4);
+    }
+  }
+
+  backBtn.addEventListener('click', function() {
+    clearWizardError();
+    var step1Hidden = form.querySelector('[data-step="1"]').classList.contains('hidden');
+    var minStep = step1Hidden ? 2 : 1;
+    if (current > minStep) setStep(current - 1);
+  });
+  nextBtn.addEventListener('click', advance);
+  form.addEventListener('submit', function(ev) {
+    if (current !== 4) {
+      ev.preventDefault();
+      advance();
+      return;
+    }
+    if (!clientInput.value) {
+      ev.preventDefault();
+      var step1 = form.querySelector('[data-step="1"]');
+      var skipClient = step1 && step1.classList.contains('hidden');
+      setStep(skipClient ? 2 : 1);
+      showWizardError('Choose a client subsystem before submitting the request.', form.querySelector('input[name="wiz-client-radio"]'));
+      return;
+    }
+    var chosen = [];
+    try { chosen = JSON.parse(selectionsInput.value || '[]'); } catch (_) { chosen = []; }
+    if (!chosen.length) {
+      ev.preventDefault();
+      setStep(3);
+      showWizardError('Select at least one API to request before submitting.', form.querySelector('.wz-cb'));
     }
   });
 
@@ -351,6 +400,7 @@ const WIZARD_SCRIPT = `
       clientInput.value = defaultClient;
       policyInput.value = '';
       selectionsInput.value = '[]';
+      clearWizardError();
       applyEnvFilter('');
       applyPolicyMode('');
       setStep(defaultClient ? 2 : 1);
@@ -2163,6 +2213,12 @@ function AddConnectionWizard({
             />
           </ol>
         </div>
+
+        <p
+          id="wiz-error"
+          role="alert"
+          className="hidden mx-5 mt-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded px-3 py-2"
+        />
 
         {/* Step 1: client picker */}
         <div data-step="1" className="wiz-step px-5 py-4">
