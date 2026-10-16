@@ -3,7 +3,6 @@ import {
   Breadcrumb,
   type Crumb,
 } from "../components/custom/Breadcrumb.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import { EnvFilter } from "../components/custom/EnvFilter.tsx";
 import { normalizeEnv } from "../lib/environments.ts";
 import type {
@@ -261,12 +260,7 @@ export function ScopesPage({
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
     { label: "Member Console", href: "/console" },
-    {
-      label: "Resource Scopes",
-      menu: CONSOLE_PAGES.filter(
-        (p) => p.href !== "/scopes",
-      ),
-    },
+    { label: "Resource Scopes" },
   ];
 
   return (

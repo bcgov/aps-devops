@@ -1,6 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import { LogStream } from "../components/custom/LogStream.tsx";
 import type { SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
@@ -24,10 +23,7 @@ export function LogsPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Member Console", href: "/console" },
-          {
-            label: "Logs",
-            menu: CONSOLE_PAGES.filter((p) => p.href !== "/logs"),
-          },
+          { label: "Logs" },
         ]}
       />
 

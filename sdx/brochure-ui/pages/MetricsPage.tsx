@@ -1,6 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import { TimeSeriesChart } from "../components/custom/TimeSeriesChart.tsx";
 import type { MetricSeries } from "../components/custom/TimeSeriesChart.tsx";
 import type { SiteConfig } from "../types.ts";
@@ -41,10 +40,7 @@ export function MetricsPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Member Console", href: "/console" },
-          {
-            label: "Metrics",
-            menu: CONSOLE_PAGES.filter((p) => p.href !== "/metrics"),
-          },
+          { label: "Metrics" },
         ]}
       />
 

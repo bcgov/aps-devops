@@ -2,7 +2,6 @@ import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
 import { EnvFilter } from "../components/custom/EnvFilter.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import { envAttr } from "../lib/environments.ts";
 import type { Organization, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
@@ -184,10 +183,7 @@ export function RuntimesPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Member Console", href: "/console" },
-          {
-            label: "Runtime Groups",
-            menu: CONSOLE_PAGES.filter((p) => p.href !== "/runtimes"),
-          },
+          { label: "Runtime Groups" },
         ]}
       />
 

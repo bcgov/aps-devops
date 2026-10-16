@@ -1,5 +1,5 @@
 import type { SessionUser } from "../lib/auth.ts";
-import { isConsolePath } from "./custom/ConsoleNav.tsx";
+import { CONSOLE_PAGES, isConsolePath } from "./custom/ConsoleNav.tsx";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/" },
@@ -74,6 +74,7 @@ export function Nav({
     navItems: NAV_ITEMS.filter((item) => !item.authRequired || user).map(
       ({ label, href }) => ({ label, href }),
     ),
+    consolePages: user ? CONSOLE_PAGES : [],
   };
 
   return (
@@ -187,6 +188,12 @@ export function Nav({
                           currentPath.startsWith(
                             item.href + "/",
                           ));
+                  const linkClass = [
+                    "block px-4 py-3 text-sm font-medium transition-colors",
+                    isActive
+                      ? "text-bc-blue font-semibold"
+                      : "text-ink-secondary hover:text-bc-blue hover:bg-surface-muted",
+                  ].join(" ");
                   return (
                     <li
                       key={item.href}
@@ -194,18 +201,62 @@ export function Nav({
                         i > 0 ? "border-l border-border" : undefined
                       }
                     >
-                      <a
-                        href={item.href}
-                        aria-current={isActive ? "page" : undefined}
-                        className={[
-                          "block px-4 py-3 text-sm font-medium transition-colors",
-                          isActive
-                            ? "text-bc-blue font-semibold"
-                            : "text-ink-secondary hover:text-bc-blue hover:bg-surface-muted",
-                        ].join(" ")}
-                      >
-                        {item.label}
-                      </a>
+                      {item.href === "/console" ? (
+                        <div className="flex items-stretch">
+                          <a
+                            href="/console"
+                            aria-current={
+                              currentPath === "/console" ? "page" : undefined
+                            }
+                            className={linkClass}
+                          >
+                            {item.label}
+                          </a>
+                          <details className="relative">
+                            <summary
+                              aria-label="Member Console sections"
+                              className={[
+                                "list-none cursor-pointer h-full inline-flex items-center px-2 [&::-webkit-details-marker]:hidden",
+                                isActive
+                                  ? "text-bc-blue"
+                                  : "text-ink-secondary hover:text-bc-blue",
+                              ].join(" ")}
+                            >
+                              <Chevron />
+                            </summary>
+                            <div className="absolute left-0 top-full bg-white text-ink shadow-lg rounded border border-border min-w-[220px] z-50 py-1">
+                              {CONSOLE_PAGES.map((page) => {
+                                const current =
+                                  currentPath === page.href ||
+                                  currentPath.startsWith(page.href + "/");
+                                return (
+                                  <a
+                                    key={page.href}
+                                    href={page.href}
+                                    aria-current={current ? "page" : undefined}
+                                    className={[
+                                      "block px-4 py-2 text-sm hover:bg-surface-muted hover:text-bc-blue",
+                                      current
+                                        ? "text-bc-blue font-semibold bg-surface-muted"
+                                        : "text-ink",
+                                    ].join(" ")}
+                                  >
+                                    {page.label}
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </details>
+                        </div>
+                      ) : (
+                        <a
+                          href={item.href}
+                          aria-current={isActive ? "page" : undefined}
+                          className={linkClass}
+                        >
+                          {item.label}
+                        </a>
+                      )}
                     </li>
                   );
                 })}

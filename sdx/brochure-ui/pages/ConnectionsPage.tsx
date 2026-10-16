@@ -5,7 +5,6 @@ import {
   type Crumb,
 } from "../components/custom/Breadcrumb.tsx";
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import type {
   ConnectionGatewayPattern,
   ConnectionProvisionerStatus,
@@ -2689,12 +2688,7 @@ export function ConnectionsPage({
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
     { label: "Member Console", href: "/console" },
-    {
-      label: "Connection Requests",
-      menu: CONSOLE_PAGES.filter(
-        (p) => p.href !== "/connections",
-      ),
-    },
+    { label: "Connection Requests" },
   ];
   if (selectedOrg)
     breadcrumbItems.push({ label: selectedOrg.title });

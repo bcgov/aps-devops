@@ -1,7 +1,6 @@
 import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb, type Crumb } from "../components/custom/Breadcrumb.tsx";
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import type { Organization, Subsystem, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 
@@ -123,10 +122,7 @@ export function OrgSubsystemsPage({
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
     { label: "Member Console", href: "/console" },
-    {
-      label: "Subsystems",
-      menu: CONSOLE_PAGES.filter((p) => p.href !== "/org-subsystems"),
-    },
+    { label: "Subsystems" },
   ];
   if (selectedOrg) breadcrumbItems.push({ label: selectedOrg.title });
 

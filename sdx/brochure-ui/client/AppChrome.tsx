@@ -10,6 +10,11 @@ import { Header, Subheader } from "@bcgov/design-system-react-components";
 // the browser - it's the same active-path check components/Nav.tsx uses.
 import { isConsolePath } from "../components/custom/ConsoleNav.tsx";
 
+interface ConsolePageLink {
+  label: string;
+  href: string;
+}
+
 export interface AppChromeProps {
   currentPath: string;
   bannerTitle: string;
@@ -22,6 +27,7 @@ export interface AppChromeProps {
   userDisplayName?: string;
   userEmail?: string;
   navItems: { label: string; href: string }[];
+  consolePages?: ConsolePageLink[];
 }
 
 export function AppChrome({
@@ -36,6 +42,7 @@ export function AppChrome({
   userDisplayName,
   userEmail,
   navItems,
+  consolePages = [],
 }: AppChromeProps) {
   const isLoggedIn = authEnabled && !!userDisplayName;
 
@@ -69,6 +76,34 @@ export function AppChrome({
               ? isConsolePath(currentPath)
               : currentPath === item.href ||
                 (item.href !== "/" && currentPath.startsWith(item.href + "/"));
+            if (item.href === "/console" && consolePages.length > 0) {
+              return (
+                <span key={item.href}>
+                  <a
+                    href="/console"
+                    aria-current={currentPath === "/console" ? "page" : undefined}
+                  >
+                    {item.label}
+                  </a>
+                  <details>
+                    <summary aria-label="Member Console sections">▾</summary>
+                    {consolePages.map((page) => {
+                      const current = currentPath === page.href ||
+                        currentPath.startsWith(page.href + "/");
+                      return (
+                        <a
+                          key={page.href}
+                          href={page.href}
+                          aria-current={current ? "page" : undefined}
+                        >
+                          {page.label}
+                        </a>
+                      );
+                    })}
+                  </details>
+                </span>
+              );
+            }
             return (
               <a
                 key={item.href}

@@ -4,7 +4,6 @@ import {
   type Crumb,
 } from "../components/custom/Breadcrumb.tsx";
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
-import { CONSOLE_PAGES } from "../components/custom/ConsoleNav.tsx";
 import { ActivityFeed } from "../components/custom/ActivityFeed.tsx";
 import type {
   ActivityRecord,
@@ -37,12 +36,7 @@ export function ActivityConsolePage({
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
     { label: "Member Console", href: "/console" },
-    {
-      label: "Activity",
-      menu: CONSOLE_PAGES.filter(
-        (p) => p.href !== "/org-activity",
-      ),
-    },
+    { label: "Activity" },
   ];
   if (selectedOrg)
     breadcrumbItems.push({ label: selectedOrg.title });
