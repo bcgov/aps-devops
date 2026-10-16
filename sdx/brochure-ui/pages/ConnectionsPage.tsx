@@ -1447,7 +1447,7 @@ function EditDialog({
           </section>
         </div>
 
-        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
           <button
             type="button"
             data-dialog-close
@@ -1780,7 +1780,7 @@ function ConfirmDialog({
           This action cannot be undone.
         </p>
       </div>
-      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
+      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
         <button
           type="button"
           data-dialog-close
@@ -1924,7 +1924,7 @@ function ReviewDialog({
           <ScopeChips scopes={scopes} />
         </div>
       </div>
-      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
+      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
         <button
           type="button"
           data-dialog-close
@@ -2543,7 +2543,7 @@ function AddConnectionWizard({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-between gap-2">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
           <button
             type="button"
             data-close-dialog
