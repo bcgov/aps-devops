@@ -1,6 +1,6 @@
 ---
 name: remedy-dns-export
-description: Export Remedy NNR DNS records for the standard API/apps production, development and test domains or an explicitly requested domain through the signed-in browser to verified CSV and JSON snapshots under an infrastructure repository's root dns folder, and commit the exports when requested.
+description: Export Remedy NNR DNS records for the standard API/apps production, development and test domains plus data.gov.bc.ca or an explicitly requested domain through the signed-in browser to verified CSV and JSON snapshots under an infrastructure repository's root dns folder, and commit the exports when requested.
 ---
 
 # Remedy DNS export
@@ -9,7 +9,7 @@ Example prompt: “Use remedy-dns-export to refresh all standard domains into ap
 
 ## Domain scope
 
-For a standard/full export, or when no domain subset is specified, search and export each of these six domains separately:
+For a standard/full export, or when no domain subset is specified, search and export each of these seven domains separately:
 
 - `api.gov.bc.ca`
 - `dev.api.gov.bc.ca`
@@ -17,8 +17,9 @@ For a standard/full export, or when no domain subset is specified, search and ex
 - `apps.gov.bc.ca`
 - `dev.apps.gov.bc.ca`
 - `test.apps.gov.bc.ca`
+- `data.gov.bc.ca`
 
-Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search and completeness check. Combine the three API domain captures into `dns/api.gov.bc.ca.csv` and `.json`, and the three apps captures into `dns/apps.gov.bc.ca.csv` and `.json`. Preserve each record's original Domain; do not relabel development/test records as production or deduplicate across domains. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any family member fails verification, retain the prior combined family snapshot and report the incomplete family. An explicit subset can be exported to a temporary destination for inspection, but must not overwrite a combined family snapshot.
+Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search and completeness check. Combine the three API domain captures into `dns/api.gov.bc.ca.csv` and `.json`, and the three apps captures into `dns/apps.gov.bc.ca.csv` and `.json`. Export `data.gov.bc.ca` separately as `dns/data.gov.bc.ca.csv` and `.json`; do not infer dev/test data domains. Preserve each record's original Domain; do not relabel development/test records as production or deduplicate across domains. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any family member fails verification, retain the prior combined family snapshot and report the incomplete family. An explicit subset can be exported to a temporary destination for inspection, but must not overwrite a combined family snapshot.
 
 Resolve the infrastructure repository from the prompt or established conversation; `api-serv-infra` and `aps-infra-platform` are different repositories. Confirm the destination if ambiguous. Inspect its repository instructions and Git state. Use an isolated worktree for changes when the shared checkout contains unrelated work. Never switch a shared checkout. The skill is stored in aps-devops `.agents/skills` for repository discovery; from another workspace, explicitly reference this SKILL.md if it is not in the available skill catalog.
 
@@ -59,6 +60,15 @@ python3 <skill-directory>/scripts/export_dns.py --captures <api-captures.json> \
 python3 <skill-directory>/scripts/export_dns.py --captures <apps-captures.json> \
   --domain apps.gov.bc.ca --repo <infra-repo>
 ```
+
+For `data.gov.bc.ca`, save its captured table array (including header) as temporary JSON and use the single-domain helper mode:
+
+```sh
+python3 <skill-directory>/scripts/export_dns.py --rows <data-rows.json> \
+  --domain data.gov.bc.ca --expected-total <displayed-total> --repo <infra-repo>
+```
+
+The standard output is three CSV/JSON pairs: combined API, combined apps, and data. Apply the same completeness, exact-domain and preservation checks to data; retain its previous files if its search fails.
 
 The helper validates all three captures before writing a family pair. JSON includes the three domain names, per-search counts and a combined record count. CSV retains the Domain column. Do not create separate dev/test export files for the standard workflow.
 
