@@ -101,11 +101,12 @@ export function Nav({
           <div className="flex items-center gap-4 min-w-0">
             <a
               href={bannerHref}
+              aria-label="Government of British Columbia"
               className="flex items-center shrink-0 rounded-sm"
             >
               <img
                 src="/public/bcid-logo-positive.png"
-                alt="Government of British Columbia"
+                alt=""
                 className="h-9 w-auto"
               />
             </a>
