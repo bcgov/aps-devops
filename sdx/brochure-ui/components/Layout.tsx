@@ -227,6 +227,23 @@ export function Layout({
         `,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+          function syncDialogScroll() {
+            var open = document.querySelector('dialog[open]');
+            document.documentElement.style.overflow = open ? 'hidden' : '';
+            document.body.style.overflow = open ? 'hidden' : '';
+          }
+          new MutationObserver(syncDialogScroll).observe(document.documentElement, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['open']
+          });
+          syncDialogScroll();
+        `,
+          }}
+        />
       </body>
     </html>
   );
