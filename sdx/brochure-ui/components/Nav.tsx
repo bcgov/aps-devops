@@ -3,6 +3,7 @@ import { isConsolePath } from "./custom/ConsoleNav.tsx";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
   { label: "Subsystems", href: "/subsystems" },
   { label: "Organizations", href: "/organizations" },
   { label: "Trust Services", href: "/trust" },
@@ -12,9 +13,6 @@ const NAV_ITEMS = [
     authRequired: true,
   },
 ];
-
-const HELP_URL =
-  "https://developer.gov.bc.ca/docs/default/component/aps-infra-platform-docs/concepts/secure-data-exchange/";
 
 function Chevron() {
   return (
@@ -66,7 +64,7 @@ export function Nav({
     currentPath,
     bannerTitle,
     bannerHref,
-    helpUrl: HELP_URL,
+    helpUrl: "/help",
     hideMainNav,
     authEnabled,
     loginHref: `/auth/login?returnTo=${encodeURIComponent(currentPath)}`,
@@ -125,9 +123,8 @@ export function Nav({
             aria-label="Account"
           >
             <a
-              href={HELP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/help"
+              aria-current={currentPath === "/help" ? "page" : undefined}
               className="inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors"
             >
               Help <Chevron />

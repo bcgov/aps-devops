@@ -46,7 +46,10 @@ export function AppChrome({
         logoLinkElement={<a href={bannerHref} />}
         skipLinks={[<a href="#main-content">Skip to main content</a>]}
       >
-        <a href={helpUrl} target="_blank" rel="noopener noreferrer">
+        <a
+          href={helpUrl}
+          aria-current={currentPath === "/help" ? "page" : undefined}
+        >
           Help
         </a>
         {isLoggedIn

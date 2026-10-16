@@ -10,6 +10,8 @@ import type {
   Service,
 } from "./types.ts";
 import { HomePage } from "./pages/HomePage.tsx";
+import { AboutPage } from "./pages/AboutPage.tsx";
+import { HelpPage } from "./pages/HelpPage.tsx";
 import { SubsystemsPage } from "./pages/SubsystemsPage.tsx";
 import { OrganizationsPage } from "./pages/OrganizationsPage.tsx";
 import { OrgDetailPage } from "./pages/OrgDetailPage.tsx";
@@ -496,7 +498,7 @@ async function servePublic(
   }
 }
 
-const PORT = Number(Deno.env.get("PORT") ?? "5500");
+const PORT = Number(Deno.env.get("PORT") ?? "5501");
 
 Deno.serve({ port: PORT }, async (req: Request) => {
   const url = new URL(req.url);
@@ -543,6 +545,24 @@ Deno.serve({ port: PORT }, async (req: Request) => {
         services,
         config,
         currentPath: "/",
+        user,
+      }),
+    );
+  }
+
+  if (path === "/about") {
+    return htmlResponse(
+      React.createElement(AboutPage, {
+        currentPath: "/about",
+        user,
+      }),
+    );
+  }
+
+  if (path === "/help") {
+    return htmlResponse(
+      React.createElement(HelpPage, {
+        currentPath: "/help",
         user,
       }),
     );

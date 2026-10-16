@@ -2,6 +2,7 @@ import { Layout } from "../components/Layout.tsx";
 import { Btn } from "../components/Btn.tsx";
 import { StatCard } from "../components/custom/StatCard.tsx";
 import { SubsystemCard } from "../components/custom/SubsystemCard.tsx";
+import { SDX_DOCS_URL } from "../lib/links.ts";
 import type { Subsystem, Organization, Service, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 
@@ -55,28 +56,44 @@ export function HomePage({ subsystems, organizations, services, config, currentP
       {/* Gold divider */}
       <div className="h-1 bg-bc-gold" />
 
-      {/* Intro section */}
+      {/* Intro row under the banner */}
       <section className="bg-surface-muted py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl">
-            <h2 className="text-xl font-bold text-bc-blue mb-4">
-              About the Secure Data Exchange
-            </h2>
-            <p className="text-ink leading-relaxed mb-4">
-              The BC Government Secure Data Exchange (SDX) provides a uniform and secure solution
-              for inter-organization data transfers across government ministries, agencies, and
-              authorized partners. This catalogue allows you to discover the subsystems and
-              organizations participating in the data exchange layer.
-            </p>
-            <a
-              href={config.support_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-bc-blue font-semibold hover:underline rounded-sm"
-            >
-              Learn more about the Secure Data Exchange
-              <span aria-hidden="true">→</span>
-            </a>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-5 hover:shadow-md hover:border-border-medium transition-all">
+              <h2 className="text-xl font-bold text-bc-blue mb-3">
+                About the SDX Catalogue
+              </h2>
+              <p className="text-ink leading-relaxed mb-4">
+                Learn what you can find in the catalogue, including subsystems,
+                organizations and trust services.
+              </p>
+              <a
+                href="/about"
+                className="inline-flex items-center gap-2 text-bc-blue font-semibold hover:underline rounded-sm"
+              >
+                Read about the catalogue
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+            <div className="bg-white rounded-lg border border-border shadow-sm p-5 hover:shadow-md hover:border-border-medium transition-all">
+              <h2 className="text-xl font-bold text-bc-blue mb-3">
+                Learn about SDX
+              </h2>
+              <p className="text-ink leading-relaxed mb-4">
+                Learn how SDX works, how organizations get started and where to
+                find technical guides.
+              </p>
+              <a
+                href={SDX_DOCS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-bc-blue font-semibold hover:underline rounded-sm"
+              >
+                Read the SDX documentation
+                <span aria-hidden="true">↗</span>
+              </a>
+            </div>
           </div>
         </div>
       </section>
