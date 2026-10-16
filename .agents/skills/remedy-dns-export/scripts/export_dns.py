@@ -60,7 +60,7 @@ def main():
     except (OSError, ValueError, TypeError, AttributeError) as error:
         parser.error(str(error))
     stream = io.StringIO(newline='')
-    writer = csv.DictWriter(stream, fieldnames=FIELDS)
+    writer = csv.DictWriter(stream, fieldnames=FIELDS, lineterminator='\n')
     writer.writeheader()
     writer.writerows(snapshot['records'])
     csv_text = stream.getvalue()
