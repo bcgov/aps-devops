@@ -1,11 +1,24 @@
 ---
 name: remedy-dns-export
-description: Export a requested domain's Remedy NNR DNS records through the signed-in browser to verified CSV and JSON snapshots under an infrastructure repository's root dns folder, and commit the exports when requested.
+description: Export Remedy NNR DNS records for the standard API/apps production, development and test domains or an explicitly requested domain through the signed-in browser to verified CSV and JSON snapshots under an infrastructure repository's root dns folder, and commit the exports when requested.
 ---
 
 # Remedy DNS export
 
-Example prompt: “Use remedy-dns-export to export api.gov.bc.ca and apps.gov.bc.ca into <infra-repo>/dns and commit the snapshots.”
+Example prompt: “Use remedy-dns-export to refresh all standard domains into api-serv-infra/dns and commit the snapshots.”
+
+## Domain scope
+
+For a standard/full export, or when no domain subset is specified, search and export each of these six domains separately:
+
+- `api.gov.bc.ca`
+- `dev.api.gov.bc.ca`
+- `test.api.gov.bc.ca`
+- `apps.gov.bc.ca`
+- `dev.apps.gov.bc.ca`
+- `test.apps.gov.bc.ca`
+
+Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search, completeness check and `dns/<domain>.csv` / `dns/<domain>.json` pair. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any requested domain fails verification, retain its prior snapshot and report the partial result before committing a partial refresh.
 
 Resolve the infrastructure repository from the prompt or established conversation; `api-serv-infra` and `aps-infra-platform` are different repositories. Confirm the destination if ambiguous. Inspect its repository instructions and Git state. Use an isolated worktree for changes when the shared checkout contains unrelated work. Never switch a shared checkout. The skill is stored in aps-devops `.agents/skills` for repository discovery; from another workspace, explicitly reference this SKILL.md if it is not in the available skill catalog.
 
