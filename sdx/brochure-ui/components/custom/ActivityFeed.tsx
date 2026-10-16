@@ -30,7 +30,8 @@ const FEED_SCRIPT = `
   var dlgBlob = document.getElementById('activity-detail-blob');
   var dlgParams = document.getElementById('activity-detail-params');
   var dlgTitle = document.getElementById('activity-detail-title');
-  var skip = 0, lastKey = null, currentUl = null;
+  var skip = 0, lastKey = null, currentUl = null, lastFocus = null;
+  dlg.setAttribute('tabindex', '-1');
 
   var WARN_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" fill="currentColor"></path><line x1="12" y1="9" x2="12" y2="13.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"></line><line x1="12" y1="17" x2="12.01" y2="17" stroke="#fff" stroke-width="2.2" stroke-linecap="round"></line></svg>';
   function isErrorResult(result){
@@ -108,8 +109,50 @@ const FEED_SCRIPT = `
       }
       dlgParams.style.display = '';
     } else { dlgParams.style.display = 'none'; }
-    if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','');
+    lastFocus = document.activeElement;
+    if(typeof dlg.showModal === 'function'){
+      if(!dlg.open) dlg.showModal();
+    } else dlg.setAttribute('open','');
+    dlg.focus();
   }
+  function dialogFocusable(){
+    var nodes = dlg.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+    var out = [];
+    for(var i=0;i<nodes.length;i++){
+      var el = nodes[i], hidden = false, p = el;
+      while(p && p !== dlg){
+        if(p.style && p.style.display === 'none'){ hidden = true; break; }
+        p = p.parentElement;
+      }
+      if(!hidden) out.push(el);
+    }
+    return out;
+  }
+  function restoreFocus(){
+    var back = lastFocus;
+    lastFocus = null;
+    if(back && typeof back.focus === 'function') back.focus();
+  }
+  dlg.addEventListener('close', restoreFocus);
+  dlg.addEventListener('keydown', function(e){
+    if(e.key !== 'Tab' || !dlg.open) return;
+    var items = dialogFocusable();
+    if(!items.length){ e.preventDefault(); dlg.focus(); return; }
+    var first = items[0], last = items[items.length - 1];
+    var active = document.activeElement;
+    if(!dlg.contains(active)){
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+      return;
+    }
+    if(e.shiftKey && active === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && active === last){ e.preventDefault(); first.focus(); }
+  });
+  document.addEventListener('focusin', function(e){
+    if(!dlg.open || dlg.contains(e.target)) return;
+    var items = dialogFocusable();
+    (items[0] || dlg).focus();
+  });
   function renderItem(record){
     var params = record.params || {};
     var li = document.createElement('li'); li.className = 'flex items-start gap-3 py-4';
@@ -195,7 +238,7 @@ const FEED_SCRIPT = `
   }
   document.addEventListener('click', function(e){
     var c = e.target.closest && e.target.closest('[data-close-activity]');
-    if(c){ e.preventDefault(); if(typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
+    if(c){ e.preventDefault(); if(typeof dlg.close === 'function') dlg.close(); else { dlg.removeAttribute('open'); restoreFocus(); } }
   });
 })();
 `;
@@ -283,6 +326,8 @@ export function ActivityFeed({
         id="activity-detail"
         aria-labelledby="activity-detail-title"
         className="sdx-activity-dialog"
+        aria-labelledby="activity-detail-title"
+        aria-modal="true"
       >
         <div className="px-5 py-4 border-b border-border">
           <h2
