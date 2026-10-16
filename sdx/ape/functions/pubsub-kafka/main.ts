@@ -1,4 +1,5 @@
 import { Kafka } from "npm:kafkajs@2.2.4";
+import { parseHistoryCount } from "./history.ts";
 
 const KAFKA_BROKERS = (Deno.env.get("KAFKA_BROKERS") ?? "localhost:9092")
   .split(",")
@@ -97,6 +98,14 @@ Deno.serve({ port: 8000 }, async (req) => {
     return new Response("Method Not Allowed", { status: 405, headers: CORS_HEADERS });
   }
 
+  const historyCount = parseHistoryCount(url.searchParams.get("history"));
+  if (historyCount === null) {
+    return new Response(JSON.stringify({ error: "history must be an integer from 0 to 1000" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    });
+  }
+
   let resolvedTopic = topic;
   const isWildcard = resolvedTopic.includes("*");
   const groupId = `${GROUP_ID_PREFIX}-${crypto.randomUUID()}`;
@@ -106,8 +115,6 @@ Deno.serve({ port: 8000 }, async (req) => {
     resolvedTopic = "/" + resolvedTopic + "/"; // treat as "contains" if it has a wildcard
   }
 
-  const historyParam = url.searchParams.get("history");
-  const historyCount = historyParam ? Math.max(0, parseInt(historyParam, 10) || 0) : 0;
   const wantsHistory = historyCount > 0 && !isWildcard;
 
   try {
@@ -137,6 +144,38 @@ Deno.serve({ port: 8000 }, async (req) => {
           clearInterval(pingInterval);
         }
       }, 15_000);
+
+      if (wantsHistory) {
+        // Resolve offsets at join time (not before consumer.connect()) so the
+        // window between "read the watermarks" and "seek to them" is as small
+        // as possible — a wide window lets retention delete the target offset
+        // out from under us, causing "offset out of range" on the first fetch.
+        consumer.on(consumer.events.GROUP_JOIN, async () => {
+          const admin = kafka.admin();
+          try {
+            await admin.connect();
+            const offsets = await admin.fetchTopicOffsets(topic);
+            for (const o of offsets) {
+              const high = parseInt(o.offset ?? "0", 10);
+              const low = parseInt(o.low ?? "0", 10);
+              // Clamp to the earliest offset the broker still retains, not
+              // just 0 — otherwise a topic that has aged past its retention
+              // window computes a start offset that no longer exists.
+              const start = Math.min(high, Math.max(low, high - historyCount));
+              try {
+                consumer.seek({ topic, partition: o.partition, offset: start.toString() });
+              } catch {
+                // partition not assigned to this consumer; ignore
+              }
+            }
+          } catch {
+            // Best-effort history replay; fall back to live-only streaming
+            // rather than failing the whole connection.
+          } finally {
+            await admin.disconnect().catch(() => {});
+          }
+        });
+      }
 
       consumer
         .run({
@@ -183,38 +222,6 @@ Deno.serve({ port: 8000 }, async (req) => {
           }
           cleanupConsumer(consumer, groupId).catch(() => {});
         });
-
-      if (wantsHistory) {
-        // Resolve offsets at join time (not before consumer.connect()) so the
-        // window between "read the watermarks" and "seek to them" is as small
-        // as possible — a wide window lets retention delete the target offset
-        // out from under us, causing "offset out of range" on the first fetch.
-        consumer.on(consumer.events.GROUP_JOIN, async () => {
-          const admin = kafka.admin();
-          try {
-            await admin.connect();
-            const offsets = await admin.fetchTopicOffsets(topic);
-            for (const o of offsets) {
-              const high = parseInt(o.offset ?? "0", 10);
-              const low = parseInt(o.low ?? "0", 10);
-              // Clamp to the earliest offset the broker still retains, not
-              // just 0 — otherwise a topic that has aged past its retention
-              // window computes a start offset that no longer exists.
-              const start = Math.min(high, Math.max(low, high - historyCount));
-              try {
-                consumer.seek({ topic, partition: o.partition, offset: start.toString() });
-              } catch {
-                // partition not assigned to this consumer; ignore
-              }
-            }
-          } catch {
-            // Best-effort history replay; fall back to live-only streaming
-            // rather than failing the whole connection.
-          } finally {
-            await admin.disconnect().catch(() => {});
-          }
-        });
-      }
     },
     cancel() {
       clearInterval(pingInterval);
