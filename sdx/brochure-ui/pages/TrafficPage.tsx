@@ -103,7 +103,7 @@ export function TrafficPage({
           {/* Empty state */}
           <div
             id="tf-empty"
-            className="px-4 py-12 text-center text-sm text-ink-placeholder"
+            className="px-4 py-12 text-center text-sm text-ink-secondary"
           >
             Waiting for correlated traffic… (rows appear once both the consumer
             and provider log records arrive)

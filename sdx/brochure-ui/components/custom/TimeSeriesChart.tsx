@@ -27,7 +27,7 @@ export function TimeSeriesChart({
           <h2 className="text-lg font-bold text-bc-blue">{title}</h2>
           <span
             id={`${id}-range`}
-            className="text-xs text-ink-placeholder font-mono"
+            className="text-xs text-ink-secondary font-mono"
           >
             —
           </span>

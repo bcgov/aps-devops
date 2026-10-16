@@ -62,7 +62,7 @@ function MetaBadge({
 }) {
   return (
     <span className="inline-flex items-center gap-1 rounded bg-surface-muted text-ink-secondary px-2 py-0.5 text-xs">
-      <span className="text-ink-placeholder">{label}</span>
+      <span className="text-ink-secondary">{label}</span>
       <span className="font-medium">{value}</span>
     </span>
   );
@@ -175,7 +175,7 @@ function ScopeCard({ scope }: { scope: ResourceScope }) {
       <div className="px-4 py-3" data-env-group>
         <h3 className="text-xs uppercase tracking-wide text-ink-secondary mb-2">
           Grants access to{" "}
-          <span className="text-ink-placeholder normal-case">
+          <span className="text-ink-secondary normal-case">
             (
             <span data-env-count data-env-noun="service">
               {services.length} service

@@ -65,7 +65,7 @@ export function LogStream({ streamUrl, maxEntries = 50 }: LogStreamProps) {
       {/* Empty state */}
       <div
         id="ls-empty"
-        className="px-4 py-12 text-center text-sm text-ink-placeholder"
+        className="px-4 py-12 text-center text-sm text-ink-secondary"
       >
         Waiting for log events…
       </div>
