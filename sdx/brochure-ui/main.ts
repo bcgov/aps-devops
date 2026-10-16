@@ -498,7 +498,7 @@ async function servePublic(
   }
 }
 
-const PORT = Number(Deno.env.get("PORT") ?? "5501");
+const PORT = Number(Deno.env.get("PORT") ?? "5500");
 
 Deno.serve({ port: PORT }, async (req: Request) => {
   const url = new URL(req.url);
