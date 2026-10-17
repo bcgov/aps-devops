@@ -16,7 +16,7 @@ APE, brochure and edge-image callers invoke `.github/workflows/.build.yml` on fe
 
 Published development images use immutable `sha-<full-commit>` tags. A mutable branch alias, with unsafe Docker tag characters replaced by `-`, supports existing feature/dev consumers. Versioned release images use `vX.Y.Z`. The template emits revision/digest receipts and OCI revision metadata. If the immutable tag already exists, it must declare the same revision; the workflow reuses it rather than overwriting it. Base OS packages and external package registries can still change; pinning Git inputs is not a guarantee of fully hermetic builds.
 
-`sdx/image/Dockerfile` pins plugins, gwa-kong-endpoint, gwa-ip-anonymity and priority-updater Git commits. Update the plugins pin through a reviewed PR after selecting a released plugin bundle commit; never point it back to a moving feature branch. The current pin records the audited feature/mtls commit, not a newly published plugin release.
+`sdx/image/Dockerfile` pins plugins, gwa-kong-endpoint, gwa-ip-anonymity and priority-updater Git commits. Update the plugins pin through a reviewed PR after selecting a released plugin bundle commit; never point it back to a moving feature branch. The current pin records the audited feature/mtls commit, not a newly published plugin release. The edge plugin inventory is aligned with the portal local SDX image and infrastructure control plane: `pep` and `plugin-log` replace the removed `openid-authzen` installation. Existing deployments that still configure `openid-authzen` need compatibility review before upgrading; this PR does not change deployed gateway configuration.
 
 ## Merge and release flow
 

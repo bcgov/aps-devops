@@ -21,7 +21,8 @@ RUN git clone https://github.com/bcgov/kong-oss-plugins.git \
          (*)  luarocks build --deps-only kong-plugin-oidc-deps-k2-1.5.0-2.rockspec;; \
      esac) \
   && (cd plugins/oidc-consumer && luarocks make) \
-  && (cd plugins/openid-authzen && luarocks make) \
+  && (cd plugins/pep && luarocks make) \
+  && (cd plugins/plugin-log && luarocks make) \
   && (cd plugins/response-signer && luarocks make) \
   && (cd plugins/token-exchange && luarocks make) \
   && (cd plugins/trust-jwks && luarocks make) \
@@ -172,7 +173,7 @@ ENV KONG_REAL_IP_HEADER="X-Forwarded-For"
 # Plugins Configuration
 # ============================================
 # Enables bundled plugins plus custom authentication, rate limiting, and security plugins
-ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, openid-authzen, response-signer, dpop, token-exchange, trust-jwks, trust-kms, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"
+ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, pep, plugin-log, response-signer, dpop, token-exchange, trust-jwks, trust-kms, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"
 
 # Custom Lua module search path for plugin code
 ENV KONG_LUA_PACKAGE_PATH="/opt/?.lua;/opt/?/init.lua;;"
