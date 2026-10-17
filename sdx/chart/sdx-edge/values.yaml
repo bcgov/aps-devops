@@ -17,6 +17,8 @@ use_openshift_resources: true
 
 kong:
   enabled: true
+  # Release packages pin this; empty preserves appVersion for existing installs.
+  imageDigest: ""
 
 bootstrap:
   tls:

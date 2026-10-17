@@ -1,0 +1,24 @@
+name: SDX chart validation
+on:
+  push:
+    branches: ['feature/**', dev]
+  pull_request:
+    branches: [dev, main]
+permissions:
+  contents: read
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.1
+      - run: |
+          helm lint sdx/chart/sdx-edge
+          helm template release-check sdx/chart/sdx-edge > /dev/null
+          helm template release-check sdx/chart/sdx-edge --set use_openshift_resources=false > /dev/null
+          helm template release-check sdx/chart/sdx-edge --set-string kong.imageDigest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > digest-render.yaml
+          test "$(grep -c 'image:.*sdx-access-point@sha256:aaaaaaaa' digest-render.yaml)" = 2

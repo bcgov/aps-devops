@@ -1,38 +1,125 @@
-name: Release
-
+name: Component releases
 on:
-  push:
-      branches:
-      - main
-  
+  pull_request:
+    branches: [main]
+    types: [closed]
 permissions:
-  contents: write
-  pull-requests: read
-  
+  contents: read
+concurrency:
+  group: component-releases
+  cancel-in-progress: false
 jobs:
-  release-on-push:
+  plan:
+    if: github.event.pull_request.merged && github.event.pull_request.head.ref == 'dev'
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+    outputs:
+      images: ${{ steps.plan.outputs.images }}
+      has_images: ${{ steps.plan.outputs.has_images }}
+      has_chart: ${{ steps.plan.outputs.has_chart }}
+      has_components: ${{ steps.plan.outputs.has_components }}
+      chart_version: ${{ steps.plan.outputs.chart_version }}
+      edge_version: ${{ steps.plan.outputs.edge_version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Create release
-        id: create_release
-        uses: rymndhng/release-on-push-action@v0.28.0
+      - uses: actions/checkout@v4
         with:
-          bump_version_scheme: patch
-
-      - name: Update major version tag
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
-          SANITIZED_COMMIT_MESSAGE=$(echo "$COMMIT_MESSAGE" | tr -d '\n' | sed 's/[&|;`$(){}<>^"]/\\&/g')
-          echo "New release version ${{ steps.create_release.outputs.version }}"
-          VERSION=${{ steps.create_release.outputs.version }}
-          MAJOR=${VERSION%%.*}
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git tag -fa "${MAJOR}" -m "${COMMIT_MESSAGE}"
-          git push origin "${MAJOR}" --force
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: plan
+        run: python3 .github/scripts/release_plan.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-plan
+          path: release-plan.json
+  images:
+    needs: plan
+    if: needs.plan.outputs.has_images == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.images) }}
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      name: ${{ matrix.name }}
+      context: ${{ matrix.context }}
+      file: ${{ matrix.file }}
+      version: ${{ matrix.version }}
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+  chart:
+    needs: [plan, images]
+    if: >-
+      always() && !cancelled() && needs.plan.result == 'success' &&
+      (needs.images.result == 'success' || needs.images.result == 'skipped') &&
+      needs.plan.outputs.has_chart == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-plan
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.1
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login for chart publishing
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Package and publish chart with pinned image digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.chart_version }}
+          EDGE_VERSION: ${{ needs.plan.outputs.edge_version }}
+        run: python3 .github/scripts/chart_release.py --version "$VERSION" --edge-version "$EDGE_VERSION" --publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chart-sdx-edge
+          path: release-assets/*
+  notes:
+    needs: [plan, images, chart]
+    if: >-
+      always() && !cancelled() && needs.plan.result == 'success' &&
+      needs.plan.outputs.has_components == 'true' &&
+      (needs.images.result == 'success' || needs.images.result == 'skipped') &&
+      (needs.chart.result == 'success' || needs.chart.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-plan
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.has_images == 'true'
+        with:
+          pattern: image-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.has_chart == 'true'
+        with:
+          name: chart-sdx-edge
+          path: release-assets
+      - name: Publish component tags and release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/publish_releases.py

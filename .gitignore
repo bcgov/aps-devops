@@ -1,0 +1,6 @@
+
+# Local release-tooling validation outputs
+.github/scripts/__pycache__/
+tests/release/__pycache__/
+release-plan.json
+release-assets/

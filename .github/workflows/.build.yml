@@ -1,3 +1,4 @@
+name: Reusable component image build
 on:
   workflow_call:
     inputs:
@@ -7,55 +8,108 @@ on:
       context:
         required: true
         type: string
-        default: '.'
-
+      file:
+        default: ''
+        type: string
+      ref:
+        default: ''
+        type: string
+      version:
+        default: ''
+        type: string
+      publish:
+        default: true
+        type: boolean
+      build-args:
+        default: ''
+        type: string
 jobs:
   build-image:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v7
-
-      - name: Image meta
-        id: meta
-        uses: docker/metadata-action@v6
+      - uses: actions/checkout@v4
         with:
-          images: ghcr.io/${{ github.repository }}/${{ inputs.name }}
-
-      - name: Set DEPLOY_ID
-        run: |
-          echo "DEPLOY_ID=${{ steps.meta.outputs.version }}" >> "$GITHUB_OUTPUT"
-          echo "APP_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> "$GITHUB_OUTPUT"
-          echo "APP_REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}" >> "$GITHUB_OUTPUT"
-        id: set-deploy-id
-
-      - name: Get deploy ID
-        run: echo "The DEPLOY_ID is ${{ steps.set-deploy-id.outputs.DEPLOY_ID }}"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: inputs.publish
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          logout: false
-
-      - name: Create image
-        uses: docker/build-push-action@v7
+      - name: Resolve immutable tags and reuse published artifacts
+        id: identity
+        env:
+          COMPONENT: ${{ inputs.name }}
+          VERSION: ${{ inputs.version }}
+          PUBLISH: ${{ inputs.publish }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$COMPONENT" =~ ^[a-z0-9-]+$ ]]
+          [[ -z "$VERSION" || "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          REVISION=$(git rev-parse HEAD)
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}/$COMPONENT"
+          TAG="sha-$REVISION"
+          if [[ -n "$VERSION" ]]; then TAG="v$VERSION"; fi
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "tag=$IMAGE:$TAG" >> "$GITHUB_OUTPUT"
+          echo 'exists=false' >> "$GITHUB_OUTPUT"
+          if [[ "$PUBLISH" == true ]]; then
+            if docker buildx imagetools inspect "$IMAGE:$TAG" --raw > manifest.json 2> manifest.err; then
+              jq -e --arg revision "$REVISION" '.annotations["org.opencontainers.image.revision"] == $revision' manifest.json
+              DIGEST=$(docker buildx imagetools inspect "$IMAGE:$TAG" --format '{{.Manifest.Digest}}')
+              echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+              echo 'exists=true' >> "$GITHUB_OUTPUT"
+            elif ! grep -Eiq 'not found|manifest unknown' manifest.err; then
+              cat manifest.err >&2
+              exit 1
+            fi
+          fi
+      - name: Build component
+        id: build
+        if: steps.identity.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.context }}
-          file: ${{ inputs.context }}/Dockerfile
-          push: true
+          file: ${{ inputs.file || format('{0}/Dockerfile', inputs.context) }}
           platforms: linux/amd64,linux/arm64
+          push: ${{ inputs.publish }}
+          tags: ${{ steps.identity.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.identity.outputs.revision }}
+            org.opencontainers.image.version=${{ inputs.version || steps.identity.outputs.revision }}
+          annotations: |
+            index:org.opencontainers.image.revision=${{ steps.identity.outputs.revision }}
           build-args: |
-            APP_VERSION=${{ steps.set-deploy-id.outputs.APP_VERSION }}
-            APP_REVISION=${{ steps.set-deploy-id.outputs.APP_REVISION }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+            APP_VERSION=${{ inputs.version || steps.identity.outputs.revision }}
+            APP_REVISION=${{ steps.identity.outputs.revision }}
+            ${{ inputs.build-args }}
+      - name: Refresh development branch alias
+        if: inputs.publish && github.event_name == 'push' && inputs.version == ''
+        env:
+          BRANCH: ${{ github.ref_name }}
+          IMAGE: ${{ steps.identity.outputs.tag }}
+          DIGEST: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
+        run: |
+          ALIAS=$(printf '%s' "$BRANCH" | sed 's/[^a-zA-Z0-9_.-]/-/g' | cut -c1-128)
+          docker buildx imagetools create --tag "${IMAGE%:*}:$ALIAS" "$IMAGE@$DIGEST"
+      - name: Record artifact identity
+        if: inputs.publish
+        env:
+          COMPONENT: ${{ inputs.name }}
+          IMAGE: ${{ steps.identity.outputs.tag }}
+          REVISION: ${{ steps.identity.outputs.revision }}
+          DIGEST: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
+        run: |
+          mkdir -p receipts
+          jq -n --arg component "$COMPONENT" --arg image "$IMAGE" --arg revision "$REVISION" --arg digest "$DIGEST" \
+            '{component:$component,image:$image,revision:$revision,digest:$digest}' > "receipts/$COMPONENT.json"
+      - uses: actions/upload-artifact@v4
+        if: inputs.publish
+        with:
+          name: image-${{ inputs.name }}
+          path: receipts/*.json

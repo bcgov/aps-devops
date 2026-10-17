@@ -23,3 +23,11 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+{{/* Release packages use the same immutable image for init and proxy. */}}
+{{- define "sdx-edge.image" -}}
+{{- if .Values.kong.imageDigest -}}
+ghcr.io/bcgov/aps-devops/sdx-access-point@{{ .Values.kong.imageDigest }}
+{{- else -}}
+ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
+{{- end -}}
+{{- end -}}

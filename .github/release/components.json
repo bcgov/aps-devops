@@ -1,0 +1,12 @@
+{
+  "components": [
+    {"name":"opal-pip-catalog","kind":"image","paths":["sdx/ape/functions/opal-pip-catalog/"],"context":"sdx/ape/functions/opal-pip-catalog","baseline":"0.0.0"},
+    {"name":"opal-policies","kind":"image","paths":["sdx/ape/functions/opal-policies/"],"context":"sdx/ape/functions/opal-policies","baseline":"0.0.0"},
+    {"name":"pubsub-kafka","kind":"image","paths":["sdx/ape/functions/pubsub-kafka/"],"context":"sdx/ape/functions/pubsub-kafka","baseline":"0.0.0"},
+    {"name":"pubsub-webhook","kind":"image","paths":["sdx/ape/functions/pubsub-webhook/"],"context":"sdx/ape/functions/pubsub-webhook","baseline":"0.0.0"},
+    {"name":"sdx-ui","kind":"image","paths":["sdx/brochure-ui/"],"context":"sdx/brochure-ui","baseline":"0.0.0"},
+    {"name":"sdx-access-point","kind":"image","paths":["sdx/image/"],"context":".","file":"sdx/image/Dockerfile","baseline":"0.0.0"},
+    {"name":"sdx-edge","kind":"chart","paths":["sdx/chart/sdx-edge/"],"context":"sdx/chart/sdx-edge","baseline":"0.3.11"}
+  ],
+  "shared_paths": [".github/workflows/", ".github/scripts/", ".github/release/", "tests/release/"]
+}

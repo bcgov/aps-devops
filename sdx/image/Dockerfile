@@ -5,9 +5,11 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd trust-registry to support key_sets
-RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
+ARG KONG_PLUGINS_REVISION="a6f0e429f5fb0329f723dbfe1a989c05b8b96fad"
+RUN git clone https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
+  && git checkout --detach "$KONG_PLUGINS_REVISION" \
+  && test "$(git rev-parse HEAD)" = "$KONG_PLUGINS_REVISION" \
   && (cd plugins/dpop && luarocks make) \
   && (cd plugins/jwt-keycloak && luarocks make) \
   && (cd plugins/mtls-acl && luarocks make) \
@@ -31,16 +33,19 @@ RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && (cd plugins/trust-verify-digest && luarocks make) \
   && (cd plugins/trust-verify-signature && luarocks make)
  
-RUN git clone -b kong3 https://github.com/bcgov/gwa-kong-endpoint.git
+RUN git clone https://github.com/bcgov/gwa-kong-endpoint.git \
+  && git -C gwa-kong-endpoint checkout --detach 5fff127e8e14460937b6b3a6b38df06318ad3535
 RUN (cd gwa-kong-endpoint && ./devBuild.sh)
 
-RUN git clone -b kong3 https://github.com/bcgov/gwa-ip-anonymity.git
+RUN git clone https://github.com/bcgov/gwa-ip-anonymity.git \
+  && git -C gwa-ip-anonymity checkout --detach 22f72cd766408ce16f5fd5931754f68991ab04c7
 RUN (cd gwa-ip-anonymity && ./devBuild.sh)
 
 RUN luarocks install kong-spec-expose \
  && luarocks install kong-upstream-jwt
 
-RUN git clone https://github.com/Kong/priority-updater.git
+RUN git clone https://github.com/Kong/priority-updater.git \
+  && git -C priority-updater checkout --detach b6fc40f007ee27a8e81853015db2fab4fb85f8e5
 RUN (cd priority-updater/template/plugin && KONG_PRIORITY=902 KONG_PRIORITY_NAME=rate-limiting /usr/local/openresty/luajit/bin/luajit ../priority.lua)
 RUN (cd priority-updater/template/plugin && KONG_PRIORITY=1010 KONG_PRIORITY_NAME=jwt-keycloak /usr/local/openresty/luajit/bin/luajit ../priority.lua)
 RUN (cd priority-updater/template/plugin && KONG_PRIORITY=770 KONG_PRIORITY_NAME=pre-function /usr/local/openresty/luajit/bin/luajit ../priority.lua)
