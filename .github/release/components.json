@@ -8,5 +8,5 @@
     {"name":"sdx-access-point","kind":"image","paths":["sdx/image/"],"context":".","file":"sdx/image/Dockerfile","baseline":"0.0.0"},
     {"name":"sdx-edge","kind":"chart","paths":["sdx/chart/sdx-edge/"],"context":"sdx/chart/sdx-edge","baseline":"0.3.11"}
   ],
-  "shared_paths": [".github/workflows/", ".github/scripts/", ".github/release/", "tests/release/"]
+  "shared_paths": [".github/workflows/", ".github/scripts/", ".github/release/", "tests/release.sh"]
 }

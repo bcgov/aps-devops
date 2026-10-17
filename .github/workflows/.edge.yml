@@ -18,23 +18,7 @@ on:
         type: boolean
         default: true
 jobs:
-  inputs:
-    runs-on: ubuntu-latest
-    outputs:
-      plugins_ref: ${{ steps.plugins.outputs.plugins_ref }}
-      plugins_revision: ${{ steps.plugins.outputs.plugins_revision }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || github.sha }}
-          persist-credentials: false
-      - name: Resolve plugins version/tag to a commit
-        id: plugins
-        env:
-          PLUGINS_REF: ${{ inputs.plugins-ref }}
-        run: python3 .github/scripts/edge_inputs.py --plugins-ref "$PLUGINS_REF"
   image:
-    needs: inputs
     uses: ./.github/workflows/.build.yml
     with:
       name: sdx-access-point
@@ -43,9 +27,7 @@ jobs:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
       publish: ${{ inputs.publish }}
-      build-args: |
-        KONG_PLUGINS_REF=${{ needs.inputs.outputs.plugins_ref }}
-        KONG_PLUGINS_REVISION=${{ needs.inputs.outputs.plugins_revision }}
+      plugins-ref: ${{ inputs.plugins-ref }}
   chart:
     needs: image
     if: inputs.publish
