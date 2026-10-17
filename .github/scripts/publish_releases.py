@@ -47,6 +47,7 @@ def main():
                 raise ValueError('Artifact image version differs from planned release')
             if component['kind'] == 'chart':
                 files.append(assets / f"{name}-{component['version']}.tgz")
+                files.extend(assets / f'{name}-{file}' for file in ['Chart.yaml', 'values.yaml'])
         files.append(receipt_path)
         revision_range = (component['previous'] + '..' if component['previous'] else '') + plan['sha']
         changes = subprocess.check_output(['git', 'log', '--format=- %s (%h)', revision_range, '--',

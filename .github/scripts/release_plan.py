@@ -66,6 +66,16 @@ def plan(manifest, changed, tags, target, resolve, bump):
     return {'sha': target, 'components': result}
 
 
+def workflow_outputs(result):
+    images = [c for c in result['components'] if c['kind'] == 'image' and c['name'] != 'sdx-access-point']
+    edge = [c for c in result['components'] if c['name'] == 'sdx-access-point']
+    charts = [c for c in result['components'] if c['kind'] == 'chart']
+    return {'images': json.dumps({'include': images}), 'has_images': str(bool(images)).lower(),
+               'has_edge': str(bool(edge)).lower(), 'has_chart': str(bool(charts)).lower(), 'has_components': str(bool(result['components'])).lower(),
+               'chart_version': charts[0]['version'] if charts else '',
+               'edge_version': edge[0]['version'] if edge else ''}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--event', default=os.environ.get('GITHUB_EVENT_PATH'))
@@ -102,12 +112,7 @@ def main():
     result['pr'] = pr['number']
     result['url'] = pr['html_url']
     Path(args.output).write_text(json.dumps(result, indent=2) + '\n')
-    images = [c for c in result['components'] if c['kind'] == 'image']
-    charts = [c for c in result['components'] if c['kind'] == 'chart']
-    outputs = {'images': json.dumps({'include': images}), 'has_images': str(bool(images)).lower(),
-               'has_chart': str(bool(charts)).lower(), 'has_components': str(bool(result['components'])).lower(),
-               'chart_version': charts[0]['version'] if charts else '',
-               'edge_version': next((c['version'] for c in images if c['name'] == 'sdx-access-point'), '')}
+    outputs = workflow_outputs(result)
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             for key, value in outputs.items():

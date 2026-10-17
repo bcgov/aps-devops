@@ -19,7 +19,7 @@ Common labels
 {{- define "sdx-edge.labels" -}}
 helm.sh/chart: {{ include "sdx-edge.chart" . }}
 {{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | trunc 63 | trimSuffix "-" | trimSuffix "." | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -28,6 +28,6 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if .Values.kong.imageDigest -}}
 ghcr.io/bcgov/aps-devops/sdx-access-point@{{ .Values.kong.imageDigest }}
 {{- else -}}
-ghcr.io/bcgov/aps-devops/sdx-access-point:{{ .Chart.AppVersion }}
+ghcr.io/bcgov/aps-devops/sdx-access-point:{{ default .Chart.AppVersion .Values.kong.imageTag }}
 {{- end -}}
 {{- end -}}

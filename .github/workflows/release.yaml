@@ -15,6 +15,7 @@ jobs:
     outputs:
       images: ${{ steps.plan.outputs.images }}
       has_images: ${{ steps.plan.outputs.has_images }}
+      has_edge: ${{ steps.plan.outputs.has_edge }}
       has_chart: ${{ steps.plan.outputs.has_chart }}
       has_components: ${{ steps.plan.outputs.has_components }}
       chart_version: ${{ steps.plan.outputs.chart_version }}
@@ -47,55 +48,36 @@ jobs:
       file: ${{ matrix.file }}
       version: ${{ matrix.version }}
       ref: ${{ github.event.pull_request.merge_commit_sha }}
-  chart:
-    needs: [plan, images]
-    if: >-
-      always() && !cancelled() && needs.plan.result == 'success' &&
-      (needs.images.result == 'success' || needs.images.result == 'skipped') &&
-      needs.plan.outputs.has_chart == 'true'
-    runs-on: ubuntu-latest
+  edge:
+    needs: plan
+    if: needs.plan.outputs.has_edge == 'true'
+    uses: ./.github/workflows/.edge.yml
     permissions:
       contents: read
       packages: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-plan
-      - uses: azure/setup-helm@v4
-        with:
-          version: v3.19.1
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login for chart publishing
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: printf '%s' "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-      - name: Package and publish chart with pinned image digest
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.plan.outputs.chart_version }}
-          EDGE_VERSION: ${{ needs.plan.outputs.edge_version }}
-        run: python3 .github/scripts/chart_release.py --version "$VERSION" --edge-version "$EDGE_VERSION" --publish
-      - uses: actions/upload-artifact@v4
-        with:
-          name: chart-sdx-edge
-          path: release-assets/*
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+      version: ${{ needs.plan.outputs.edge_version }}
+      chart-version: ${{ needs.plan.outputs.chart_version }}
+  chart:
+    needs: plan
+    if: needs.plan.outputs.has_chart == 'true' && needs.plan.outputs.has_edge != 'true'
+    uses: ./.github/workflows/.chart.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      ref: ${{ github.event.pull_request.merge_commit_sha }}
+      version: ${{ needs.plan.outputs.chart_version }}
+      release-plan: true
   notes:
-    needs: [plan, images, chart]
+    needs: [plan, images, edge, chart]
     if: >-
       always() && !cancelled() && needs.plan.result == 'success' &&
       needs.plan.outputs.has_components == 'true' &&
       (needs.images.result == 'success' || needs.images.result == 'skipped') &&
-      (needs.chart.result == 'success' || needs.chart.result == 'skipped')
+      (needs.chart.result == 'success' || needs.chart.result == 'skipped') &&
+      (needs.edge.result == 'success' || needs.edge.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -109,7 +91,7 @@ jobs:
         with:
           name: release-plan
       - uses: actions/download-artifact@v4
-        if: needs.plan.outputs.has_images == 'true'
+        if: needs.plan.outputs.has_images == 'true' || needs.plan.outputs.has_edge == 'true'
         with:
           pattern: image-*
           path: release-assets

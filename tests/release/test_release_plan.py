@@ -58,6 +58,16 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual([c['name'] for c in result['components']], ['sdx-access-point', 'sdx-edge'])
         self.assertEqual(result['components'][1]['version'], '0.3.12')
 
+    def test_edge_routes_through_image_chart_chain_exactly_once(self):
+        result = planner.plan(self.manifest, ['sdx/image/plugins.json'], [], 'new', lambda _: 'old', 'patch')
+        outputs = planner.workflow_outputs(result)
+        self.assertEqual(outputs['has_edge'], 'true')
+        self.assertEqual(outputs['has_images'], 'false')
+        self.assertEqual(json.loads(outputs['images']), {'include': []})
+        self.assertEqual(outputs['has_chart'], 'true')
+        self.assertEqual(outputs['edge_version'], '0.0.1')
+        self.assertEqual(outputs['chart_version'], '0.3.12')
+
 
 if __name__ == '__main__':
     unittest.main()

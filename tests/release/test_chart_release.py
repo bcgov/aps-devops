@@ -67,6 +67,57 @@ class ChartReleaseTests(unittest.TestCase):
             finally:
                 os.chdir(previous)
 
+    def test_edge_publication_updates_files_then_packages_then_publishes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / 'sdx/chart/sdx-edge', root / 'sdx/chart/sdx-edge')
+            previous = Path.cwd()
+            os.chdir(root)
+            digest = 'sha256:' + 'c' * 64
+            image = 'ghcr.io/bcgov/aps-devops/sdx-access-point:sha-' + 'a' * 40 + '-' + 'b' * 64
+            published = []
+            try:
+                def identity(*args):
+                    if args[0] == 'git':
+                        return 'a' * 40
+                    self.fail('An explicit image receipt must avoid registry lookup during preparation')
+                with patch.object(chart_release, 'run', side_effect=identity), patch.object(sys, 'argv', ['chart_release', '--stage', 'prepare', '--edge-image', image, '--image-digest', digest]):
+                    chart_release.main()
+                version = '0.3.11-dev.' + 'a' * 40 + '.' + 'c' * 64
+                self.assertIn('version: ' + version, (root / '.release-chart/sdx-edge/Chart.yaml').read_text())
+                self.assertIn('appVersion: "' + image.rsplit(':', 1)[1] + '"', (root / '.release-chart/sdx-edge/Chart.yaml').read_text())
+                values = (root / '.release-chart/sdx-edge/values.yaml').read_text()
+                self.assertIn('imageDigest: "' + digest + '"', values)
+                self.assertIn('imageTag: "' + image.rsplit(':', 1)[1] + '"', values)
+                self.assertFalse((root / 'release-assets').exists())
+                for stage in ['validate', 'package']:
+                    with patch.object(sys, 'argv', ['chart_release', '--stage', stage]):
+                        chart_release.main()
+                package = root / ('release-assets/sdx-edge-' + version + '.tgz')
+                self.assertTrue(package.exists())
+                rendered = chart_release.run('helm', 'template', 'check', str(package))
+                self.assertEqual(rendered.count('sdx-access-point@' + digest), 2)
+                for line in rendered.splitlines():
+                    if 'app.kubernetes.io/version:' in line:
+                        self.assertLessEqual(len(line.split(':', 1)[1].strip().strip('"')), 63)
+                def publication(args, **kwargs):
+                    if args[0] == 'docker':
+                        return chart_release.subprocess.CompletedProcess(args, 1, '', 'manifest unknown')
+                    published.append(args)
+                    return chart_release.subprocess.CompletedProcess(args, 0)
+                with patch.object(chart_release.subprocess, 'run', side_effect=publication), patch.object(chart_release, 'run', return_value='sha256:' + 'd' * 64), patch.object(sys, 'argv', ['chart_release', '--stage', 'publish']):
+                    chart_release.main()
+                self.assertEqual(published[0][:2], ['helm', 'push'])
+                receipt = json.loads((root / 'release-assets/sdx-edge.json').read_text())
+                self.assertEqual(receipt['digest'], 'sha256:' + 'd' * 64)
+                package.write_bytes(package.read_bytes() + b'changed')
+                with patch.object(chart_release.subprocess, 'run') as command, patch.object(sys, 'argv', ['chart_release', '--stage', 'publish']):
+                    with self.assertRaisesRegex(ValueError, 'changed after validation'):
+                        chart_release.main()
+                    command.assert_not_called()
+            finally:
+                os.chdir(previous)
+
 
 if __name__ == '__main__':
     unittest.main()

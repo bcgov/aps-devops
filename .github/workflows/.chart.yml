@@ -1,0 +1,62 @@
+name: Reusable edge chart publication
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
+      version:
+        type: string
+        default: ''
+      edge-image:
+        type: string
+        default: ''
+      image-digest:
+        type: string
+        default: ''
+      release-plan:
+        type: boolean
+        default: false
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        if: inputs.release-plan
+        with:
+          name: release-plan
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.1
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update chart version, appVersion and image values
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          EDGE_IMAGE: ${{ inputs.edge-image }}
+          IMAGE_DIGEST: ${{ inputs.image-digest }}
+        run: python3 .github/scripts/chart_release.py --stage prepare --version "$VERSION" --edge-image "$EDGE_IMAGE" --image-digest "$IMAGE_DIGEST"
+      - name: Validate updated chart
+        run: python3 .github/scripts/chart_release.py --stage validate
+      - name: Package updated chart
+        run: python3 .github/scripts/chart_release.py --stage package
+      - name: Authenticate Helm publishing
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Publish immutable chart release
+        run: python3 .github/scripts/chart_release.py --stage publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chart-sdx-edge
+          path: release-assets/*

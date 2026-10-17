@@ -23,8 +23,19 @@ on:
       build-args:
         default: ''
         type: string
+    outputs:
+      image:
+        value: ${{ jobs.build-image.outputs.image }}
+      digest:
+        value: ${{ jobs.build-image.outputs.digest }}
+      revision:
+        value: ${{ jobs.build-image.outputs.revision }}
 jobs:
   build-image:
+    outputs:
+      image: ${{ steps.identity.outputs.tag }}
+      digest: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
+      revision: ${{ steps.identity.outputs.revision }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +56,7 @@ jobs:
           COMPONENT: ${{ inputs.name }}
           VERSION: ${{ inputs.version }}
           PUBLISH: ${{ inputs.publish }}
+          BUILD_ARGS: ${{ inputs.build-args }}
         shell: bash
         run: |
           set -euo pipefail
@@ -52,14 +64,17 @@ jobs:
           [[ -z "$VERSION" || "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           REVISION=$(git rev-parse HEAD)
           IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}/$COMPONENT"
+          BUILD_ARGS_SHA=$(printf '%s' "$BUILD_ARGS" | sha256sum | cut -d' ' -f1)
           TAG="sha-$REVISION"
+          if [[ -n "$BUILD_ARGS" ]]; then TAG="$TAG-$BUILD_ARGS_SHA"; fi
+          echo "build_args_sha=$BUILD_ARGS_SHA" >> "$GITHUB_OUTPUT"
           if [[ -n "$VERSION" ]]; then TAG="v$VERSION"; fi
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
           echo "tag=$IMAGE:$TAG" >> "$GITHUB_OUTPUT"
           echo 'exists=false' >> "$GITHUB_OUTPUT"
           if [[ "$PUBLISH" == true ]]; then
             if docker buildx imagetools inspect "$IMAGE:$TAG" --raw > manifest.json 2> manifest.err; then
-              jq -e --arg revision "$REVISION" '.annotations["org.opencontainers.image.revision"] == $revision' manifest.json
+              jq -e --arg revision "$REVISION" --arg args "$BUILD_ARGS_SHA" '.annotations["org.opencontainers.image.revision"] == $revision and .annotations["ca.bc.gov.sdx.build-args-sha256"] == $args' manifest.json
               DIGEST=$(docker buildx imagetools inspect "$IMAGE:$TAG" --format '{{.Manifest.Digest}}')
               echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
               echo 'exists=true' >> "$GITHUB_OUTPUT"
@@ -84,6 +99,7 @@ jobs:
             org.opencontainers.image.version=${{ inputs.version || steps.identity.outputs.revision }}
           annotations: |
             index:org.opencontainers.image.revision=${{ steps.identity.outputs.revision }}
+            index:ca.bc.gov.sdx.build-args-sha256=${{ steps.identity.outputs.build_args_sha }}
           build-args: |
             APP_VERSION=${{ inputs.version || steps.identity.outputs.revision }}
             APP_REVISION=${{ steps.identity.outputs.revision }}
@@ -101,13 +117,14 @@ jobs:
         if: inputs.publish
         env:
           COMPONENT: ${{ inputs.name }}
+          BUILD_ARGS_SHA: ${{ steps.identity.outputs.build_args_sha }}
           IMAGE: ${{ steps.identity.outputs.tag }}
           REVISION: ${{ steps.identity.outputs.revision }}
           DIGEST: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
         run: |
           mkdir -p receipts
-          jq -n --arg component "$COMPONENT" --arg image "$IMAGE" --arg revision "$REVISION" --arg digest "$DIGEST" \
-            '{component:$component,image:$image,revision:$revision,digest:$digest}' > "receipts/$COMPONENT.json"
+          jq -n --arg component "$COMPONENT" --arg image "$IMAGE" --arg revision "$REVISION" --arg digest "$DIGEST" --arg args "$BUILD_ARGS_SHA" \
+            '{component:$component,image:$image,revision:$revision,digest:$digest,build_args_sha256:$args}' > "receipts/$COMPONENT.json"
       - uses: actions/upload-artifact@v4
         if: inputs.publish
         with:

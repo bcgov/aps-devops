@@ -5,11 +5,19 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-ARG KONG_PLUGINS_REVISION="a6f0e429f5fb0329f723dbfe1a989c05b8b96fad"
+ARG KONG_PLUGINS_REF="a6f0e429f5fb0329f723dbfe1a989c05b8b96fad"
+ARG KONG_PLUGINS_REVISION=""
 RUN git clone https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
-  && git checkout --detach "$KONG_PLUGINS_REVISION" \
-  && test "$(git rev-parse HEAD)" = "$KONG_PLUGINS_REVISION" \
+  && if printf '%s' "$KONG_PLUGINS_REF" | grep -Eq '^[0-9a-f]{40}$'; then \
+       PLUGINS_COMMIT="$KONG_PLUGINS_REF"; \
+     else \
+       PLUGINS_COMMIT=$(git rev-parse --verify "refs/tags/${KONG_PLUGINS_REF}^{commit}"); \
+     fi \
+  && git checkout --detach "$PLUGINS_COMMIT" \
+  && if [ -n "$KONG_PLUGINS_REVISION" ]; then test "$(git rev-parse HEAD)" = "$KONG_PLUGINS_REVISION"; fi \
+  && mkdir -p /usr/local/share/sdx \
+  && git rev-parse HEAD > /usr/local/share/sdx/plugins-revision \
   && (cd plugins/dpop && luarocks make) \
   && (cd plugins/jwt-keycloak && luarocks make) \
   && (cd plugins/mtls-acl && luarocks make) \
@@ -33,7 +41,10 @@ RUN git clone https://github.com/bcgov/kong-oss-plugins.git \
   && (cd plugins/trust-timestamp && luarocks make) \
   && (cd plugins/trust-verify-digest && luarocks make) \
   && (cd plugins/trust-verify-signature && luarocks make)
- 
+
+LABEL ca.bc.gov.sdx.plugins.ref="$KONG_PLUGINS_REF" \
+      ca.bc.gov.sdx.plugins.revision="$KONG_PLUGINS_REVISION"
+
 RUN git clone https://github.com/bcgov/gwa-kong-endpoint.git \
   && git -C gwa-kong-endpoint checkout --detach 5fff127e8e14460937b6b3a6b38df06318ad3535
 RUN (cd gwa-kong-endpoint && ./devBuild.sh)

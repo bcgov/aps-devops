@@ -1,18 +1,21 @@
-name: SDX edge image
+name: SDX edge image and chart
 on:
   push:
     branches: ['feature/**', dev, 'images/**']
   pull_request:
     branches: [dev, main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      plugins_ref:
+        description: 'Plugins release tag or full commit (empty uses sdx/image/plugins.json)'
+        type: string
+        default: ''
 jobs:
   edge:
-    uses: ./.github/workflows/.build.yml
+    uses: ./.github/workflows/.edge.yml
     permissions:
       contents: read
       packages: write
     with:
-      name: sdx-access-point
-      context: .
-      file: sdx/image/Dockerfile
+      plugins-ref: ${{ inputs.plugins_ref || '' }}
       publish: ${{ github.event_name != 'pull_request' }}
