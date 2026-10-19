@@ -28,7 +28,7 @@ KONG_PLUGINS_REF=<tag-or-commit>
 KONG_PLUGINS_REVISION=<resolved-commit>
 ```
 
-Manual edge runs expose `plugins_ref`. Direct Docker builds can use `--build-arg KONG_PLUGINS_REF=kong-oss-plugins/vX.Y.Z`. The Dockerfile verifies an expected revision when supplied, labels the selection and records the actual commit at `/usr/local/share/sdx/plugins-revision`.
+Manual edge runs expose `plugins_ref`. Direct Docker builds can use `--build-arg KONG_PLUGINS_REF=vX.Y.Z`. The Dockerfile verifies an expected revision when supplied, labels the selection and records the actual commit at `/usr/local/share/sdx/plugins-revision`.
 
 Update the default dependency through a reviewed PR after a plugins bundle release. The current default is the audited feature/mtls commit, not a newly published release. Other Git dependencies are pinned too; OS/package downloads are not fully hermetic. The image uses `pep`/`plugin-log`, matching the portal SDX image and infrastructure control plane; review remaining `openid-authzen` consumers before upgrading.
 
