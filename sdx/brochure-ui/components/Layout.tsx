@@ -135,10 +135,187 @@ export function Layout({
         <style
           dangerouslySetInnerHTML={{
             __html: `
-          /* B.C. Design System focus indicator (2px active-blue outline). */
+          /* Focus: blue on light surfaces, white where the ring sits on a dark surface. */
           :focus-visible {
             outline: 2px solid var(--surface-color-border-active);
             outline-offset: 2px;
+          }
+          .sdx-on-dark :focus-visible,
+          .bg-bc-blue :focus-visible,
+          .bg-bc-blue:focus-visible {
+            outline-color: #fff;
+          }
+          /* Inset the accordion header ring so a parent border or overflow does not clip it. */
+          summary:focus-visible {
+            outline-offset: -3px;
+          }
+          summary.bg-bc-blue:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: -4px;
+          }
+          @media (forced-colors: active) {
+            :focus-visible,
+            summary:focus-visible {
+              outline: 2px solid Highlight;
+              outline-offset: 2px;
+            }
+          }
+          .sdx-chrome { background: #fff; position: sticky; top: 0; z-index: 40; }
+          .sdx-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem 1.5rem;
+            max-width: 80rem;
+            margin: 0 auto;
+            padding: 0.75rem 1.5rem;
+            background: #fff;
+            border-bottom: 1px solid var(--surface-color-border-default);
+          }
+          .sdx-brand { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+          .sdx-logo { display: flex; align-items: center; flex-shrink: 0; }
+          .sdx-logo img { height: 2.25rem; width: auto; }
+          .sdx-brand-rule { width: 1px; align-self: stretch; background: var(--surface-color-border-default); }
+          .sdx-title {
+            color: var(--theme-primary-blue);
+            font-weight: 700;
+            font-size: 1.25rem;
+            line-height: 1.3;
+            text-decoration: none;
+            min-width: 0;
+          }
+          .sdx-title:hover { color: var(--surface-color-primary-hover); }
+          .sdx-tools { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+          .sdx-tool-link, .sdx-account-summary, .sdx-menu-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--layout-border-radius-small);
+            color: var(--typography-color-secondary);
+            background: transparent;
+            border: 0;
+            font: inherit;
+            font-size: 0.875rem;
+            text-decoration: none;
+            cursor: pointer;
+          }
+          .sdx-tool-link:hover, .sdx-account-summary:hover, .sdx-menu-btn:hover {
+            color: var(--theme-primary-blue);
+            background: var(--surface-color-background-light-gray);
+          }
+          .sdx-account { position: relative; }
+          .sdx-account-summary { list-style: none; }
+          .sdx-account-summary::-webkit-details-marker { display: none; }
+          .sdx-account-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            z-index: 60;
+            background: #fff;
+            color: var(--typography-color-primary);
+            border: 1px solid var(--surface-color-border-default);
+            border-radius: var(--layout-border-radius-medium);
+            box-shadow: var(--surface-shadow-medium);
+            min-width: 12rem;
+            max-width: min(18rem, calc(100vw - 1rem));
+            padding: 0.25rem 0;
+          }
+          .sdx-account-email {
+            margin: 0;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: var(--typography-color-secondary);
+            overflow-wrap: anywhere;
+            border-bottom: 1px solid var(--surface-color-border-default);
+          }
+          .sdx-account-menu a {
+            display: block;
+            padding: 0.5rem 1rem;
+            color: var(--typography-color-primary);
+            text-decoration: none;
+            font-size: 0.875rem;
+          }
+          .sdx-account-menu a:hover { background: var(--surface-color-background-light-gray); }
+          .sdx-menu-btn {
+            display: none;
+            margin-left: auto;
+            border: 1px solid var(--surface-color-border-dark);
+            background: #fff;
+            color: var(--typography-color-primary);
+            gap: 0.5rem;
+          }
+          .sdx-main-nav {
+            background: #fff;
+            border-bottom: 1px solid var(--surface-color-border-default);
+          }
+          .sdx-main-nav-inner { max-width: 80rem; margin: 0 auto; padding: 0 1.5rem; }
+          .sdx-main-nav ul { display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
+          .sdx-main-nav li + li { border-left: 1px solid var(--surface-color-border-default); }
+          .sdx-nav-link {
+            display: block;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--typography-color-secondary);
+            text-decoration: none;
+          }
+          .sdx-nav-link:hover { color: var(--theme-primary-blue); background: var(--surface-color-background-light-gray); }
+          .sdx-nav-link[aria-current="page"] { color: var(--theme-primary-blue); font-weight: 600; }
+          .sdx-console { display: flex; align-items: stretch; }
+          .sdx-console-summary {
+            list-style: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 0.5rem;
+            color: var(--typography-color-secondary);
+          }
+          .sdx-console-summary::-webkit-details-marker { display: none; }
+          .sdx-console[data-active="true"] .sdx-console-summary { color: var(--theme-primary-blue); }
+          .sdx-console-menu {
+            position: absolute;
+            left: 0;
+            top: 100%;
+            z-index: 60;
+            background: #fff;
+            border: 1px solid var(--surface-color-border-default);
+            border-radius: var(--layout-border-radius-medium);
+            box-shadow: var(--surface-shadow-medium);
+            min-width: 14rem;
+            padding: 0.25rem 0;
+          }
+          .sdx-console { position: relative; }
+          .sdx-console-menu a {
+            display: block;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: var(--typography-color-primary);
+            text-decoration: none;
+          }
+          .sdx-console-menu a:hover,
+          .sdx-console-menu a[aria-current="page"] {
+            background: var(--surface-color-background-light-gray);
+            color: var(--theme-primary-blue);
+          }
+          .sdx-console-menu a[aria-current="page"] { font-weight: 600; }
+          @media (max-width: 799px) {
+            .sdx-header { flex-wrap: wrap; align-items: flex-start; gap: 0.75rem 1rem; padding: 0.75rem 1rem; }
+            .sdx-brand { width: 100%; }
+            .sdx-brand-rule { display: none; }
+            .sdx-title { white-space: normal; overflow-wrap: anywhere; font-size: 1.125rem; }
+            .sdx-tools { width: 100%; }
+            .sdx-menu-btn { display: inline-flex; }
+            .sdx-main-nav { display: none; }
+            .sdx-main-nav.is-open { display: block; }
+            .sdx-main-nav ul { flex-direction: column; }
+            .sdx-main-nav li + li { border-left: 0; border-top: 1px solid var(--surface-color-border-default); }
+            .sdx-main-nav-inner { padding: 0; }
+            .sdx-console-menu { position: static; box-shadow: none; border: 0; border-radius: 0; min-width: 0; }
+          }
+          @media (min-width: 800px) {
+            .sdx-main-nav { display: block; }
+            .sdx-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           }
           /* Button anatomy requires a border stroke on every variant, even
              filled ones — applied globally so every bg-btn-primary/
@@ -186,12 +363,34 @@ export function Layout({
           bannerTitle={bannerTitle ?? config.bannerTitle}
           bannerHref={bannerHref}
         />
-        <main id="main-content" className="flex-1">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1">{children}</main>
         <Footer />
         {/* Mounts the real B.C. Design System Header/Footer (client/
             entry.tsx) into the data-bcds-island elements above - see the
             comment on Nav.tsx's <header>. */}
         <script type="module" src="/public/js/client.js" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest && e.target.closest('.sdx-menu-btn');
+            if (!btn) return;
+            var nav = document.getElementById('sdx-main-menu');
+            if (!nav) return;
+            var open = nav.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            var nav = document.getElementById('sdx-main-menu');
+            var btn = document.querySelector('.sdx-menu-btn');
+            if (!nav || !nav.classList.contains('is-open')) return;
+            nav.classList.remove('is-open');
+            if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+          });
+        `,
+          }}
+        />
         <div
           id="sdx-copy-status"
           role="status"

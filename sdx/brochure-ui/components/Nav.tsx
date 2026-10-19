@@ -84,6 +84,7 @@ export function Nav({
     // below; mounting onto a <header> here would nest one <header> inside
     // another once the island replaces this element's children.
     <div
+      className="sdx-chrome"
       data-bcds-island="AppChrome"
       data-bcds-props={JSON.stringify(islandProps)}
     >
@@ -96,174 +97,133 @@ export function Nav({
           the library ships no CSS of its own until its React tree actually
           runs in the browser, so this fallback is what no-JS users, and
           everyone else before that script loads, will see. */}
-      <header>
-      <div className="bg-white border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex items-center gap-4 min-w-0">
-            <a
-              href={bannerHref}
-              aria-label="Government of British Columbia"
-              className="flex items-center shrink-0 rounded-sm"
-            >
-              <img
-                src="/public/bcid-logo-positive.png"
-                alt=""
-                className="h-9 w-auto"
-              />
-            </a>
-            <span className="w-px self-stretch bg-border" aria-hidden="true" />
-            <a
-              href={bannerHref}
-              className="text-bc-blue font-bold text-lg sm:text-xl truncate hover:text-bc-blue-hover transition-colors rounded-sm"
-            >
-              {bannerTitle}
-            </a>
-          </div>
-
-          <nav
-            className="flex items-center gap-1 text-sm shrink-0"
-            aria-label="Account"
+      <header className="sdx-header">
+        <div className="sdx-brand">
+          <a
+            href={bannerHref}
+            aria-label="Government of British Columbia"
+            className="sdx-logo"
           >
-            <a
-              href="/help"
-              aria-current={currentPath === "/help" ? "page" : undefined}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors"
-            >
-              Help <Chevron />
-            </a>
-
-            {authEnabled && user ? (
-              <details className="relative group">
-                <summary className="list-none cursor-pointer inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors">
-                  <span className="truncate max-w-[160px]">
-                    {displayName}
-                  </span>
-                  <Chevron />
-                </summary>
-                <div className="absolute right-0 top-full bg-white text-ink shadow-lg rounded border border-border min-w-[200px] z-50 py-1">
-                  {user.email && (
-                    <div className="px-4 py-2 text-xs text-ink-secondary border-b border-border truncate">
-                      {user.email}
-                    </div>
-                  )}
-                  <a
-                    href="/auth/logout"
-                    className="block px-4 py-2 text-sm hover:bg-surface-muted"
-                  >
-                    Logout
-                  </a>
-                </div>
-              </details>
-            ) : (
-              <a
-                href={`/auth/login?returnTo=${encodeURIComponent(currentPath)}`}
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-sm text-ink-secondary hover:text-bc-blue hover:bg-surface-muted transition-colors"
-              >
-                Login <Chevron />
-              </a>
-            )}
-          </nav>
+            <img src="/public/bcid-logo-positive.png" alt="" />
+          </a>
+          <span className="sdx-brand-rule" aria-hidden="true" />
+          <a href={bannerHref} className="sdx-title">
+            {bannerTitle}
+          </a>
         </div>
-      </div>
+        <div className="sdx-tools">
+          <a
+            href="/help"
+            aria-current={currentPath === "/help" ? "page" : undefined}
+            className="sdx-tool-link"
+          >
+            Help
+          </a>
+          {authEnabled && user ? (
+            <details className="sdx-account">
+              <summary className="sdx-account-summary">
+                Account <Chevron />
+              </summary>
+              <div className="sdx-account-menu">
+                {user.email && (
+                  <p className="sdx-account-email">{user.email}</p>
+                )}
+                <a href="/auth/logout">Logout</a>
+              </div>
+            </details>
+          ) : (
+            <a
+              href={`/auth/login?returnTo=${encodeURIComponent(currentPath)}`}
+              className="sdx-tool-link"
+            >
+              Login
+            </a>
+          )}
+          {!hideMainNav && (
+            <button
+              type="button"
+              className="sdx-menu-btn"
+              aria-expanded="false"
+              aria-controls="sdx-main-menu"
+            >
+              Menu
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+            </button>
+          )}
+        </div>
       </header>
-
-      {/* B.C. Design System Subheader: padding aligned with the header,
-          solid bottom border, items as a horizontal list with vertical
-          dividers automatically rendered between each item. Sibling of
-          <header> above, not nested inside it - matches the real
-          <Header>/<Subheader> component structure (client/AppChrome.tsx). */}
       {!hideMainNav && (
-        <div className="bg-white border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <nav aria-label="Main navigation">
-              <ul className="flex flex-wrap">
-                {NAV_ITEMS.filter(
-                  (item) => !item.authRequired || user,
-                ).map((item, i) => {
-                  const isActive =
-                    item.href === "/console"
-                      ? isConsolePath(currentPath)
-                      : currentPath === item.href ||
-                        (item.href !== "/" &&
-                          currentPath.startsWith(
-                            item.href + "/",
-                          ));
-                  const linkClass = [
-                    "block px-4 py-3 text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-bc-blue font-semibold"
-                      : "text-ink-secondary hover:text-bc-blue hover:bg-surface-muted",
-                  ].join(" ");
-                  return (
-                    <li
-                      key={item.href}
-                      className={
-                        i > 0 ? "border-l border-border" : undefined
-                      }
-                    >
-                      {item.href === "/console" ? (
-                        <div className="flex items-stretch">
-                          <a
-                            href="/console"
-                            aria-current={
-                              currentPath === "/console" ? "page" : undefined
-                            }
-                            className={linkClass}
-                          >
-                            {item.label}
-                          </a>
-                          <details className="relative">
-                            <summary
-                              aria-label="Member Console sections"
-                              className={[
-                                "list-none cursor-pointer h-full inline-flex items-center px-2 [&::-webkit-details-marker]:hidden",
-                                isActive
-                                  ? "text-bc-blue"
-                                  : "text-ink-secondary hover:text-bc-blue",
-                              ].join(" ")}
-                            >
-                              <Chevron />
-                            </summary>
-                            <div className="absolute left-0 top-full bg-white text-ink shadow-lg rounded border border-border min-w-[220px] z-50 py-1">
-                              {CONSOLE_PAGES.map((page) => {
-                                const current =
-                                  currentPath === page.href ||
-                                  currentPath.startsWith(page.href + "/");
-                                return (
-                                  <a
-                                    key={page.href}
-                                    href={page.href}
-                                    aria-current={current ? "page" : undefined}
-                                    className={[
-                                      "block px-4 py-2 text-sm hover:bg-surface-muted hover:text-bc-blue",
-                                      current
-                                        ? "text-bc-blue font-semibold bg-surface-muted"
-                                        : "text-ink",
-                                    ].join(" ")}
-                                  >
-                                    {page.label}
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          </details>
-                        </div>
-                      ) : (
+        <nav id="sdx-main-menu" className="sdx-main-nav" aria-label="Main navigation">
+          <div className="sdx-main-nav-inner">
+            <ul>
+              {NAV_ITEMS.filter((item) => !item.authRequired || user).map(
+                (item) => {
+                  const isActive = item.href === "/console"
+                    ? isConsolePath(currentPath)
+                    : currentPath === item.href ||
+                      (item.href !== "/" &&
+                        currentPath.startsWith(item.href + "/"));
+                  if (item.href !== "/console") {
+                    return (
+                      <li key={item.href}>
                         <a
                           href={item.href}
+                          className="sdx-nav-link"
                           aria-current={isActive ? "page" : undefined}
-                          className={linkClass}
                         >
                           {item.label}
                         </a>
-                      )}
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={item.href}>
+                      <div
+                        className="sdx-console"
+                        data-active={isActive ? "true" : "false"}
+                      >
+                        <a
+                          href="/console"
+                          className="sdx-nav-link"
+                          aria-current={
+                            currentPath === "/console" ? "page" : undefined
+                          }
+                        >
+                          {item.label}
+                        </a>
+                        <details>
+                          <summary
+                            className="sdx-console-summary"
+                            aria-label="Member Console sections"
+                          >
+                            <Chevron />
+                          </summary>
+                          <div className="sdx-console-menu">
+                            {CONSOLE_PAGES.map((page) => {
+                              const current = currentPath === page.href ||
+                                currentPath.startsWith(page.href + "/");
+                              return (
+                                <a
+                                  key={page.href}
+                                  href={page.href}
+                                  aria-current={current ? "page" : undefined}
+                                >
+                                  {page.label}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      </div>
                     </li>
                   );
-                })}
-              </ul>
-            </nav>
+                },
+              )}
+            </ul>
           </div>
-        </div>
+        </nav>
       )}
     </div>
   );

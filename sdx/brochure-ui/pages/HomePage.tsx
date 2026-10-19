@@ -26,7 +26,7 @@ export function HomePage({ subsystems, organizations, services, config, currentP
     <Layout title="Home" currentPath={currentPath} user={user}>
       {/* Hero section */}
       <section
-        className="relative text-ink-invert"
+        className="relative text-ink-invert sdx-on-dark"
         style={{
           backgroundImage: [
             "linear-gradient(rgba(1,51,102,0.82), rgba(1,51,102,0.88))",

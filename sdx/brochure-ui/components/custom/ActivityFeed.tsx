@@ -8,8 +8,37 @@ interface ActivityFeedProps {
 }
 
 const DIALOG_STYLE = `
-dialog.sdx-activity-dialog { border: none; border-radius: 8px; padding: 0; max-width: 720px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+dialog.sdx-activity-dialog { border: none; border-radius: 8px; padding: 0; max-width: 720px; width: min(92vw, 720px); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+dialog.sdx-activity-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100dvh - 2rem);
+}
+dialog.sdx-activity-dialog .sdx-activity-head,
+dialog.sdx-activity-dialog .sdx-activity-foot { flex: 0 0 auto; }
+dialog.sdx-activity-dialog .sdx-activity-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
 dialog.sdx-activity-dialog::backdrop { background: rgba(0,0,0,0.45); }
+@media (max-width: 799px) {
+  dialog.sdx-activity-dialog[open] {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-head,
+  dialog.sdx-activity-dialog .sdx-activity-body,
+  dialog.sdx-activity-dialog .sdx-activity-foot {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
 `;
 
 // Rendered client-side so dates/times reflect the viewer's local timezone (the
@@ -324,18 +353,17 @@ export function ActivityFeed({
       {/* Details dialog */}
       <dialog
         id="activity-detail"
-        aria-labelledby="activity-detail-title"
         className="sdx-activity-dialog"
         aria-labelledby="activity-detail-title"
         aria-modal="true"
       >
-        <div className="px-5 py-4 border-b border-border">
+        <div className="sdx-activity-head px-5 py-3 border-b border-border">
           <h2
             id="activity-detail-title"
             className="text-lg font-bold text-bc-blue"
           />
         </div>
-        <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-auto">
+        <div className="sdx-activity-body px-5 py-3 space-y-4">
           <div
             id="activity-detail-blob-wrap"
             style={{ display: "none" }}
@@ -343,7 +371,7 @@ export function ActivityFeed({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary mb-1.5">
               Details
             </h3>
-            <pre className="text-xs bg-surface-muted border border-border rounded p-3 overflow-auto">
+            <pre className="text-xs bg-surface-muted border border-border rounded p-3 whitespace-pre-wrap break-all">
               <code
                 id="activity-detail-blob"
                 className="language-yaml whitespace-pre-wrap break-all"
@@ -352,11 +380,11 @@ export function ActivityFeed({
           </div>
           <dl
             id="activity-detail-params"
-            className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1 text-xs"
+            className="grid grid-cols-1 sm:grid-cols-[9rem_1fr] gap-x-3 gap-y-1 text-xs"
             style={{ display: "none" }}
           />
         </div>
-        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end">
+        <div className="sdx-activity-foot px-5 py-3 bg-surface-muted border-t border-border flex justify-end">
           <button
             type="button"
             data-close-activity
