@@ -16,7 +16,11 @@ COPY pages ./pages
 COPY components ./components
 COPY public ./public
 
+# Bake BC Sans into public/fonts so containers start without reaching
+# www2.gov.bc.ca. A failed download fails the build rather than every start.
 RUN deno cache main.ts \
+    && deno run --allow-net --allow-read --allow-env --allow-write lib/fonts.ts \
+    && rm -rf /tmp/bcsansfont_web /tmp/bcsansfont_web.zip \
     && chown -R deno:deno /app
 
 USER deno
