@@ -19,8 +19,8 @@ export function fontsInstalled(): boolean {
 }
 
 // Downloads BC Sans and copies it into public/fonts. Throws on any failure.
-// The Docker build runs this (see `import.meta.main` below), so a published
-// image already contains the fonts and never needs the network for them.
+// Only used when running from source: the Docker image bakes the fonts in
+// from the @bcgov/bc-sans npm package (see Dockerfile).
 export async function downloadAndSetupFonts(): Promise<void> {
   // Download the font file
   await downloadFile(FONT_URL, DOWNLOAD_PATH);
@@ -139,11 +139,4 @@ function copyFontsToPublic(
       fs.copyFileSync(sourcePath, destPath);
     }
   });
-}
-
-// `deno run lib/fonts.ts` (used by the Dockerfile) installs the fonts and
-// exits non-zero on failure, so a bad download fails the image build instead
-// of every container start.
-if (import.meta.main) {
-  await downloadAndSetupFonts();
 }
