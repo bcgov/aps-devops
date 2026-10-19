@@ -1,0 +1,19 @@
+name: APE Function — pubsub-kafka
+
+on:
+  push:
+    branches: ['feature/**', dev]
+
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  build-pubsub-kafka:
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      name: pubsub-kafka
+      publish: ${{ github.event_name == 'push' }}
+      context: ./sdx/ape/functions/pubsub-kafka
