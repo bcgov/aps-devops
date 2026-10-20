@@ -58,14 +58,19 @@ is unavailable and report the gap.
 Start with `assets/architecture-template.d2` or a user-supplied D2 template.
 `assets/master-components.json` is the editable master component inventory.
 Preserve stable IDs. Select only relevant context and affected components for the
-page; the inventory is a starter and does not establish architecture ownership.
+page. Treat the user-maintained inventory as authoritative for component identity,
+labels and repository ownership. Do not create or extend a ticket-local master
+list to legitimize invented components. Inventory changes require a user request.
 Do not rewrite a user's reusable template to apply a ticket's highlights.
 
 Build a ticket change map (see `assets/APS-4927-changes.json`) and run
 `scripts/prepare_diagram.py` against the template/inventory. It generates a
 self-contained `.d2` copy and `.summary.json` from the same changes. Use those
-summary rows for the bottom table. Add new IDs to the inventory and place their
-nodes in the template before generating. The helper rejects unknown or absent
+summary rows for the bottom table. Map implementation areas to their existing parent component. Put their names
+in optional `subcomponent` text, rendered in italics beneath the repository/component
+in the PDF summary, never as standalone diagram components. When no existing
+component fits, use a repository-only row/node from an existing master repository;
+record the inventory gap instead of inventing a component. The helper rejects unknown or absent
 nodes and duplicate changes. Current helper scope is top-level node IDs; preserve
 that scope or extend it explicitly before introducing nested component paths.
 
