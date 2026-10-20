@@ -1,6 +1,6 @@
 ---
 name: remedy-dns-export
-description: Export Remedy NNR DNS records for the standard API/apps production, development and test domains plus data.gov.bc.ca or an explicitly requested domain through the signed-in browser to verified CSV and JSON snapshots under an infrastructure repository's root dns folder, and commit the exports when requested.
+description: Export Remedy NNR DNS records for the standard API/apps production, development and test domains plus data.gov.bc.ca or an explicitly requested domain through the signed-in browser to verified CSV snapshots under an infrastructure repository's root dns folder, and commit the exports when requested.
 ---
 
 # Remedy DNS export
@@ -19,7 +19,7 @@ For a standard/full export, or when no domain subset is specified, search and ex
 - `test.apps.gov.bc.ca`
 - `data.gov.bc.ca`
 
-Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search and completeness check. Combine the three API domain captures into `dns/api.gov.bc.ca.csv` and `.json`, and the three apps captures into `dns/apps.gov.bc.ca.csv` and `.json`. Export `data.gov.bc.ca` separately as `dns/data.gov.bc.ca.csv` and `.json`; do not infer dev/test data domains. Preserve each record's original Domain; do not relabel development/test records as production or deduplicate across domains. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any family member fails verification, retain the prior combined family snapshot and report the incomplete family. An explicit subset can be exported to a temporary destination for inspection, but must not overwrite a combined family snapshot.
+Honor an explicitly requested subset or additional domain. Each domain gets its own Quick Search and completeness check. Combine the three API domain captures into `dns/api.gov.bc.ca.csv`, and the three apps captures into `dns/apps.gov.bc.ca.csv`. Export `data.gov.bc.ca` separately as `dns/data.gov.bc.ca.csv`; do not infer dev/test data domains. Preserve each record's original Domain; do not relabel development/test records as production or deduplicate across domains. A parent-domain search does not replace searches for development/test domains. Keep exact-domain filtering for every search. Report completion, count and any failure per domain; do not claim a full refresh if one domain could not be exported. If any family member fails verification, retain the prior combined family snapshot and report the incomplete family. An explicit subset can be exported to a temporary destination for inspection, but must not overwrite a combined family snapshot.
 
 Resolve the infrastructure repository from the prompt or established conversation; `api-serv-infra` and `aps-infra-platform` are different repositories. Confirm the destination if ambiguous. Inspect its repository instructions and Git state. Use an isolated worktree for changes when the shared checkout contains unrelated work. Never switch a shared checkout. The skill is stored in aps-devops `.agents/skills` for repository discovery; from another workspace, explicitly reference this SKILL.md if it is not in the available skill catalog.
 
@@ -36,7 +36,7 @@ If organizational sign-in is required, leave the tab available and ask the user 
 3. Quick Search matches hostname/domain/data prefixes, not exact domain membership. Capture the displayed “N of M results” and the loaded table. Export only rows whose Domain exactly equals the requested domain (case-insensitive, ignoring one trailing dot). Report excluded rows. Do not silently widen to other zones or suffix matches.
 4. Inspect the current DOM. In the observed v2.0.54 UI the results table is `T536870913`, but confirm it from the page each time. The table contains a header plus data rows. Read each row's cells in column order, taking the `value` of an input/textarea when present, otherwise visible text. Keep blank cells: accessible text alone can omit empty Port/Priority/Weight/PTR fields.
 5. Require all reported results to be loaded before saving. If N differs from M, follow visible pagination/loading controls and capture every page without duplication; if that cannot be verified, stop and report an incomplete export. A Report link exists but did not produce an export in the observed session; do not confuse Save/Save As with file export.
-6. Save the exact captured array (including header) to temporary JSON using available file tools, without reconstructing default values or deduplicating names. Preserve apex `@`, wildcard `*`, underscores, TXT values, multiple-address records, status, view and admin group. The helper omits the final user audit columns in output, matching the established CSV/JSON exports.
+6. Save the exact captured array (including header) to temporary JSON using available file tools, without reconstructing default values or deduplicating names. Preserve apex `@`, wildcard `*`, underscores, TXT values, multiple-address records, status, view and admin group. The helper omits the final user audit columns in output, matching the CSV exports.
 
 Read-only DOM example after inspecting the table and verifying its selector:
 
@@ -68,10 +68,12 @@ python3 <skill-directory>/scripts/export_dns.py --rows <data-rows.json> \
   --domain data.gov.bc.ca --expected-total <displayed-total> --repo <infra-repo>
 ```
 
-The standard output is three CSV/JSON pairs: combined API, combined apps, and data. Apply the same completeness, exact-domain and preservation checks to data; retain its previous files if its search fails.
+JSON is used only as temporary helper input; do not generate or check in JSON exports. Leave any previously checked-in JSON files unchanged unless their removal is explicitly requested.
 
-The helper validates all three captures before writing a family pair. JSON includes the three domain names, per-search counts and a combined record count. CSV retains the Domain column. Do not create separate dev/test export files for the standard workflow.
+The standard output is three CSV files: combined API, combined apps, and data. Apply the same completeness, exact-domain and preservation checks to data; retain its previous files if its search fails.
+
+The helper validates all three captures before writing a family CSV. Report per-search counts, exclusions and the combined record count in the run summary. CSV retains the Domain column. Do not create separate dev/test export files for the standard workflow.
 
 The total is evidence from this run, not a hard-coded expected number. For an empty result, verify the page reports zero and capture the header. Snapshots describe Remedy inventory, not authoritative live DNS resolution. The strict new-record validator in `remedy-dns/remedy_dns.py` has a different schema and must not validate or filter lossless snapshots.
 
-Read the generated files back, inspect the scoped diff and summarize count/type totals and exclusions. Check changed records before replacing a previous snapshot, preserving existing files if validation fails. Stage only the requested `dns/<domain>.csv` and `.json` paths. If the request says check in/commit, commit them on the isolated branch; do not push, create a PR, merge or deploy unless requested. Return file links, repository, branch and commit. Keep sign-in tabs available when needed for another domain.
+Read the generated files back, inspect the scoped diff and summarize count/type totals and exclusions. Check changed records before replacing a previous snapshot, preserving existing files if validation fails. Stage only the requested `dns/<domain>.csv` paths. If the request says check in/commit, commit them on the isolated branch; do not push, create a PR, merge or deploy unless requested. Return file links, repository, branch and commit. Keep sign-in tabs available when needed for another domain.

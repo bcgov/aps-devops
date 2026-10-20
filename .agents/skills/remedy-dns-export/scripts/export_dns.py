@@ -1,4 +1,4 @@
-"""Validate captured Remedy table rows and save lossless DNS-field snapshots."""
+"""Validate captured Remedy table rows and save lossless DNS-field CSV snapshots."""
 import argparse
 import csv
 import io
@@ -103,7 +103,6 @@ def main():
     folder.mkdir(exist_ok=True)
     with open(folder / (snapshot['domain'] + '.csv'), 'w', newline='') as handle:
         handle.write(csv_text)
-    (folder / (snapshot['domain'] + '.json')).write_text(json.dumps(snapshot, indent=2) + '\n')
     print(f"Exported {snapshot['exported_record_count']} records; excluded {snapshot['excluded_record_count']}")
 
 

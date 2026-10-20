@@ -44,7 +44,7 @@ class ExportTests(unittest.TestCase):
     def test_empty_export(self):
         self.assertEqual(convert([HEADERS], 'example.test', 0)['records'], [])
 
-    def test_cli_writes_snapshot_pair(self):
+    def test_cli_writes_csv_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             (repo / '.git').mkdir()
@@ -54,7 +54,8 @@ class ExportTests(unittest.TestCase):
                             '--domain', 'example.test', '--expected-total', '1', '--repo', str(repo)],
                            check=True, capture_output=True)
             self.assertEqual((repo / 'dns' / 'example.test.csv').read_bytes().count(b'\r'), 0)
-            self.assertEqual(json.loads((repo / 'dns' / 'example.test.json').read_text())['exported_record_count'], 1)
+            self.assertEqual([p.name for p in (repo / 'dns').iterdir()], ['example.test.csv'])
+            self.assertIn('192.0.2.1', (repo / 'dns' / 'example.test.csv').read_text())
 
 
 if __name__ == '__main__':
