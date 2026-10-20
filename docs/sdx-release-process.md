@@ -6,9 +6,9 @@ The workflows build artifacts and create releases. Deployments remain separate.
 
 `.github/release/components.json` lists each component's paths, Docker context and starting version. Components use independent `<component>/vX.Y.Z` Git tags. Images use `ghcr.io/bcgov/aps-devops/<component>:vX.Y.Z`; Helm uses OCI chart versions without `v`.
 
-The only release helper is `.github/scripts/release-plan.sh`. It validates one `release=major`, `release=minor` or `release=patch` label, selects changed components using `git diff`, and increments their own latest stable tags with the standard `semver` CLI. Shared workflow changes select all components. An edge-image change also selects the chart. The manifest puts the edge image before its dependent chart.
+The only release helper is `.github/scripts/release-plan.sh`. It validates one `release=major`, `release=minor` or `release=patch` label, selects changed components using `git diff`, and increments their own latest stable tags with the standard `semver` CLI. Shared workflow changes select all components. An edge-image change also selects the chart. Dependency selection is independent of component order in the manifest.
 
-Initial image versions start from 0.0.0; the chart starts from 0.3.11. Review these baselines against existing published artifacts before activation. Historical repository-wide tags are preserved.
+Initial image versions start from 0.0.0; the chart starts from 0.3.11. Historical repository-wide tags are preserved.
 
 ## Branches and images
 
@@ -50,6 +50,8 @@ Promote one dev -> main PR at a time and wait for its release workflow. A failed
 
 `gh release create` handles release asset upload. If an interrupted upload leaves a draft, inspect it and use standard `gh release upload`/`gh release edit --draft=false` commands to finish before retrying. There is no custom recovery service. Do not merge another promotion over a failed release without a recovery decision.
 
-Before activation, confirm the APS Technical Change Management Process, baselines, release labels and GHCR rights. Configure protected dev/main branches with required reviews/build checks, permit squash merging into dev and merge commits into main, enable auto-merge and supply `AUTOMERGE_TOKEN`. Use a suitable App/bot token so merged feature PRs trigger dev builds; do not grant bypass access. No settings, secrets, permissions or deployments are changed by this draft.
+dev/main require reviews and passing build checks. Squash merges go into dev and merge commits into main. Auto-merge uses an App/bot token without bypass rights, so merged feature PRs trigger dev builds.
 
-For deployment/rollback, use the approved chart version and its immutable image digest; never move version tags. Validate locally with `bash tests/release.sh` (jq, Git and semver required), `actionlint`, `helm lint` and chart rendering. A controlled publishing rehearsal remains a rollout gate.
+Build workflows use source-path filters, including their caller and reusable workflow files. Do not make a workflow skipped by path filtering a required check: it can remain pending. If selective builds must be required, use job-level change selection with an always-run result gate. Manual edge dispatch remains available. Chart-only development changes currently also rebuild the edge image; separating that build is a follow-up.
+
+For deployment/rollback, use the approved chart version and its immutable image digest; never move version tags. Validate locally with `bash tests/release.sh` (jq, Git and semver required), `actionlint`, `helm lint` and chart rendering.

@@ -3,9 +3,17 @@ name: APE Function — opal-pip-catalog
 on:
   push:
     branches: ['feature/**', dev]
+    paths:
+      - 'sdx/ape/functions/opal-pip-catalog/**'
+      - '.github/workflows/ape-func-opal-pip-catalog.yaml'
+      - '.github/workflows/.build.yml'
 
   pull_request:
     branches: [dev, main]
+    paths:
+      - 'sdx/ape/functions/opal-pip-catalog/**'
+      - '.github/workflows/ape-func-opal-pip-catalog.yaml'
+      - '.github/workflows/.build.yml'
 
 jobs:
   build-opal-pip-catalog:

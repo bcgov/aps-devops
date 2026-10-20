@@ -19,7 +19,11 @@ selected=$(mktemp)
 trap 'rm -f "$selected"' EXIT
 shared=()
 while IFS= read -r path; do shared+=("$path"); done < <(jq -r '.shared_paths[]' .github/release/components.json)
+# Resolve the edge dependency before iterating; manifest order is irrelevant.
+edge_paths=()
+while IFS= read -r path; do edge_paths+=("$path"); done < <(jq -r '.components[] | select(.name=="sdx-access-point") | .paths[]' .github/release/components.json)
 edge_changed=false
+if [[ ${#edge_paths[@]} -gt 0 ]] && ! git diff --quiet "$base" "$sha" -- "${edge_paths[@]}" "${shared[@]}"; then edge_changed=true; fi
 while IFS= read -r component; do
   name=$(jq -r .name <<< "$component")
   paths=()
@@ -27,7 +31,6 @@ while IFS= read -r component; do
   if git diff --quiet "$base" "$sha" -- "${paths[@]}" "${shared[@]}"; then
     if [[ "$name" != sdx-edge || "$edge_changed" != true ]]; then continue; fi
   fi
-  if [[ "$name" == sdx-access-point ]]; then edge_changed=true; fi
   previous=$(git tag --list "$name/v*" --sort=-version:refname | grep -E '/v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p' || true)
   existing=$(git tag --points-at "$sha" --list "$name/v*" | grep -E '/v[0-9]+\.[0-9]+\.[0-9]+$' || true)
   if [[ -n "$existing" ]]; then

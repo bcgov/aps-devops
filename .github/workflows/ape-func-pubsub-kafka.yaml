@@ -3,9 +3,17 @@ name: APE Function — pubsub-kafka
 on:
   push:
     branches: ['feature/**', dev]
+    paths:
+      - 'sdx/ape/functions/pubsub-kafka/**'
+      - '.github/workflows/ape-func-pubsub-kafka.yaml'
+      - '.github/workflows/.build.yml'
 
   pull_request:
     branches: [dev, main]
+    paths:
+      - 'sdx/ape/functions/pubsub-kafka/**'
+      - '.github/workflows/ape-func-pubsub-kafka.yaml'
+      - '.github/workflows/.build.yml'
 
 jobs:
   build-pubsub-kafka:

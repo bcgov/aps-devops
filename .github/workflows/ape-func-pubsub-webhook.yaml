@@ -3,9 +3,17 @@ name: APE Function — pubsub-webhook
 on:
   push:
     branches: ['feature/**', dev]
+    paths:
+      - 'sdx/ape/functions/pubsub-webhook/**'
+      - '.github/workflows/ape-func-pubsub-webhook.yaml'
+      - '.github/workflows/.build.yml'
 
   pull_request:
     branches: [dev, main]
+    paths:
+      - 'sdx/ape/functions/pubsub-webhook/**'
+      - '.github/workflows/ape-func-pubsub-webhook.yaml'
+      - '.github/workflows/.build.yml'
 
 jobs:
   build-pubsub-webhook:

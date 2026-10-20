@@ -2,8 +2,22 @@ name: SDX edge image and chart
 on:
   push:
     branches: ['feature/**', dev, 'images/**']
+    paths:
+      - 'sdx/image/**'
+      - 'sdx/chart/sdx-edge/**'
+      - '.github/workflows/sdx-image.yaml'
+      - '.github/workflows/.edge.yml'
+      - '.github/workflows/.build.yml'
+      - '.github/workflows/.chart.yml'
   pull_request:
     branches: [dev, main]
+    paths:
+      - 'sdx/image/**'
+      - 'sdx/chart/sdx-edge/**'
+      - '.github/workflows/sdx-image.yaml'
+      - '.github/workflows/.edge.yml'
+      - '.github/workflows/.build.yml'
+      - '.github/workflows/.chart.yml'
   workflow_dispatch:
     inputs:
       plugins_ref:

@@ -38,6 +38,14 @@ bash "$helper"
 jq -e 'length==2 and .[0].tag=="sdx-access-point/v0.10.1" and .[1].tag=="sdx-edge/v0.3.12"' release-plan.json >/dev/null
 grep -q 'has_edge=true' "$GITHUB_OUTPUT"
 grep -q 'has_images=false' "$GITHUB_OUTPUT"
+# A chart placed before its image must still be selected for an image-only change.
+cp .github/release/components.json original-components.json
+jq '.components |= reverse' original-components.json > .github/release/components.json
+: > "$GITHUB_OUTPUT"
+bash "$helper"
+jq -e 'length==2 and (map(.tag)|sort)==["sdx-access-point/v0.10.1","sdx-edge/v0.3.12"]' release-plan.json >/dev/null
+grep -q 'has_chart=true' "$GITHUB_OUTPUT"
+mv original-components.json .github/release/components.json
 # No changed paths means no release; a fork cannot supply a promotion.
 jq --arg head "$head" '.pull_request.base.sha=$head' "$GITHUB_EVENT_PATH" > empty.json
 mv empty.json "$GITHUB_EVENT_PATH"

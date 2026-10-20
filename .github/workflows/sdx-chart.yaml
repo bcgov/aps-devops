@@ -2,15 +2,23 @@ name: SDX chart validation
 on:
   push:
     branches: ['feature/**', dev]
+    paths:
+      - 'sdx/chart/**'
+      - '.github/workflows/sdx-chart.yaml'
+      - '.github/workflows/.chart.yml'
   pull_request:
     branches: [dev, main]
+    paths:
+      - 'sdx/chart/**'
+      - '.github/workflows/sdx-chart.yaml'
+      - '.github/workflows/.chart.yml'
 permissions:
   contents: read
 jobs:
   chart:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: azure/setup-helm@v4
