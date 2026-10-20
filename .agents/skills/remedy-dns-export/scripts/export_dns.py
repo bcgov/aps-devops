@@ -101,7 +101,8 @@ def main():
         {k: str(v) for k, v in row.items()} for row in snapshot['records']]
     folder = args.repo / 'dns'
     folder.mkdir(exist_ok=True)
-    (folder / (snapshot['domain'] + '.csv')).write_text(csv_text, newline='')
+    with open(folder / (snapshot['domain'] + '.csv'), 'w', newline='') as handle:
+        handle.write(csv_text)
     (folder / (snapshot['domain'] + '.json')).write_text(json.dumps(snapshot, indent=2) + '\n')
     print(f"Exported {snapshot['exported_record_count']} records; excluded {snapshot['excluded_record_count']}")
 

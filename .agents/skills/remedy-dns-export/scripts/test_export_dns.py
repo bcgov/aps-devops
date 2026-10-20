@@ -1,4 +1,9 @@
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 from export_dns import HEADERS, convert, combine
 
 
@@ -38,6 +43,18 @@ class ExportTests(unittest.TestCase):
 
     def test_empty_export(self):
         self.assertEqual(convert([HEADERS], 'example.test', 0)['records'], [])
+
+    def test_cli_writes_snapshot_pair(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / '.git').mkdir()
+            rows = repo / 'rows.json'
+            rows.write_text(json.dumps([HEADERS, self.row()]))
+            subprocess.run([sys.executable, str(Path(__file__).with_name('export_dns.py')), '--rows', str(rows),
+                            '--domain', 'example.test', '--expected-total', '1', '--repo', str(repo)],
+                           check=True, capture_output=True)
+            self.assertEqual((repo / 'dns' / 'example.test.csv').read_bytes().count(b'\r'), 0)
+            self.assertEqual(json.loads((repo / 'dns' / 'example.test.json').read_text())['exported_record_count'], 1)
 
 
 if __name__ == '__main__':

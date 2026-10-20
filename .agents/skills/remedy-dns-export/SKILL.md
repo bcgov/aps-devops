@@ -25,13 +25,13 @@ Resolve the infrastructure repository from the prompt or established conversatio
 
 ## Browser extraction
 
-Use the supported browser tools and their current documentation. Reuse the user's signed-in Remedy tab when available; otherwise open:
+Use the supported browser tools and their current documentation. Reuse the user's signed-in `NNR:dlg DNS Search and Edit` tab when available; otherwise open the search form directly:
 
-https://pobcapps.ca.onbmc.com/arsys/forms/onbmc-s/NNR%3A+Menu+-+VERSION+2/Default+Administrator+View/
+https://pobcapps.ca.onbmc.com/arsys/forms/onbmc-s/NNR%3Adlg+DNS+Search+and+Edit/Default+Administrator+View__c/
 
 If organizational sign-in is required, leave the tab available and ask the user to sign in; resume after they confirm. Never store credentials, cookies, authentication URLs or session data in exports.
 
-1. Select DNS in the NNR menu. A blank Search DNS plus Enter opens `NNR:dlg DNS Search and Edit` in another tab. Discover that tab rather than guessing another endpoint.
+1. Confirm the page title is `NNR:dlg DNS Search and Edit` and the Quick Search field and results table are present. If sign-in returned somewhere else, open the URL above again. If the direct URL stops working, fall back to the NNR menu (`NNR%3A+Menu+-+VERSION+2/Default+Administrator+View/`): select DNS, then a blank Search DNS plus Enter opens the search form. Remedy opens it as a new tab, which browsers that block page-opened tabs (such as the built-in browser pane) only allow from the user's own keypress, so ask the user to press Enter there. Do not guess other endpoints.
 2. Fill **Quick Search** with the requested domain and press Enter. Verify the generated query and result count have changed to the requested search. Clicking Search immediately after a fill may initially leave the previous query visible.
 3. Quick Search matches hostname/domain/data prefixes, not exact domain membership. Capture the displayed “N of M results” and the loaded table. Export only rows whose Domain exactly equals the requested domain (case-insensitive, ignoring one trailing dot). Report excluded rows. Do not silently widen to other zones or suffix matches.
 4. Inspect the current DOM. In the observed v2.0.54 UI the results table is `T536870913`, but confirm it from the page each time. The table contains a header plus data rows. Read each row's cells in column order, taking the `value` of an input/textarea when present, otherwise visible text. Keep blank cells: accessible text alone can omit empty Port/Priority/Weight/PTR fields.
