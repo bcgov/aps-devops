@@ -56,7 +56,8 @@ def prepare(template, registry, change_map):
             raise ValueError(f'{cid} needs summary and planned validation')
         if 'subcomponent' in change and not isinstance(change['subcomponent'], str):
             raise ValueError('subcomponent must be a text description')
-        rows.append({**change, **metadata})
+        proposed_change = ((change['subcomponent'].strip() + ': ') if change.get('subcomponent', '').strip() else '') + change['summary']
+        rows.append({**change, **metadata, 'proposed_change': proposed_change})
         overrides.append(f'{cid}.class: {kind}')
     overrides.append('proposal_legend: "Legend: amber solid = expected change | green = new | red dashed = removal | amber dashed = agreement needed | gray = context" {shape: text; style.font-size: 13}')
     return template + '\n# Generated ticket overlay; edit the template/change map instead.\n' + '\n'.join(overrides) + '\n', rows

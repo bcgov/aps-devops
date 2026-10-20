@@ -38,6 +38,9 @@ of the usable page, including its legend. Reserve the remaining two thirds for:
 - A short problem and intended outcome, understandable without opening Jira.
 - A compact repository/component table: proposed change, dependency/order and
   validation. State only the unique scope for each component.
+  Describe what will change and the resulting capability or constraint, not the
+  implementation recipe. Keep field names, algorithms, commands, migration steps
+  and rollout actions in evidence/validation notes only when needed for review.
 - Material assumptions, open decisions and rollout/rollback constraints. Separate
   review/merge order from artifact/deployment order when they differ.
 
@@ -57,6 +60,9 @@ is unavailable and report the gap.
 
 Start with `assets/architecture-template.d2` or a user-supplied D2 template.
 `assets/master-components.json` is the editable master component inventory.
+Check each diagram edge against the actual API boundary and call direction;
+shared repository ownership does not imply a runtime integration. Common SSO
+integrates through the SDX Provisioner Partner API, not directly with Portal.
 Preserve stable IDs. Select only relevant context and affected components for the
 page. Treat the user-maintained inventory as authoritative for component identity,
 labels and repository ownership. Do not create or extend a ticket-local master
@@ -67,8 +73,9 @@ Build a ticket change map (see `assets/APS-4927-changes.json`) and run
 `scripts/prepare_diagram.py` against the template/inventory. It generates a
 self-contained `.d2` copy and `.summary.json` from the same changes. Use those
 summary rows for the bottom table. Map implementation areas to their existing parent component. Put their names
-in optional `subcomponent` text, rendered in italics beneath the repository/component
-in the PDF summary, never as standalone diagram components. When no existing
+in optional `subcomponent` text. Keep the left column to repository/component;
+put `<subcomponent>: <changes>` in the proposed-change column. Use the generated
+`proposed_change` value. Subcomponents never become standalone diagram nodes. When no existing
 component fits, use a repository-only row/node from an existing master repository;
 record the inventory gap instead of inventing a component. The helper rejects unknown or absent
 nodes and duplicate changes. Current helper scope is top-level node IDs; preserve

@@ -21,6 +21,7 @@ class ComponentIdentityTests(unittest.TestCase):
         self.assertNotIn(self.change['subcomponent'], diagram)
         self.assertEqual(rows[0]['subcomponent'], self.change['subcomponent'])
         self.assertEqual(rows[0]['repository'], 'api-services-portal')
+        self.assertEqual(rows[0]['proposed_change'], 'Subsystem / CSS association: Enforce mapping.')
         self.assertEqual(self.registry, original)
 
     def test_component_metadata_cannot_be_overridden(self):

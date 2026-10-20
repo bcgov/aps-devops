@@ -68,7 +68,10 @@ implementation area of `portal`, not a new component. Use `subcomponent` for it:
 {"id":"portal","kind":"modify","subcomponent":"Subsystem / CSS association","summary":"Enforce the mapping invariant.","validation":"Test conflicting writes."}
 ```
 
-Summary layout: repository, master component label, then italic subcomponent.
+Summary layout: left column contains repository and master component label only.
+Right column uses `<subcomponent>: <changes>` from generated `proposed_change`.
+Describe intended behavior/outcomes; reserve implementation procedures for the
+validation and rollout notes.
 Diagram nodes retain master labels only. Combine multiple areas of one parent in
 one change row. Component label, repository, path and purpose cannot be overridden
 by change input. All declared diagram nodes must resolve to master IDs.
@@ -83,4 +86,4 @@ Its template node is `repo_api_serv_infra: api-serv-infra {class: context}`.
 Repository names must already occur in the master list. This records a repository
 work area without inventing a component; request a master-list change separately
 if a new component identity is needed. Repository-only rows show the repository
-once followed by italic subcomponent. Never promote subcomponent text into nodes.
+once on the left and the subcomponent prefix in the proposed-change column. Never promote subcomponent text into nodes.
