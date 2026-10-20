@@ -23,14 +23,15 @@ jobs:
       chart_version: ${{ steps.plan.outputs.chart_version }}
       edge_version: ${{ steps.plan.outputs.edge_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          package-manager-cache: false
       - run: npm install --global semver@7.7.3
       - id: plan
         run: bash .github/scripts/release-plan.sh
@@ -45,7 +46,7 @@ jobs:
               gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$(git rev-parse HEAD)"
             fi
           done < <(jq -r '.[].tag' release-plan.json)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-plan
           path: release-plan.json
@@ -99,20 +100,20 @@ jobs:
       contents: write
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-plan
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: needs.plan.outputs.has_chart == 'true'
         with:
           name: chart-sdx-edge
           path: dist
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
