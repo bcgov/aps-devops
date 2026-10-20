@@ -1,3 +1,4 @@
+name: Reusable component image build
 on:
   workflow_call:
     inputs:
@@ -7,55 +8,121 @@ on:
       context:
         required: true
         type: string
-        default: '.'
-
+      file:
+        default: ''
+        type: string
+      ref:
+        default: ''
+        type: string
+      version:
+        default: ''
+        type: string
+      publish:
+        default: true
+        type: boolean
+      plugins-ref:
+        default: ''
+        type: string
+    outputs:
+      image:
+        value: ${{ jobs.build-image.outputs.image }}
+      digest:
+        value: ${{ jobs.build-image.outputs.digest }}
+      revision:
+        value: ${{ jobs.build-image.outputs.revision }}
 jobs:
   build-image:
+    outputs:
+      image: ${{ steps.identity.outputs.tag }}
+      digest: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
+      revision: ${{ steps.identity.outputs.revision }}
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Image meta
-        id: meta
-        uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}/${{ inputs.name }}
-
-      - name: Set DEPLOY_ID
-        run: |
-          echo "DEPLOY_ID=${{ steps.meta.outputs.version }}" >> "$GITHUB_OUTPUT"
-          echo "APP_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}" >> "$GITHUB_OUTPUT"
-          echo "APP_REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}" >> "$GITHUB_OUTPUT"
-        id: set-deploy-id
-
-      - name: Get deploy ID
-        run: echo "The DEPLOY_ID is ${{ steps.set-deploy-id.outputs.DEPLOY_ID }}"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        if: inputs.publish
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          logout: false
-
-      - name: Create image
+      - name: Resolve immutable tags and reuse published artifacts
+        id: identity
+        env:
+          COMPONENT: ${{ inputs.name }}
+          VERSION: ${{ inputs.version }}
+          PUBLISH: ${{ inputs.publish }}
+          PLUGINS_REF: ${{ inputs.plugins-ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$COMPONENT" =~ ^[a-z0-9-]+$ ]]
+          [[ -z "$VERSION" || "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          REVISION=$(git rev-parse HEAD)
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}/$COMPONENT"
+          TAG="sha-$REVISION"
+          PLUGINS_SHA=''
+          if [[ "$COMPONENT" == sdx-access-point ]]; then
+            SELECTED_REF="${PLUGINS_REF:-$(jq -r .ref sdx/image/plugins.json)}"
+            if [[ "$SELECTED_REF" =~ ^[0-9a-f]{40}$ ]]; then
+              PLUGINS_SHA="$SELECTED_REF"
+            else
+              git check-ref-format "refs/tags/$SELECTED_REF"
+              PLUGINS_SHA=$(git ls-remote https://github.com/bcgov/kong-oss-plugins.git "refs/tags/$SELECTED_REF" "refs/tags/$SELECTED_REF^{}" | tail -1 | cut -f1)
+            fi
+            [[ "$PLUGINS_SHA" =~ ^[0-9a-f]{40}$ ]]
+            if [[ -z "$PLUGINS_REF" ]]; then test "$PLUGINS_SHA" = "$(jq -r .revision sdx/image/plugins.json)"; fi
+            TAG="$TAG-plugins-$PLUGINS_SHA"
+            echo "plugins_ref=$SELECTED_REF" >> "$GITHUB_OUTPUT"
+          fi
+          echo "plugins_sha=$PLUGINS_SHA" >> "$GITHUB_OUTPUT"
+          if [[ -n "$VERSION" ]]; then TAG="v$VERSION"; fi
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "tag=$IMAGE:$TAG" >> "$GITHUB_OUTPUT"
+          echo 'exists=false' >> "$GITHUB_OUTPUT"
+          if [[ "$PUBLISH" == true ]]; then
+            if docker buildx imagetools inspect "$IMAGE:$TAG" --raw > manifest.json 2> manifest.err; then
+              jq -e --arg revision "$REVISION" --arg plugins "$PLUGINS_SHA" '.annotations["org.opencontainers.image.revision"] == $revision and (.annotations["ca.bc.gov.sdx.plugins-revision"] // "") == $plugins' manifest.json
+              DIGEST=$(docker buildx imagetools inspect "$IMAGE:$TAG" --format '{{.Manifest.Digest}}')
+              echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+              echo 'exists=true' >> "$GITHUB_OUTPUT"
+            elif ! grep -Eiq 'not found|manifest unknown' manifest.err; then
+              cat manifest.err >&2
+              exit 1
+            fi
+          fi
+      - name: Build component
+        id: build
+        if: steps.identity.outputs.exists != 'true'
         uses: docker/build-push-action@v7
         with:
           context: ${{ inputs.context }}
-          file: ${{ inputs.context }}/Dockerfile
-          push: true
+          file: ${{ inputs.file || format('{0}/Dockerfile', inputs.context) }}
           platforms: linux/amd64,linux/arm64
+          push: ${{ inputs.publish }}
+          tags: ${{ steps.identity.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.identity.outputs.revision }}
+            org.opencontainers.image.version=${{ inputs.version || steps.identity.outputs.revision }}
+          annotations: |
+            index:org.opencontainers.image.revision=${{ steps.identity.outputs.revision }}
+            index:ca.bc.gov.sdx.plugins-revision=${{ steps.identity.outputs.plugins_sha }}
           build-args: |
-            APP_VERSION=${{ steps.set-deploy-id.outputs.APP_VERSION }}
-            APP_REVISION=${{ steps.set-deploy-id.outputs.APP_REVISION }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+            APP_VERSION=${{ inputs.version || steps.identity.outputs.revision }}
+            APP_REVISION=${{ steps.identity.outputs.revision }}
+            KONG_PLUGINS_REF=${{ steps.identity.outputs.plugins_ref }}
+            KONG_PLUGINS_REVISION=${{ steps.identity.outputs.plugins_sha }}
+      - name: Refresh development branch alias
+        if: inputs.publish && github.event_name == 'push' && inputs.version == ''
+        env:
+          BRANCH: ${{ github.ref_name }}
+          IMAGE: ${{ steps.identity.outputs.tag }}
+          DIGEST: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
+        run: |
+          ALIAS=$(printf '%s' "$BRANCH" | sed 's/[^a-zA-Z0-9_.-]/-/g' | cut -c1-128)
+          docker buildx imagetools create --tag "${IMAGE%:*}:$ALIAS" "$IMAGE@$DIGEST"

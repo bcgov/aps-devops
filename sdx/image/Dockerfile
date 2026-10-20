@@ -5,9 +5,19 @@ USER root
 
 RUN apt-get update && apt-get -y install unzip curl
 
-RUN echo upd trust-registry to support key_sets
-RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
+ARG KONG_PLUGINS_REF="a6f0e429f5fb0329f723dbfe1a989c05b8b96fad"
+ARG KONG_PLUGINS_REVISION=""
+RUN git clone https://github.com/bcgov/kong-oss-plugins.git \
   && cd kong-oss-plugins \
+  && if printf '%s' "$KONG_PLUGINS_REF" | grep -Eq '^[0-9a-f]{40}$'; then \
+       PLUGINS_COMMIT="$KONG_PLUGINS_REF"; \
+     else \
+       PLUGINS_COMMIT=$(git rev-parse --verify "refs/tags/${KONG_PLUGINS_REF}^{commit}"); \
+     fi \
+  && git checkout --detach "$PLUGINS_COMMIT" \
+  && if [ -n "$KONG_PLUGINS_REVISION" ]; then test "$(git rev-parse HEAD)" = "$KONG_PLUGINS_REVISION"; fi \
+  && mkdir -p /usr/local/share/sdx \
+  && git rev-parse HEAD > /usr/local/share/sdx/plugins-revision \
   && (cd plugins/dpop && luarocks make) \
   && (cd plugins/jwt-keycloak && luarocks make) \
   && (cd plugins/mtls-acl && luarocks make) \
@@ -19,7 +29,8 @@ RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
          (*)  luarocks build --deps-only kong-plugin-oidc-deps-k2-1.5.0-2.rockspec;; \
      esac) \
   && (cd plugins/oidc-consumer && luarocks make) \
-  && (cd plugins/openid-authzen && luarocks make) \
+  && (cd plugins/pep && luarocks make) \
+  && (cd plugins/plugin-log && luarocks make) \
   && (cd plugins/response-signer && luarocks make) \
   && (cd plugins/token-exchange && luarocks make) \
   && (cd plugins/trust-jwks && luarocks make) \
@@ -30,17 +41,23 @@ RUN git clone -b feature/mtls https://github.com/bcgov/kong-oss-plugins.git \
   && (cd plugins/trust-timestamp && luarocks make) \
   && (cd plugins/trust-verify-digest && luarocks make) \
   && (cd plugins/trust-verify-signature && luarocks make)
- 
-RUN git clone -b kong3 https://github.com/bcgov/gwa-kong-endpoint.git
+
+LABEL ca.bc.gov.sdx.plugins.ref="$KONG_PLUGINS_REF" \
+      ca.bc.gov.sdx.plugins.revision="$KONG_PLUGINS_REVISION"
+
+RUN git clone https://github.com/bcgov/gwa-kong-endpoint.git \
+  && git -C gwa-kong-endpoint checkout --detach 5fff127e8e14460937b6b3a6b38df06318ad3535
 RUN (cd gwa-kong-endpoint && ./devBuild.sh)
 
-RUN git clone -b kong3 https://github.com/bcgov/gwa-ip-anonymity.git
+RUN git clone https://github.com/bcgov/gwa-ip-anonymity.git \
+  && git -C gwa-ip-anonymity checkout --detach 22f72cd766408ce16f5fd5931754f68991ab04c7
 RUN (cd gwa-ip-anonymity && ./devBuild.sh)
 
 RUN luarocks install kong-spec-expose \
  && luarocks install kong-upstream-jwt
 
-RUN git clone https://github.com/Kong/priority-updater.git
+RUN git clone https://github.com/Kong/priority-updater.git \
+  && git -C priority-updater checkout --detach b6fc40f007ee27a8e81853015db2fab4fb85f8e5
 RUN (cd priority-updater/template/plugin && KONG_PRIORITY=902 KONG_PRIORITY_NAME=rate-limiting /usr/local/openresty/luajit/bin/luajit ../priority.lua)
 RUN (cd priority-updater/template/plugin && KONG_PRIORITY=1010 KONG_PRIORITY_NAME=jwt-keycloak /usr/local/openresty/luajit/bin/luajit ../priority.lua)
 RUN (cd priority-updater/template/plugin && KONG_PRIORITY=770 KONG_PRIORITY_NAME=pre-function /usr/local/openresty/luajit/bin/luajit ../priority.lua)
@@ -167,7 +184,7 @@ ENV KONG_REAL_IP_HEADER="X-Forwarded-For"
 # Plugins Configuration
 # ============================================
 # Enables bundled plugins plus custom authentication, rate limiting, and security plugins
-ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, openid-authzen, response-signer, dpop, token-exchange, trust-jwks, trust-kms, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"
+ENV KONG_PLUGINS="bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, pep, plugin-log, response-signer, dpop, token-exchange, trust-jwks, trust-kms, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"
 
 # Custom Lua module search path for plugin code
 ENV KONG_LUA_PACKAGE_PATH="/opt/?.lua;/opt/?/init.lua;;"
