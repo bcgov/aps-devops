@@ -8,7 +8,7 @@ The workflows build artifacts and create releases. Deployments remain separate.
 
 The only release helper is `.github/scripts/release-plan.sh`. It validates one `release=major`, `release=minor` or `release=patch` label, selects changed components using `git diff`, and increments their own latest stable tags with the standard `semver` CLI. Shared workflow changes select all components. An edge-image change also selects the chart. Dependency selection is independent of component order in the manifest.
 
-Initial image versions start from 0.0.0; the chart starts from 0.3.11. Historical repository-wide tags are preserved.
+Initial baselines are defined in the component manifest. Historical repository-wide tags are preserved.
 
 ## Branches and images
 
@@ -36,13 +36,15 @@ Update the default dependency through a reviewed PR after a plugins bundle relea
 
 Both stable releases and feature/dev/images/manual publications use `.edge.yml`: publish image, then publish chart. The chart job receives the exact image tag/digest. `.chart.yml` uses normal commands:
 
-1. `yq -i` updates Chart.yaml version/appVersion/source annotation and values.yaml imageTag/imageDigest.
+1. Stable promotions require the committed Chart.yaml `version` to equal the planned chart version and `appVersion` to equal the new image tag (including `v`) when the edge image changes. The release policy checks these before merge; publication checks again. Use the release preview to update these fields in the promotion PR. Development builds update version/appVersion only in their temporary package. Both modes add the source annotation and image tag/digest.
 2. `helm lint` and `helm template` validate OpenShift/Kubernetes variants.
 3. `helm package` creates the archive; `helm push` publishes it to GHCR OCI.
 
-Branch/manual charts use `<source-chart-version>-dev.<GitHub-run-id>`; stable promotions use the chart's independently incremented version. PR builds skip publication. A chart-only release selects the latest published stable edge release, falling back to the existing appVersion before the first automated edge release. Reserved/unpublished edge tags are not selected.
+Branch/manual charts use `<source-chart-version>-dev.<GitHub-run-id>`; stable promotions use the chart's independently incremented version. PR builds skip publication. A chart-only release uses the committed appVersion image tag.
 
 The chart's two Kong containers use the image digest. Updated YAML and the package are workflow artifacts and stable release assets; generated changes are not committed back to trigger another build. On retry, an existing chart version must match the source annotation and image digest; `helm pull` retrieves that existing package instead of overwriting it. There is no custom archive normalization or receipt format.
+
+The GHCR `aps-devops/sdx-edge` package must grant `bcgov/aps-devops` **Write** under **Manage Actions access**. Repository `packages: write` alone does not grant access to an existing package. If Helm login succeeds but push fails with `permission_denied: write_package`, check this package setting before retrying the failed job.
 
 ## Failure, retry and rollout
 
@@ -54,4 +56,4 @@ dev/main require reviews and passing build checks. Squash merges go into dev and
 
 Build workflows use source-path filters, including their caller and reusable workflow files. Do not make a workflow skipped by path filtering a required check: it can remain pending. If selective builds must be required, use job-level change selection with an always-run result gate. Manual edge dispatch remains available. Chart-only development changes currently also rebuild the edge image; separating that build is a follow-up.
 
-For deployment/rollback, use the approved chart version and its immutable image digest; never move version tags. Validate locally with `bash tests/release.sh` (jq, Git and semver required), `actionlint`, `helm lint` and chart rendering.
+For deployment/rollback, use the approved chart version and its immutable image digest; never move version tags. Validate locally with `bash tests/release.sh` (jq, yq v4, Git and semver required), `actionlint`, `helm lint` and chart rendering.

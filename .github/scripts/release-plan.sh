@@ -11,9 +11,11 @@ if jq -e '.pull_request.merged == true' "$GITHUB_EVENT_PATH" >/dev/null; then
   test "$(git rev-list --parents -n 1 HEAD | awk '{print NF}')" = 3
   test "$(git rev-parse HEAD^2)" = "$(jq -r '.pull_request.head.sha' "$GITHUB_EVENT_PATH")"
   base=$(git rev-parse HEAD^1)
+  release_base=$sha
 else
   test "$sha" = "$(jq -r '.pull_request.head.sha' "$GITHUB_EVENT_PATH")"
-  base=$(git merge-base "$(jq -r '.pull_request.base.sha' "$GITHUB_EVENT_PATH")" HEAD)
+  release_base=$(jq -r .pull_request.base.sha "$GITHUB_EVENT_PATH")
+  base=$(git merge-base "$release_base" HEAD)
 fi
 selected=$(mktemp)
 trap 'rm -f "$selected"' EXIT
@@ -40,13 +42,25 @@ while IFS= read -r component; do
   else
     current=${previous##*/v}
     if [[ -z "$current" ]]; then current=$(jq -r .baseline <<< "$component"); fi
-    if [[ -n "$previous" ]]; then git merge-base --is-ancestor "$previous" "$sha"; fi
+    if [[ -n "$previous" ]]; then git merge-base --is-ancestor "$previous" "$release_base"; fi
     version=$(semver "$current" --increment "$bump")
   fi
   jq -cn --argjson component "$component" --arg version "$version" --arg previous "$previous" \
     '$component + {version:$version,tag:( $component.name + "/v" + $version),previous:$previous}' >> "$selected"
 done < <(jq -c '.components[]' .github/release/components.json)
 jq -s '.' "$selected" > release-plan.json
+# Stable chart metadata must be committed and reviewed before promotion.
+chart_context=$(jq -r '.[] | select(.kind=="chart") | .context' release-plan.json)
+if [[ -n "$chart_context" ]]; then
+  chart_version=$(jq -r '.[] | select(.kind=="chart") | .version' release-plan.json)
+  actual=$(yq -r '.version' "$chart_context/Chart.yaml")
+  [[ "$actual" == "$chart_version" ]] || { echo "Chart.yaml version must be $chart_version (found $actual)." >&2; exit 1; }
+  edge_version=$(jq -r '.[] | select(.name=="sdx-access-point") | .version' release-plan.json)
+  if [[ -n "$edge_version" ]]; then
+    actual=$(yq -r '.appVersion' "$chart_context/Chart.yaml")
+    [[ "$actual" == "v$edge_version" ]] || { echo "Chart.yaml appVersion must be v$edge_version (found $actual)." >&2; exit 1; }
+  fi
+fi
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "images=$(jq -c '{include:[.[]|select(.kind=="image" and .name!="sdx-access-point")|.file //= (.context+"/Dockerfile")]}' release-plan.json)"

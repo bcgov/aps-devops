@@ -19,6 +19,11 @@ jobs:
           node-version: 22
           package-manager-cache: false
       - run: npm install --global semver@7.7.3
+      - name: Install yq
+        run: |
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64 -o "$RUNNER_TEMP/yq"
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - run: bash .github/scripts/release-plan.sh
       - name: Summarize planned releases
         run: |
