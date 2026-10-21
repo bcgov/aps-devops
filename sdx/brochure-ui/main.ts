@@ -59,7 +59,7 @@ import {
   type PublicBody,
   type PublicBodyType,
 } from "./lib/public-bodies.ts";
-import { downloadAndSetupFonts } from "./lib/fonts.ts";
+import { ensureFonts } from "./lib/fonts.ts";
 import {
   DEFAULT_ENV,
   ENVIRONMENTS,
@@ -67,7 +67,7 @@ import {
   ORG_KEYSETS_URL_BY_ENV,
 } from "./lib/environments.ts";
 
-await downloadAndSetupFonts();
+await ensureFonts();
 
 const SDX_API_BASE =
   Deno.env.get("SDX_API_BASE") ??
