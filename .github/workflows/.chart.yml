@@ -45,16 +45,21 @@ jobs:
           set -euo pipefail
           CHART=sdx/chart/sdx-edge
           if [[ -z "$IMAGE" ]]; then
-            EDGE_TAG=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[]|select(.draft==false and .prerelease==false)|.tag_name|select(startswith("sdx-access-point/v"))' | sed -n '1p')
-            IMAGE="ghcr.io/bcgov/aps-devops/sdx-access-point:${EDGE_TAG##*/}"
-            if [[ -z "$EDGE_TAG" ]]; then IMAGE="ghcr.io/bcgov/aps-devops/sdx-access-point:$(yq -r .appVersion "$CHART/Chart.yaml")"; fi
+            IMAGE="ghcr.io/bcgov/aps-devops/sdx-access-point:$(yq -r .appVersion "$CHART/Chart.yaml")"
           fi
           if [[ -z "$DIGEST" ]]; then DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}'); fi
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
-          if [[ -z "$VERSION" ]]; then VERSION="$(yq -r .version "$CHART/Chart.yaml")-dev.$GITHUB_RUN_ID"; fi
+          if [[ -n "$VERSION" ]]; then
+            test "$(yq -r .version "$CHART/Chart.yaml")" = "$VERSION"
+            test "$(yq -r .appVersion "$CHART/Chart.yaml")" = "${IMAGE##*:}"
+          else
+            VERSION="$(yq -r .version "$CHART/Chart.yaml")-dev.$GITHUB_RUN_ID"
+            export VERSION IMAGE_TAG="${IMAGE##*:}"
+            yq -i '.version=strenv(VERSION) | .appVersion=strenv(IMAGE_TAG)' "$CHART/Chart.yaml"
+          fi
           export VERSION IMAGE_TAG="${IMAGE##*:}" DIGEST SOURCE_SHA
           SOURCE_SHA=$(git rev-parse HEAD)
-          yq -i '.version=strenv(VERSION) | .appVersion=strenv(IMAGE_TAG) | .annotations."org.opencontainers.image.revision"=strenv(SOURCE_SHA)' "$CHART/Chart.yaml"
+          yq -i '.annotations."org.opencontainers.image.revision"=strenv(SOURCE_SHA)' "$CHART/Chart.yaml"
           yq -i '.kong.imageTag=strenv(IMAGE_TAG) | .kong.imageDigest=strenv(DIGEST)' "$CHART/values.yaml"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "IMAGE_DIGEST=$DIGEST" >> "$GITHUB_ENV"
