@@ -232,6 +232,6 @@ Deno.serve({ port: 8000 }, async (req) => {
   });
 });
 
-console.log("Listening on http://localhost:8000");
+console.log("Listening on: http://localhost:8000");
 console.log("GET  /{topic}/messages[?history=N] — SSE stream (replay last N messages, then live)");
 console.log("POST /{topic}/messages — publish a message to the topic");
