@@ -108,3 +108,50 @@ helm upgrade -n b8840c-prod --install sdx-brochure \
  -f chart.yaml -f .values-prod.yaml \
 bcgov/generic-api
 ```
+
+## Operational logs and APS-4791 validation
+
+The catalogue's `/logs` page consumes the same-origin `/log-stream` endpoint.
+The server fetches `LOG_STREAM_URL` and adds signature verification results to
+Kafka SSE records before forwarding them. Browser clients do not need direct
+access to the Kafka function. Configure OIDC and a session secret before using
+logs: the proxy returns 503 when authentication is unconfigured and 401 when
+there is no valid session. Upstream failures return a generic 502 response.
+Operational responses must not be cached.
+
+Sign-in currently establishes identity only. The proxy does not enforce Access
+Manager roles, organization membership, or the selected catalogue environment.
+`LOG_STREAM_URL` is one deployment-wide source. Do not treat the environment
+picker as a log access filter. Production rollout needs an agreed audience and
+an upstream source/access policy that matches it. Keep the Kafka function on a
+private service network; it has no application authentication of its own.
+
+Run focused regression tests from the repository root:
+
+```sh
+deno test sdx/brochure-ui/lib/log-stream_test.ts sdx/ape/functions/pubsub-kafka/history_test.ts
+deno check sdx/ape/functions/pubsub-kafka/main.ts
+```
+
+Target-environment validation still required:
+
+- Without a session, request `/log-stream` directly and confirm 401 and no events.
+  With OIDC missing, confirm 503. Confirm valid and expired-session behavior.
+- With an approved test identity, open `/logs`, send a synthetic test event to
+  the configured topic, and confirm the record and verification results appear.
+  Confirm waiting, pause/resume, clear, reconnect and upstream outage states.
+- Confirm the source topic and environment match the approved audience; test a
+  user outside that audience before allowing production operational data.
+- Disconnect clients and check ephemeral Kafka consumer groups are removed.
+- Confirm navigation/content and keyboard/screen-reader behavior with the owner.
+
+### Release workflow requirements for APS-5011
+
+The UI image is `ghcr.io/bcgov/aps-devops/sdx-ui`, built from
+`sdx/brochure-ui`; the Kafka image/build context is defined in `.github/workflows/ape.yaml`
+for `sdx/ape/functions/pubsub-kafka`. Publish component-specific release tags
+and notes mapping each component to its source commit, immutable image digest,
+configuration compatibility, validation evidence, and prior rollback digest.
+Ensure the UI context includes `lib/log-stream.ts` and the Kafka context includes
+`history.ts`. Rehearse both images and their mounted configuration in test
+before production promotion. APS-4791 does not edit shared release workflows.

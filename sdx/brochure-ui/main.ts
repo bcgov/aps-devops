@@ -1,4 +1,5 @@
 import React from "react";
+import { handleLogStream } from "./lib/log-stream.ts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { config } from "./lib/config.ts";
 import type {
@@ -821,37 +822,12 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   }
 
   if (path === "/log-stream") {
-    try {
-      const upstream = await fetch(LOG_STREAM_URL, {
-        signal: req.signal,
-      });
-      if (!upstream.ok || !upstream.body) {
-        return new Response(
-          `upstream HTTP ${upstream.status}`,
-          {
-            status: 502,
-            headers: { "content-type": "text/plain" },
-          },
-        );
-      }
-      const body = upstream.body.pipeThrough(
-        makeVerifyingTransform(),
-      );
-      return new Response(body, {
-        headers: {
-          "content-type":
-            upstream.headers.get("content-type") ??
-            "text/event-stream",
-          "cache-control": "no-cache, no-transform",
-          connection: "keep-alive",
-        },
-      });
-    } catch (e) {
-      return new Response((e as Error).message, {
-        status: 502,
-        headers: { "content-type": "text/plain" },
-      });
-    }
+    return await handleLogStream(req, {
+      authConfigured: authEnabled,
+      signedIn: !!user,
+      upstreamUrl: LOG_STREAM_URL,
+      transform: makeVerifyingTransform,
+    });
   }
 
   if (path === "/trust") {

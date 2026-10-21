@@ -2,7 +2,7 @@ FROM denoland/deno:2.7.10
 
 WORKDIR /app
 
-COPY main.ts .
+COPY main.ts history.ts ./
 
 RUN deno cache main.ts
 
