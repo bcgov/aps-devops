@@ -1,0 +1,101 @@
+{{ if .Values.opal.client.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ include "sdx-edge.fullname" . }}-opal"
+  labels:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: opal-client
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    opal.ac/role: client
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 7000
+      targetPort: http
+      protocol: TCP
+    - name: opa
+      port: 8181
+      targetPort: opa
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: opal-client
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    opal.ac/role: client
+---
+# Source: opal/templates/deployment-client.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ include "sdx-edge.fullname" . }}-opal"
+  labels:
+    app.kubernetes.io/name: sdx-edge
+    app.kubernetes.io/component: opal-client
+    app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+    opal.ac/role: client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sdx-edge
+      app.kubernetes.io/component: opal-client
+      app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+      opal.ac/role: client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sdx-edge
+        app.kubernetes.io/component: opal-client
+        app.kubernetes.io/instance: "{{ include "sdx-edge.fullname" . }}"
+        opal.ac/role: client
+    spec:
+      securityContext: {}
+      containers:
+        - name: opal-client
+          image: "docker.io/permitio/opal-client:{{ .Values.opal.client.image.tag }}"
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+          ports:
+            - name: http
+              containerPort: 7000
+              protocol: TCP
+            - name: opa
+              containerPort: 8181
+              protocol: TCP
+          env:
+            - name: UVICORN_NUM_WORKERS
+              value: "1"
+            - name: OPAL_SERVER_URL
+              value: "{{ .Values.opal.client.extraEnv.OPAL_SERVER_URL }}"
+            - name: OPAL_DATA_TOPICS
+              value: "{{ .Values.opal.client.extraEnv.OPAL_DATA_TOPICS }}"
+            - name: OPAL_DATA_UPDATER_ENABLED
+              value: "true"
+            - name: OPAL_LOG_COLORIZE
+              value: "false"
+            - name: OPAL_SERVER_WS_URL
+              value: "{{ .Values.opal.client.extraEnv.OPAL_SERVER_WS_URL }}"
+          envFrom:
+            - secretRef:
+                name: {{ include "sdx-edge.fullname" . }}-opal-client
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            failureThreshold: 5
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 15
+
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            failureThreshold: 5
+            timeoutSeconds: 10
+            periodSeconds: 30
+{{ end }}

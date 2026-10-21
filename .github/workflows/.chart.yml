@@ -1,0 +1,89 @@
+name: Reusable edge chart publication
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
+      version:
+        type: string
+        default: ''
+      edge-image:
+        type: string
+        default: ''
+      image-digest:
+        type: string
+        default: ''
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.19.1
+      - name: Install yq
+        run: |
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64 -o "$RUNNER_TEMP/yq"
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Chart.yaml and values.yaml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          IMAGE: ${{ inputs.edge-image }}
+          DIGEST: ${{ inputs.image-digest }}
+        run: |
+          set -euo pipefail
+          CHART=sdx/chart/sdx-edge
+          if [[ -z "$IMAGE" ]]; then
+            EDGE_TAG=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[]|select(.draft==false and .prerelease==false)|.tag_name|select(startswith("sdx-access-point/v"))' | sed -n '1p')
+            IMAGE="ghcr.io/bcgov/aps-devops/sdx-access-point:${EDGE_TAG##*/}"
+            if [[ -z "$EDGE_TAG" ]]; then IMAGE="ghcr.io/bcgov/aps-devops/sdx-access-point:$(yq -r .appVersion "$CHART/Chart.yaml")"; fi
+          fi
+          if [[ -z "$DIGEST" ]]; then DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}'); fi
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          if [[ -z "$VERSION" ]]; then VERSION="$(yq -r .version "$CHART/Chart.yaml")-dev.$GITHUB_RUN_ID"; fi
+          export VERSION IMAGE_TAG="${IMAGE##*:}" DIGEST SOURCE_SHA
+          SOURCE_SHA=$(git rev-parse HEAD)
+          yq -i '.version=strenv(VERSION) | .appVersion=strenv(IMAGE_TAG) | .annotations."org.opencontainers.image.revision"=strenv(SOURCE_SHA)' "$CHART/Chart.yaml"
+          yq -i '.kong.imageTag=strenv(IMAGE_TAG) | .kong.imageDigest=strenv(DIGEST)' "$CHART/values.yaml"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "IMAGE_DIGEST=$DIGEST" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
+      - name: Validate chart
+        run: |
+          helm lint sdx/chart/sdx-edge
+          helm template check sdx/chart/sdx-edge > /dev/null
+          helm template check sdx/chart/sdx-edge --set use_openshift_resources=false > /dev/null
+      - name: Package and publish chart
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          REF=oci://ghcr.io/bcgov/aps-devops/sdx-edge
+          mkdir -p dist
+          if docker buildx imagetools inspect "${REF#oci://}:$VERSION" --raw > /dev/null 2> registry.err; then
+            test "$(helm show chart "$REF" --version "$VERSION" | yq -r '.annotations."org.opencontainers.image.revision"')" = "$SOURCE_SHA"
+            test "$(helm show values "$REF" --version "$VERSION" | yq -r .kong.imageDigest)" = "$IMAGE_DIGEST"
+            helm pull "$REF" --version "$VERSION" --destination dist
+          else
+            grep -Eiq 'not found|manifest unknown' registry.err || { cat registry.err >&2; exit 1; }
+            helm package sdx/chart/sdx-edge --destination dist
+            helm push "dist/sdx-edge-$VERSION.tgz" oci://ghcr.io/bcgov/aps-devops
+          fi
+          cp sdx/chart/sdx-edge/Chart.yaml dist/sdx-edge-Chart.yaml
+          cp sdx/chart/sdx-edge/values.yaml dist/sdx-edge-values.yaml
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-sdx-edge
+          path: dist/*

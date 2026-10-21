@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "CSBC Secure Data Exchange (Pilot)",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

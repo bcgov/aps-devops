@@ -1,0 +1,42 @@
+replicaCount: 1
+
+rollingUpdate:
+  maxUnavailable: 100%
+  maxSurge: 100%
+
+image:
+  repository: denoland/deno
+  tag: 2.7.10
+  pullPolicy: IfNotPresent
+
+persistence:
+  deno-dir:
+    mountPath: /deno-dir
+  data:
+    size: 5Mi
+    mountPath: /data
+    storageAccessMode: ReadWriteOnce
+    storageClassName: netapp-file-standard
+
+config:
+  - filename: main.ts
+    mountPath: /app/main.ts
+
+command:
+  - deno
+
+args:
+  - run
+  - --allow-net=:8000,kafka:9092,*.kafka-controller-headless.b8840c-dev.svc.cluster.local,*.webhook.cool:443
+  - --allow-env=KAFKA_BROKERS,KAFKA_GROUP_ID,INTERVAL_SECONDS,NODE_ENV,KAFKAJS_*
+  - --allow-write=/data
+  - --allow-read=/data
+  - /app/main.ts
+
+env:
+  PUBSUB_KAFKA_URL:
+    value: http://pubsub-kafka
+  INTERVAL_SECONDS:
+    value: "60"
+  KAFKA_GROUP_ID:
+    value: pubsub-webhooks-group

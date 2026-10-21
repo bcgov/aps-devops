@@ -1,0 +1,55 @@
+kind: GatewayService
+name: opal-server
+url: http://opal-server:7002
+tags: [ns.gw-16a07]
+routes:
+  - name: opal-server
+    tags: [ns.gw-16a07]
+    hosts:
+      - opal.api.gov.bc.ca
+    protocols:
+      - http
+      - https
+    strip_path: false
+---
+kind: GatewayService
+name: opal-pip-catalog
+url: http://opal-pip-catalog
+tags: [ns.gw-16a07]
+routes:
+  - name: opal-pip-catalog
+    tags: [ns.gw-16a07]
+    hosts:
+      - opal-pip-catalog.api.gov.bc.ca
+    protocols:
+      - http
+      - https
+    strip_path: false
+---
+kind: GatewayService
+name: opal-policies
+url: http://opal-policies
+tags: [ns.gw-16a07]
+routes:
+  - name: opal-policies
+    tags: [ns.gw-16a07]
+    hosts:
+      - opal-policies.api.gov.bc.ca
+    protocols:
+      - http
+      - https
+    strip_path: false
+---
+kind: GatewayService
+name: opal-client
+url: http://opal-test-opal-client:8181
+tags: [ns.gw-16a07]
+routes:
+  - name: opal-client
+    tags: [ns.gw-16a07]
+    hosts:
+      - opal-client.api.gov.bc.ca
+    protocols:
+      - http
+      - https
+    strip_path: false
