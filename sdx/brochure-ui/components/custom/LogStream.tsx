@@ -28,7 +28,7 @@ export function LogStream({ streamUrl, maxEntries = 50 }: LogStreamProps) {
             </span>
           </span>
           <span
-            className="text-xs text-ink-placeholder font-mono truncate"
+            className="text-xs text-ink-secondary font-mono truncate"
             title={streamUrl}
           >
             {streamUrl}
@@ -104,7 +104,7 @@ export function LogStream({ streamUrl, maxEntries = 50 }: LogStreamProps) {
     var pad=new Array(ind+1).join('  '),pad2=new Array(ind+2).join('  ');
     // support-warning-border (#f8bb47) is too light for text on white — it's a
     // border/icon accent token only — so strings use ink italic instead.
-    if(v===null)return '<span class="text-ink-placeholder">null</span>';
+    if(v===null)return '<span class="text-ink-secondary">null</span>';
     var t=typeof v;
     if(t==='number')return '<span class="text-support-success-border">'+esc(String(v))+'</span>';
     if(t==='boolean')return '<span class="text-link">'+v+'</span>';
@@ -184,7 +184,7 @@ export function LogStream({ streamUrl, maxEntries = 50 }: LogStreamProps) {
     var chips='';
     for(var i=0;i<arr.length;i++){chips+=pluginChip(arr[i]);}
     return '<div class="col-span-2 lg:col-span-4 flex items-start gap-2 mt-1">'+
-      '<span class="text-ink-placeholder shrink-0 pt-0.5">controls</span>'+
+      '<span class="text-ink-secondary shrink-0 pt-0.5">controls</span>'+
       '<span class="flex flex-wrap gap-1.5">'+chips+'</span>'+
     '</div>';
   }
@@ -210,24 +210,24 @@ export function LogStream({ streamUrl, maxEntries = 50 }: LogStreamProps) {
       '<details class="group">'+
         '<summary class="px-4 py-2 cursor-pointer list-none flex items-center gap-3">'+
           '<span class="ls-child-arrow shrink-0 w-4 text-center font-bold" style="color:transparent" aria-hidden="true"></span>'+
-          '<span class="text-ink-placeholder tabular-nums shrink-0">'+esc(time)+'</span>'+
+          '<span class="text-ink-secondary tabular-nums shrink-0">'+esc(time)+'</span>'+
           methodBadge(req.method||'')+
           statusBadge(res.status==null?'—':String(res.status))+
           '<span class="text-ink truncate flex-1 min-w-0" title="'+esc(req.uri||'')+'">'+esc(req.uri||'')+'</span>'+
           '<span class="text-ink-secondary hidden md:inline truncate max-w-[260px]" title="'+esc(svc.name||'')+'">'+esc(svc.name||'')+'</span>'+
           (cid?'<span class="text-bc-blue font-semibold hidden lg:inline truncate max-w-[200px]" title="'+esc(cid)+'">'+esc(cid)+'</span>':'')+
           '<span class="text-ink-secondary tabular-nums shrink-0 w-14 text-right">'+esc(fmtLat(lat.request))+'</span>'+
-          '<span class="text-ink-placeholder group-open:rotate-90 transition-transform" aria-hidden="true">›</span>'+
+          '<span class="text-ink-secondary group-open:rotate-90 transition-transform" aria-hidden="true">›</span>'+
         '</summary>'+
         '<div class="px-4 pb-3 pt-1 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1 text-xs text-ink-secondary">'+
-          '<div><span class="text-ink-placeholder">client ip</span> '+esc(v.client_ip||'—')+'</div>'+
-          '<div><span class="text-ink-placeholder">size</span> '+esc(fmtBytes(res.size))+'</div>'+
-          '<div><span class="text-ink-placeholder">kong lat</span> '+esc(fmtLat(lat.kong))+'</div>'+
-          '<div><span class="text-ink-placeholder">proxy lat</span> '+esc(fmtLat(lat.proxy))+'</div>'+
-          '<div class="col-span-2"><span class="text-ink-placeholder">route</span> '+esc(route.name||'—')+'</div>'+
-          '<div class="col-span-2"><span class="text-ink-placeholder">gateway id</span> '+esc(v.namespace||'—')+' · <span class="text-ink-placeholder">dc</span> '+esc(v.datacenter||'—')+(v.app_version?' · <span class="text-ink-placeholder">app</span> <span class="font-mono">'+esc(v.app_version)+'</span>':'')+'</div>'+
-          '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(req.id||'')+'"><span class="text-ink-placeholder">request id</span> '+esc(req.id||'—')+'</div>'+
-          '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(corr||'')+'"><span class="text-ink-placeholder">correlation id</span> '+(corr?'<span style="color:'+corrColor+';font-weight:600">'+esc(corr)+'</span>':'—')+'</div>'+
+          '<div><span class="text-ink-secondary">client ip</span> '+esc(v.client_ip||'—')+'</div>'+
+          '<div><span class="text-ink-secondary">size</span> '+esc(fmtBytes(res.size))+'</div>'+
+          '<div><span class="text-ink-secondary">kong lat</span> '+esc(fmtLat(lat.kong))+'</div>'+
+          '<div><span class="text-ink-secondary">proxy lat</span> '+esc(fmtLat(lat.proxy))+'</div>'+
+          '<div class="col-span-2"><span class="text-ink-secondary">route</span> '+esc(route.name||'—')+'</div>'+
+          '<div class="col-span-2"><span class="text-ink-secondary">gateway id</span> '+esc(v.namespace||'—')+' · <span class="text-ink-secondary">dc</span> '+esc(v.datacenter||'—')+(v.app_version?' · <span class="text-ink-secondary">app</span> <span class="font-mono">'+esc(v.app_version)+'</span>':'')+'</div>'+
+          '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(req.id||'')+'"><span class="text-ink-secondary">request id</span> '+esc(req.id||'—')+'</div>'+
+          '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(corr||'')+'"><span class="text-ink-secondary">correlation id</span> '+(corr?'<span style="color:'+corrColor+';font-weight:600">'+esc(corr)+'</span>':'—')+'</div>'+
           pluginRow(v.plugin_results)+
           verifHtml+
         '</div>'+

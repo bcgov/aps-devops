@@ -190,11 +190,11 @@ export function TrafficPage({
   function pluginRow(arr){
     if(!Array.isArray(arr)||arr.length===0)return '';
     var chips='';for(var i=0;i<arr.length;i++){chips+=pluginChip(arr[i]);}
-    return '<div class="col-span-2 lg:col-span-4 flex items-start gap-2 mt-1"><span class="text-ink-placeholder shrink-0 pt-0.5">controls</span><span class="flex flex-wrap gap-1.5">'+chips+'</span></div>';
+    return '<div class="col-span-2 lg:col-span-4 flex items-start gap-2 mt-1"><span class="text-ink-secondary shrink-0 pt-0.5">controls</span><span class="flex flex-wrap gap-1.5">'+chips+'</span></div>';
   }
 
   function chip(text,cls){return '<span class="px-2 py-0.5 rounded text-xs font-mono truncate max-w-[180px] '+cls+'" title="'+esc(text)+'">'+esc(text||'?')+'</span>';}
-  function arrow(sym){return '<span class="text-ink-placeholder shrink-0">'+(sym||'→')+'</span>';}
+  function arrow(sym){return '<span class="text-ink-secondary shrink-0">'+(sym||'→')+'</span>';}
 
   // One log record's detail block — mirrors the /logs expanding panel.
   function legBlock(title,accent,leg){
@@ -210,17 +210,17 @@ export function TrafficPage({
         methodBadge(req.method||'')+
         statusBadge(res.status==null?'—':String(res.status))+
         '<span class="text-ink-secondary truncate flex-1 min-w-0" title="'+esc(svc.name||'')+'">'+esc(svc.name||'')+'</span>'+
-        '<span class="text-ink-placeholder shrink-0">'+esc(v.namespace||'')+'</span>'+
+        '<span class="text-ink-secondary shrink-0">'+esc(v.namespace||'')+'</span>'+
       '</div>'+
       '<div class="px-3 py-2 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1 text-xs text-ink-secondary">'+
-        '<div><span class="text-ink-placeholder">client ip</span> '+esc(v.client_ip||'—')+'</div>'+
-        '<div><span class="text-ink-placeholder">size</span> '+esc(fmtBytes(res.size))+'</div>'+
-        '<div><span class="text-ink-placeholder">kong lat</span> '+esc(fmtLat(lat.kong))+'</div>'+
-        '<div><span class="text-ink-placeholder">proxy lat</span> '+esc(fmtLat(lat.proxy))+'</div>'+
-        '<div class="col-span-2"><span class="text-ink-placeholder">route</span> '+esc(route.name||'—')+'</div>'+
-        '<div class="col-span-2"><span class="text-ink-placeholder">gateway</span> '+esc(v.namespace||'—')+' · <span class="text-ink-placeholder">dc</span> '+esc(v.datacenter||'—')+(v.app_version?' · <span class="text-ink-placeholder">app</span> <span class="font-mono">'+esc(v.app_version)+'</span>':'')+'</div>'+
-        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(req.id||'')+'"><span class="text-ink-placeholder">request id</span> '+esc(req.id||'—')+'</div>'+
-        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(corr||'')+'"><span class="text-ink-placeholder">correlation id</span> '+(corr?'<span style="color:'+corrColor+';font-weight:600">'+esc(corr)+'</span>':'—')+'</div>'+
+        '<div><span class="text-ink-secondary">client ip</span> '+esc(v.client_ip||'—')+'</div>'+
+        '<div><span class="text-ink-secondary">size</span> '+esc(fmtBytes(res.size))+'</div>'+
+        '<div><span class="text-ink-secondary">kong lat</span> '+esc(fmtLat(lat.kong))+'</div>'+
+        '<div><span class="text-ink-secondary">proxy lat</span> '+esc(fmtLat(lat.proxy))+'</div>'+
+        '<div class="col-span-2"><span class="text-ink-secondary">route</span> '+esc(route.name||'—')+'</div>'+
+        '<div class="col-span-2"><span class="text-ink-secondary">gateway</span> '+esc(v.namespace||'—')+' · <span class="text-ink-secondary">dc</span> '+esc(v.datacenter||'—')+(v.app_version?' · <span class="text-ink-secondary">app</span> <span class="font-mono">'+esc(v.app_version)+'</span>':'')+'</div>'+
+        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(req.id||'')+'"><span class="text-ink-secondary">request id</span> '+esc(req.id||'—')+'</div>'+
+        '<div class="col-span-2 lg:col-span-4 truncate" title="'+esc(corr||'')+'"><span class="text-ink-secondary">correlation id</span> '+(corr?'<span style="color:'+corrColor+';font-weight:600">'+esc(corr)+'</span>':'—')+'</div>'+
         pluginRow(v.plugin_results)+
         verifHtml+
       '</div>'+
@@ -244,7 +244,7 @@ export function TrafficPage({
     li.innerHTML=
       '<details class="group">'+
         '<summary class="px-4 py-2 cursor-pointer list-none flex items-center gap-3">'+
-          '<span class="text-ink-placeholder tabular-nums shrink-0 font-mono">'+esc(time)+'</span>'+
+          '<span class="text-ink-secondary tabular-nums shrink-0 font-mono">'+esc(time)+'</span>'+
           methodBadge(req.method||(pv.request&&pv.request.method)||'')+
           statusBadge(res.status==null?'—':String(res.status))+
           '<span class="flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden">'+
@@ -257,7 +257,7 @@ export function TrafficPage({
             chip(service,'bg-bc-gold text-bc-blue-pressed')+
           '</span>'+
           '<span class="text-ink-secondary tabular-nums shrink-0 hidden sm:inline">c '+esc(fmtLat(lat.request))+' · p '+esc(fmtLat(pLat))+'</span>'+
-          '<span class="text-ink-placeholder group-open:rotate-90 transition-transform">›</span>'+
+          '<span class="text-ink-secondary group-open:rotate-90 transition-transform">›</span>'+
         '</summary>'+
         '<div class="px-4 pb-3 pt-1 space-y-2">'+
           legBlock('Consumer leg','bg-bc-blue',c)+

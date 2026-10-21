@@ -160,7 +160,7 @@ export function Layout({
               outline-offset: 2px;
             }
           }
-          .sdx-chrome { background: #fff; position: sticky; top: 0; z-index: 40; }
+          .sdx-chrome { background: #fff; }
           .sdx-header {
             display: flex;
             align-items: center;
@@ -171,6 +171,9 @@ export function Layout({
             padding: 0.75rem 1.5rem;
             background: #fff;
             border-bottom: 1px solid var(--surface-color-border-default);
+            position: sticky;
+            top: 0;
+            z-index: 40;
           }
           .sdx-brand { display: flex; align-items: center; gap: 1rem; min-width: 0; }
           .sdx-logo { display: flex; align-items: center; flex-shrink: 0; }
@@ -205,7 +208,7 @@ export function Layout({
             background: var(--surface-color-background-light-gray);
           }
           .sdx-account { position: relative; }
-          .sdx-account-summary { list-style: none; }
+          .sdx-account-summary { list-style: none; align-items: center; }
           .sdx-account-summary::-webkit-details-marker { display: none; }
           .sdx-account-menu {
             position: absolute;
@@ -217,8 +220,8 @@ export function Layout({
             border: 1px solid var(--surface-color-border-default);
             border-radius: var(--layout-border-radius-medium);
             box-shadow: var(--surface-shadow-medium);
-            min-width: 12rem;
-            max-width: min(18rem, calc(100vw - 1rem));
+            width: max-content;
+            max-width: calc(100vw - 1.5rem);
             padding: 0.25rem 0;
           }
           .sdx-account-email {
@@ -226,7 +229,7 @@ export function Layout({
             padding: 0.5rem 1rem;
             font-size: 0.875rem;
             color: var(--typography-color-secondary);
-            overflow-wrap: anywhere;
+            white-space: nowrap;
             border-bottom: 1px solid var(--surface-color-border-default);
           }
           .sdx-account-menu a {
@@ -262,12 +265,13 @@ export function Layout({
           }
           .sdx-nav-link:hover { color: var(--theme-primary-blue); background: var(--surface-color-background-light-gray); }
           .sdx-nav-link[aria-current="page"] { color: var(--theme-primary-blue); font-weight: 600; }
-          .sdx-console { display: flex; align-items: stretch; }
+          .sdx-console { display: flex; align-items: center; }
           .sdx-console-summary {
             list-style: none;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
+            align-self: stretch;
             padding: 0 0.5rem;
             color: var(--typography-color-secondary);
           }
@@ -300,18 +304,43 @@ export function Layout({
           }
           .sdx-console-menu a[aria-current="page"] { font-weight: 600; }
           @media (max-width: 799px) {
+            html, body { overflow-x: clip; }
             .sdx-header { flex-wrap: wrap; align-items: flex-start; gap: 0.75rem 1rem; padding: 0.75rem 1rem; }
             .sdx-brand { width: 100%; }
             .sdx-brand-rule { display: none; }
             .sdx-title { white-space: normal; overflow-wrap: anywhere; font-size: 1.125rem; }
             .sdx-tools { width: 100%; }
             .sdx-menu-btn { display: inline-flex; }
+            .sdx-account { position: static; }
+            .sdx-account-menu {
+              left: 0;
+              right: 0;
+              width: auto;
+              max-width: none;
+              border-radius: 0;
+              box-shadow: none;
+            }
+            .sdx-account-email { white-space: normal; overflow-wrap: anywhere; }
             .sdx-main-nav { display: none; }
             .sdx-main-nav.is-open { display: block; }
             .sdx-main-nav ul { flex-direction: column; }
             .sdx-main-nav li + li { border-left: 0; border-top: 1px solid var(--surface-color-border-default); }
             .sdx-main-nav-inner { padding: 0; }
-            .sdx-console-menu { position: static; box-shadow: none; border: 0; border-radius: 0; min-width: 0; }
+            .sdx-console { display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; }
+            .sdx-console > a { grid-column: 1; grid-row: 1; }
+            .sdx-console details { display: contents; }
+            .sdx-console-summary { grid-column: 2; grid-row: 1; }
+            .sdx-console-menu {
+              position: static;
+              grid-column: 1 / -1;
+              grid-row: 2;
+              width: 100%;
+              box-shadow: none;
+              border: 0;
+              border-radius: 0;
+              min-width: 0;
+            }
+            .sdx-console-menu a { padding-left: 1rem; }
           }
           @media (min-width: 800px) {
             .sdx-main-nav { display: block; }
@@ -372,21 +401,80 @@ export function Layout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+          var MENU_ICON = '<path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" stroke-width="1.5"/>';
+          var CLOSE_ICON = '<path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5"/>';
+          function menuButton() { return document.querySelector('.sdx-menu-btn'); }
+          function closeDetails(el) { if (el && el.open) el.open = false; }
+          function closeAccount() { closeDetails(document.querySelector('.sdx-account')); }
+          function closeConsole() {
+            document.querySelectorAll('.sdx-console details').forEach(function (el) { closeDetails(el); });
+          }
+          function setMainMenu(open) {
+            var nav = document.getElementById('sdx-main-menu');
+            var btn = menuButton();
+            if (!nav || !btn) return;
+            nav.classList.toggle('is-open', open);
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            var label = btn.querySelector('.sdx-menu-label');
+            var icon = btn.querySelector('.sdx-menu-icon');
+            if (label) label.textContent = open ? 'Close menu' : 'Menu';
+            if (icon) icon.innerHTML = open ? CLOSE_ICON : MENU_ICON;
+            if (open) closeAccount();
+          }
+          document.addEventListener('toggle', function (e) {
+            var el = e.target;
+            if (!el || el.tagName !== 'DETAILS' || !el.open) return;
+            if (el.classList.contains('sdx-account')) {
+              closeConsole();
+              setMainMenu(false);
+            } else if (el.closest && el.closest('.sdx-console')) {
+              closeAccount();
+              document.querySelectorAll('.sdx-console details').forEach(function (other) {
+                if (other !== el) closeDetails(other);
+              });
+            }
+          }, true);
           document.addEventListener('click', function (e) {
             var btn = e.target.closest && e.target.closest('.sdx-menu-btn');
-            if (!btn) return;
-            var nav = document.getElementById('sdx-main-menu');
-            if (!nav) return;
-            var open = nav.classList.toggle('is-open');
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (btn) {
+              var nav = document.getElementById('sdx-main-menu');
+              setMainMenu(!(nav && nav.classList.contains('is-open')));
+              return;
+            }
+            var link = e.target.closest && e.target.closest('a');
+            if (link && link.closest('#sdx-main-menu, .sdx-account-menu, .sdx-console-menu')) {
+              setMainMenu(false);
+              closeAccount();
+              closeConsole();
+              return;
+            }
+            if (!e.target.closest('.sdx-account, .sdx-console')) {
+              closeAccount();
+              closeConsole();
+            }
           });
           document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
+            var account = document.querySelector('.sdx-account');
+            if (account && account.open) {
+              closeDetails(account);
+              var summary = account.querySelector('summary');
+              if (summary) summary.focus();
+              return;
+            }
+            var section = document.querySelector('.sdx-console details[open]');
+            if (section) {
+              closeDetails(section);
+              var sectionSummary = section.querySelector('summary');
+              if (sectionSummary) sectionSummary.focus();
+              return;
+            }
             var nav = document.getElementById('sdx-main-menu');
-            var btn = document.querySelector('.sdx-menu-btn');
-            if (!nav || !nav.classList.contains('is-open')) return;
-            nav.classList.remove('is-open');
-            if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+            if (nav && nav.classList.contains('is-open')) {
+              setMainMenu(false);
+              var btn = menuButton();
+              if (btn) btn.focus();
+            }
           });
         `,
           }}
@@ -410,6 +498,8 @@ export function Layout({
               svg.innerHTML = CHECK_ICON;
               btn.classList.remove('text-ink-placeholder');
               btn.classList.add('text-support-success-border');
+              var previousLabel = btn.getAttribute('aria-label') || 'Copy to clipboard';
+              btn.setAttribute('aria-label', 'Copied to clipboard');
               var status = document.getElementById('sdx-copy-status');
               if (status) {
                 status.textContent = '';
@@ -419,6 +509,7 @@ export function Layout({
                 svg.innerHTML = CLIP_ICON;
                 btn.classList.remove('text-support-success-border');
                 btn.classList.add('text-ink-placeholder');
+                btn.setAttribute('aria-label', previousLabel);
                 if (status) status.textContent = '';
               }, 1800);
             });

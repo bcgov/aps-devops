@@ -136,7 +136,7 @@ const WIZARD_SCRIPT = `
     }
     var step1Hidden = (form.querySelector('[data-step="1"]') || {}).classList && form.querySelector('[data-step="1"]').classList.contains('hidden');
     var minStep = step1Hidden ? 2 : 1;
-    backBtn.style.visibility = n === minStep ? 'hidden' : 'visible';
+    backBtn.style.display = n === minStep ? 'none' : '';
     submitBtn.disabled = n !== 4;
     if (n === 4) {
       nextBtn.classList.add('hidden');

@@ -38,6 +38,12 @@ dialog.sdx-activity-dialog::backdrop { background: rgba(0,0,0,0.45); }
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
+  dialog.sdx-activity-dialog .sdx-activity-head { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  dialog.sdx-activity-dialog .sdx-activity-head h2 {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-foot { padding-top: 0.5rem; padding-bottom: 0.5rem; }
 }
 `;
 

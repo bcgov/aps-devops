@@ -146,8 +146,8 @@ export function Nav({
               aria-expanded="false"
               aria-controls="sdx-main-menu"
             >
-              Menu
-              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <span className="sdx-menu-label">Menu</span>
+              <svg className="sdx-menu-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" strokeWidth="1.5" />
               </svg>
             </button>
