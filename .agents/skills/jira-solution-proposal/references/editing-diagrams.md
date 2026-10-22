@@ -30,8 +30,10 @@ views using the same inventory. Keep proposal views small enough for one-third
 of an A4 page; the full master list need not fit into every proposal.
 
 Each change row needs `id`, `kind`, `summary` and `validation`. Allowed kinds are
-`modify`, `add`, `remove`, `uncertain`. For additions, use an existing master identity; ask the user to update the
-master if a genuinely new component is needed. Never copy/expand the master just
+`modify`, `add`, `remove`, `uncertain`. For additions, use an existing master identity or reconcile a genuine new component
+into the shared inventory under the maintenance workflow in SKILL.md. Mark
+proposal-only components as planned and record evidence in
+[component-inventory.md](component-inventory.md). Never copy/expand a ticket-local master just
 to turn a ticket-specific implementation area into a component. Components absent from changes remain neutral
 context. For a removed component, retain its node with `kind: remove`.
 
@@ -84,6 +86,6 @@ If no listed component fits repository-owned work, use a repository-only row:
 
 Its template node is `repo_api_serv_infra: api-serv-infra {class: context}`.
 Repository names must already occur in the master list. This records a repository
-work area without inventing a component; request a master-list change separately
-if a new component identity is needed. Repository-only rows show the repository
+work area without inventing a component; reconcile a new component identity through the shared inventory maintenance
+workflow when supported by evidence. Repository-only rows show the repository
 once on the left and the subcomponent prefix in the proposed-change column. Never promote subcomponent text into nodes.

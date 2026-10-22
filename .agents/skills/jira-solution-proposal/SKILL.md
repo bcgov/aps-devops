@@ -32,17 +32,23 @@ do not manually maintain conflicting lists of affected components.
 ## One-page composition
 
 Use a compact title strip with ticket key/link, proposal title, date/revision and
-“Proposed — pending review”. Place the architecture diagram in the first third
-of the usable page, including its legend. Reserve the remaining two thirds for:
+“Proposed — pending review”. Place the architecture diagram at the top, immediately
+below the title strip and before all prose or tables, within the first third of
+the usable page, including its legend. Reserve the remaining two thirds for:
 
 - A short problem and intended outcome, understandable without opening Jira.
 - A compact repository/component table: proposed change, dependency/order and
-  validation. State only the unique scope for each component.
+  validation. Use short, action-oriented bullets in the proposed-change cells,
+  one distinct change per bullet. Keep Portal application, feeder and provisioner
+  impacts separate when applicable. State only the unique scope for each component.
   Describe what will change and the resulting capability or constraint, not the
   implementation recipe. Keep field names, algorithms, commands, migration steps
   and rollout actions in evidence/validation notes only when needed for review.
 - Material assumptions, open decisions and rollout/rollback constraints. Separate
   review/merge order from artifact/deployment order when they differ.
+- A small footer identifying the known AI provider/model and preparation date;
+  include reasoning effort or precise model version only when exposed by the
+  runtime. Otherwise state "Model identifier not exposed"; never infer a version.
 
 Keep the text readable at print size (aim for 10–11 pt body text). Shorten content
 rather than shrinking text or spilling onto a second page. Put detailed evidence
@@ -66,7 +72,14 @@ integrates through the SDX Provisioner Partner API, not directly with Portal.
 Preserve stable IDs. Select only relevant context and affected components for the
 page. Treat the user-maintained inventory as authoritative for component identity,
 labels and repository ownership. Do not create or extend a ticket-local master
-list to legitimize invented components. Inventory changes require a user request.
+list to legitimize invented components. Keep the shared inventory current under
+the user's standing request: reconcile confirmed component additions, ownership,
+paths and responsibilities against current code/documentation during proposal
+research. Preserve stable IDs and record evidence and review date in
+`references/component-inventory.md`. Mark proposed components as planned, never
+as deployed. Update the shared inventory and relevant templates together when
+needed; do not promote a ticket-specific implementation area into a component.
+If evidence conflicts or access is missing, record the gap rather than guessing.
 Do not rewrite a user's reusable template to apply a ticket's highlights.
 
 Build a ticket change map (see `assets/APS-4927-changes.json`) and run
@@ -90,7 +103,8 @@ Do not prefix component labels with CHANGE, NEW, REMOVE or TBC. Highlights indic
 Render the generated D2 through the local CLI and embed its SVG/PNG export in the
 PDF. Keep that exact `.d2` as the editable attachment. Verify all affected summary
 rows map to highlighted nodes and vice versa. Use available PDF tooling to check
-one page and visually inspect labels, clipping and the one-third/two-thirds
+one page, top-of-page diagram placement, ticket hyperlink and model attribution;
+visually inspect labels, clipping and the one-third/two-thirds
 balance. If rendering fails, preserve source and report the limitation; never
 silently substitute a separately drawn diagram and claim native D2 export passed.
 

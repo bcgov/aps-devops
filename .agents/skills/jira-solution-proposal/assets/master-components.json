@@ -1,5 +1,5 @@
 {
-  "description": "Editable starter inventory, not an approved or exhaustive architecture. Paths are repository-relative; external ownership and logical boundaries require confirmation. Preserve IDs when renaming labels. Add components as needed.",
+  "description": "Shared maintained inventory, not an approved or exhaustive deployment architecture. Preserve stable IDs; confirm repository-relative paths and ownership against code. Record review evidence and planned components in references/component-inventory.md.",
   "components": [
     {
       "id": "portal",
@@ -66,10 +66,10 @@
     },
     {
       "id": "edge_image",
-      "label": "SDX Edge image",
+      "label": "SDX access-point image",
       "repository": "aps-devops",
       "path": "sdx/image",
-      "purpose": "Edge container build and plugin inputs"
+      "purpose": "Shared Kong CP/edge container build and plugin inputs"
     },
     {
       "id": "edge_chart",
@@ -122,10 +122,10 @@
     },
     {
       "id": "deployment",
-      "label": "Service / Route / policy",
+      "label": "SDX deployment configuration",
       "repository": "api-serv-infra",
-      "path": "terraform/workspaces/gold",
-      "purpose": "Environment deployment configuration; exact resource ownership to confirm"
+      "path": "terraform",
+      "purpose": "Terraform modules and per-tier configuration, including SDX CP Helm release and independently promoted chart versions"
     },
     {
       "id": "techdocs",
@@ -154,6 +154,21 @@
       "repository": "api-services-portal",
       "path": "src",
       "purpose": "Logical catalogue and approval state; concrete storage boundary to confirm"
+    },
+    {
+      "id": "feeder",
+      "label": "Portal feeder",
+      "repository": "api-services-portal",
+      "path": "feeds",
+      "purpose": "Gateway/platform state ingestion, synchronization and provisioning activity/status reporting"
+    },
+    {
+      "id": "cp_chart",
+      "label": "SDX control-plane chart",
+      "repository": "aps-devops",
+      "path": "sdx/chart/sdx-kong-cp",
+      "purpose": "Planned APS-5052 wrapper around upstream Kong chart; digest-pinned CP packaging paired with edge chart publication",
+      "status": "planned"
     }
   ]
 }

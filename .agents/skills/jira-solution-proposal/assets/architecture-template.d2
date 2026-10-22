@@ -21,7 +21,7 @@ partner_api: SDX Provisioner Partner API {class: context}
 portal: API Services Portal {class: context}
 provisioner_api: Internal Provisioner API {class: context}
 css_tests: Cypress / CSS fixtures {class: context}
-deployment: APSTST Service / Route {class: context}
+deployment: SDX deployment configuration {class: context}
 
 # Connections describe the proposed view; review against the actual system.
 css -> partner_api: Bearer API calls
@@ -32,7 +32,12 @@ deployment -> partner_api: Public partner routing
 
 # Example additions from the master list (uncomment when relevant):
 # kong_plugins: Kong OSS plugins {class: context}
-# edge_image: SDX Edge image {class: context}
+# edge_image: SDX access-point image {class: context}
 # kong_plugins -> edge_image: Pinned plugin revision
 # edge_chart: SDX Edge chart {class: context}
 # edge_image -> edge_chart: Image digest
+
+# cp_chart: SDX control-plane chart {class: context} # Planned: APS-5052
+# edge_image -> cp_chart: Same image digest
+# cp_chart -> deployment: Independently pinned chart version
+# feeder: Portal feeder {class: context}
