@@ -66,9 +66,6 @@ is unavailable and report the gap.
 
 Start with `assets/architecture-template.d2` or a user-supplied D2 template.
 `assets/master-components.json` is the editable master component inventory.
-Check each diagram edge against the actual API boundary and call direction;
-shared repository ownership does not imply a runtime integration. Common SSO
-integrates through the SDX Provisioner Partner API, not directly with Portal.
 Preserve stable IDs. Select only relevant context and affected components for the
 page. Treat the user-maintained inventory as authoritative for component identity,
 labels and repository ownership. Do not create or extend a ticket-local master
@@ -82,7 +79,7 @@ needed; do not promote a ticket-specific implementation area into a component.
 If evidence conflicts or access is missing, record the gap rather than guessing.
 Do not rewrite a user's reusable template to apply a ticket's highlights.
 
-Build a ticket change map (see `assets/APS-4927-changes.json`) and run
+Build a ticket change map (see `assets/APS-4927-changes.json` for an example) and run
 `scripts/prepare_diagram.py` against the template/inventory. It generates a
 self-contained `.d2` copy and `.summary.json` from the same changes. Use those
 summary rows for the bottom table. Map implementation areas to their existing parent component. Put their names
