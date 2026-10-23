@@ -1,0 +1,43 @@
+# EDIT THIS FILE to arrange the reusable proposal view.
+# D2 lays out nodes automatically: change direction, grouping and connections.
+# Keep component IDs identical to master-components.json. Labels may be edited.
+# Include only components useful for this view; the master list is broader.
+# Add a registry component by copying its ID and label as a new node below.
+# Ticket highlighting is appended to a COPY; this file stays neutral.
+# Render: d2 architecture-template.d2 architecture-template.svg
+
+direction: right
+classes: {
+  context: {style.fill: "#F1F5F9"; style.stroke: "#94A3B8"; style.font-color: "#172B4D"}
+  modify: {style.fill: "#FFF2CC"; style.stroke: "#B7791F"}
+  add: {style.fill: "#DCFCE7"; style.stroke: "#15803D"}
+  remove: {style.fill: "#FEE2E2"; style.stroke: "#B91C1C"; style.stroke-dash: 5}
+  uncertain: {style.fill: "#FFF2CC"; style.stroke: "#B7791F"; style.stroke-dash: 5}
+}
+
+# Stable IDs, editable labels. These are logical components, not separate pods.
+css: Common SSO {class: context}
+partner_api: SDX Provisioner Partner API {class: context}
+portal: API Services Portal {class: context}
+provisioner_api: Internal Provisioner API {class: context}
+css_tests: Cypress / CSS fixtures {class: context}
+deployment: SDX deployment configuration {class: context}
+
+# Connections describe the proposed view; review against the actual system.
+css -> partner_api: Bearer API calls
+partner_api -> css: Approved access snapshot
+portal -> provisioner_api: Private provisioning
+css_tests -> partner_api: Contract tests
+deployment -> partner_api: Public partner routing
+
+# Example additions from the master list (uncomment when relevant):
+# kong_plugins: Kong OSS plugins {class: context}
+# edge_image: SDX access-point image {class: context}
+# kong_plugins -> edge_image: Pinned plugin revision
+# edge_chart: SDX Edge chart {class: context}
+# edge_image -> edge_chart: Image digest
+
+# cp_chart: SDX control-plane chart {class: context} # Planned: APS-5052
+# edge_image -> cp_chart: Same image digest
+# cp_chart -> deployment: Independently pinned chart version
+# feeder: Portal feeder {class: context}

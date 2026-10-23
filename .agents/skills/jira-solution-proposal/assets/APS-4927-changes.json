@@ -1,0 +1,36 @@
+{
+  "ticket": "APS-4927",
+  "title": "Common SSO integration",
+  "changes": [
+    {
+      "id": "partner_api",
+      "kind": "modify",
+      "summary": "Separate and authenticate public partner routes; align error contracts.",
+      "validation": "Token rejection and partner API contract checks."
+    },
+    {
+      "id": "provisioner_api",
+      "kind": "modify",
+      "summary": "Keep internal routes on the private listener.",
+      "validation": "Assert mutually exclusive route registration and private reachability."
+    },
+    {
+      "id": "css_tests",
+      "kind": "modify",
+      "summary": "Cover contracts, stale grants, callback snapshots and dev/test isolation.",
+      "validation": "Run standalone Cypress suite and relevant Node tests."
+    },
+    {
+      "id": "deployment",
+      "kind": "modify",
+      "summary": "Wire APSTST public partner routing, private access and readiness.",
+      "validation": "Verify deployed reachability, isolation and rollback."
+    },
+    {
+      "id": "css",
+      "kind": "uncertain",
+      "summary": "Agree callback path, token settings and integration authorization.",
+      "validation": "Confirm CSS contract and perform a live partner interaction."
+    }
+  ]
+}

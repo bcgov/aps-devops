@@ -1,0 +1,174 @@
+{
+  "description": "Shared maintained inventory, not an approved or exhaustive deployment architecture. Preserve stable IDs; confirm repository-relative paths and ownership against code. Record review evidence and planned components in references/component-inventory.md.",
+  "components": [
+    {
+      "id": "portal",
+      "label": "API Services Portal",
+      "repository": "api-services-portal",
+      "path": "src",
+      "purpose": "User access and approval UI"
+    },
+    {
+      "id": "partner_api",
+      "label": "SDX Provisioner Partner API",
+      "repository": "api-services-portal",
+      "path": "provisioner-api/src",
+      "purpose": "CSS-facing contracts and token validation"
+    },
+    {
+      "id": "provisioner_api",
+      "label": "Internal Provisioner API",
+      "repository": "api-services-portal",
+      "path": "provisioner-api/src",
+      "purpose": "Internal Portal provisioning operations"
+    },
+    {
+      "id": "css_tests",
+      "label": "Cypress / CSS fixtures",
+      "repository": "api-services-portal",
+      "path": "e2e/cypress",
+      "purpose": "Partner contracts and environment isolation"
+    },
+    {
+      "id": "gwa_api",
+      "label": "Gateway Admin API",
+      "repository": "gwa-api",
+      "path": "microservices/gatewayApi",
+      "purpose": "Gateway configuration administration"
+    },
+    {
+      "id": "step_token_api",
+      "label": "Step Token API",
+      "repository": "gwa-api",
+      "path": "microservices/sdxStepTokenApi",
+      "purpose": "Certificate token service"
+    },
+    {
+      "id": "kube_api",
+      "label": "Kubernetes API",
+      "repository": "gwa-api",
+      "path": "microservices/kubeApi",
+      "purpose": "Cluster integration"
+    },
+    {
+      "id": "oas_validation",
+      "label": "OAS Validation API",
+      "repository": "gwa-api",
+      "path": "microservices/csitOasValidationApi",
+      "purpose": "OpenAPI validation"
+    },
+    {
+      "id": "kong_plugins",
+      "label": "Kong OSS plugins",
+      "repository": "kong-oss-plugins",
+      "path": "plugins",
+      "purpose": "Gateway security and token exchange plugins"
+    },
+    {
+      "id": "edge_image",
+      "label": "SDX access-point image",
+      "repository": "aps-devops",
+      "path": "sdx/image",
+      "purpose": "Shared Kong CP/edge container build and plugin inputs"
+    },
+    {
+      "id": "edge_chart",
+      "label": "SDX Edge chart",
+      "repository": "aps-devops",
+      "path": "sdx/chart/sdx-edge",
+      "purpose": "Edge deployment packaging"
+    },
+    {
+      "id": "brochure_ui",
+      "label": "Brochure UI",
+      "repository": "aps-devops",
+      "path": "sdx/brochure-ui",
+      "purpose": "Catalogue and access interface"
+    },
+    {
+      "id": "pip_catalog",
+      "label": "OPAL catalogue PIP",
+      "repository": "aps-devops",
+      "path": "sdx/ape/functions/opal-pip-catalog",
+      "purpose": "Catalogue policy information"
+    },
+    {
+      "id": "opal_policies",
+      "label": "OPAL policies",
+      "repository": "aps-devops",
+      "path": "sdx/ape/functions/opal-policies",
+      "purpose": "Policy distribution function"
+    },
+    {
+      "id": "pubsub_kafka",
+      "label": "Kafka pub/sub",
+      "repository": "aps-devops",
+      "path": "sdx/ape/functions/pubsub-kafka",
+      "purpose": "Event streaming and replay"
+    },
+    {
+      "id": "pubsub_webhook",
+      "label": "Webhook pub/sub",
+      "repository": "aps-devops",
+      "path": "sdx/ape/functions/pubsub-webhook",
+      "purpose": "Webhook event distribution"
+    },
+    {
+      "id": "release_ci",
+      "label": "Build / release CI",
+      "repository": "aps-devops",
+      "path": ".github/workflows",
+      "purpose": "Component builds and releases"
+    },
+    {
+      "id": "deployment",
+      "label": "SDX deployment configuration",
+      "repository": "api-serv-infra",
+      "path": "terraform",
+      "purpose": "Terraform modules and per-tier configuration, including SDX CP Helm release and independently promoted chart versions"
+    },
+    {
+      "id": "techdocs",
+      "label": "SDX TechDocs",
+      "repository": "aps-infra-platform",
+      "path": "documentation",
+      "purpose": "User journeys and operating guidance"
+    },
+    {
+      "id": "css",
+      "label": "Common SSO",
+      "repository": "external",
+      "path": null,
+      "purpose": "Partner identity and scope provisioning; repository owner to confirm"
+    },
+    {
+      "id": "step_ca",
+      "label": "Step CA",
+      "repository": "external",
+      "path": null,
+      "purpose": "Certificate authority; deployment owner to confirm"
+    },
+    {
+      "id": "sdx_catalog",
+      "label": "SDX catalogue / state",
+      "repository": "api-services-portal",
+      "path": "src",
+      "purpose": "Logical catalogue and approval state; concrete storage boundary to confirm"
+    },
+    {
+      "id": "feeder",
+      "label": "Portal feeder",
+      "repository": "api-services-portal",
+      "path": "feeds",
+      "purpose": "Gateway/platform state ingestion, synchronization and provisioning activity/status reporting"
+    },
+    {
+      "id": "cp_chart",
+      "label": "SDX control-plane chart",
+      "repository": "aps-devops",
+      "path": "sdx/chart/sdx-kong-cp",
+      "purpose": "Planned APS-5052 wrapper around upstream Kong chart; digest-pinned CP packaging paired with edge chart publication",
+      "status": "planned"
+    }
+  ]
+}
