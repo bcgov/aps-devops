@@ -17,6 +17,13 @@ dialog.sdx-activity-dialog[open] {
 }
 dialog.sdx-activity-dialog .sdx-activity-head,
 dialog.sdx-activity-dialog .sdx-activity-foot { flex: 0 0 auto; }
+dialog.sdx-activity-dialog .sdx-activity-head {
+  max-height: 35%;
+  overflow: auto;
+}
+dialog.sdx-activity-dialog .sdx-activity-head h2 {
+  overflow-wrap: anywhere;
+}
 dialog.sdx-activity-dialog .sdx-activity-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -44,6 +51,19 @@ dialog.sdx-activity-dialog::backdrop { background: rgba(0,0,0,0.45); }
     line-height: 1.35;
   }
   dialog.sdx-activity-dialog .sdx-activity-foot { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+}
+/* 400% zoom shrinks the CSS viewport height. Keep the title readable
+   without letting a long title consume the details area. */
+@media (max-height: 480px) {
+  dialog.sdx-activity-dialog .sdx-activity-head h2 {
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-head {
+    max-height: 28%;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
 }
 `;
 
