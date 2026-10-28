@@ -1,15 +1,18 @@
 ---
 name: release-pr-review
-description: Review an api-serv-infra promotion PR (release/<name> or dev → master, or a prod package-tag promotion) commit by commit. Pull every Jira ticket's title, type and parent, decide what is user-facing and whether it touches Portal, SDX or both, rate each change's risk (LOW/MEDIUM/HIGH) by diffing the upstream component repos behind each version bump, find blockers, and write it all into the PR description as a risk-grouped list with TEST/PROD checkboxes, then build a shareable HTML code view that expands each item to its diff. Use this whenever someone asks to review, summarize or risk-assess the commits in an api-serv-infra PR, list the Jira tickets in a release, work out what needs validating in test or prod, or write up a release or promotion PR description, even if they don't say "skill" or "release review".
+description: Review and write up an api-serv-infra promotion PR (release/<name> or dev → master) - Jira tickets, env scope, risk with TEST/PROD checks, and an HTML code view. Run with /release-pr-review <PR number>.
+disable-model-invocation: true
 ---
 
 # Release PR review (api-serv-infra)
 
 This produces a reviewer-ready description for a promotion PR in `bcgov-c/api-serv-infra`. The output is a list of every change, grouped by risk. Each HIGH and MEDIUM item gets its own TEST and PROD checkboxes, so the team can tick validation off as the release is promoted.
 
-Example prompt: "Use release-pr-review on api-serv-infra PR 377 and build the code view."
+Run it from an api-serv-infra clone: `/release-pr-review 377` (add "dry run" to write the description to a local file without editing the PR).
 
 The skill lives in aps-devops `.agents/skills` but runs against a clone of `bcgov-c/api-serv-infra`: run the `git` commands and `scripts/review_page.py` from that clone. Resolve `references/` and `scripts/` relative to this file's directory. From another workspace, reference this SKILL.md explicitly if it isn't in the available skill catalog.
+
+Only run this against api-serv-infra. Before anything else, check `git remote get-url origin` in the working directory points at `bcgov-c/api-serv-infra`. If it doesn't, stop and ask for the path to an api-serv-infra clone instead of reviewing whatever repo you're in.
 
 The value is in the checking, not the summary. Commit messages like "bump switchover" or "update sdx versions" hide real behaviour changes. The infra config can also run ahead of the component releases it relies on, and a plain summary misses both. So for every version bump, look at what the new version actually changes, and for every config change, check that the code being deployed to that env reads it.
 
@@ -159,3 +162,16 @@ If the title is generic, suggest one built from the two or three main themes, ke
 ### 11. Report back
 
 In chat, lead with the blockers and the HIGH items, then link the PR. List the gaps: anything you couldn't diff (moving tags like `:dev`) or confirm (whether a namespace is live). Fixing blockers is a separate step; offer it, don't do it unasked.
+
+## Installing
+
+Install this per repo, not per user, so it costs nothing in other repos. Symlink it from an aps-devops checkout that tracks `dev` into the api-serv-infra clone, and keep it out of that repo's git:
+
+```bash
+cd <api-serv-infra clone>
+mkdir -p .claude/skills
+ln -s <aps-devops checkout>/.agents/skills/release-pr-review .claude/skills/release-pr-review
+echo '.claude/skills/release-pr-review' >> .git/info/exclude
+```
+
+Pulling aps-devops then updates the skill. `disable-model-invocation: true` keeps it out of Claude Code's automatic skill list, so it costs no context until someone runs `/release-pr-review <PR>`. Agents other than Claude Code may ignore that field; for them, symlink into whichever skills folder they read instead.
