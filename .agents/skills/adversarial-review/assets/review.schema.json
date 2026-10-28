@@ -215,13 +215,23 @@
             "enum": [
               "failure-modes",
               "contracts-rollout",
-              "intent-simplicity"
+              "intent-simplicity",
+              "docs-accuracy",
+              "docs-followability",
+              "docs-consistency"
             ]
           }
         },
+        "lens_set": {
+          "enum": [
+            "code",
+            "docs"
+          ],
+          "description": "docs for a docs-only change or when the lenses input asked for it"
+        },
         "changed_lines": {
           "type": "integer",
-          "description": "added + deleted, excluding tests, docs, lockfiles, generated, fixtures"
+          "description": "added + deleted, excluding tests, lockfiles, generated, fixtures, and docs unless the change is docs-only; agent instructions count"
         },
         "changed_files": {
           "type": "integer"
@@ -241,7 +251,10 @@
             "enum": [
               "failure-modes",
               "contracts-rollout",
-              "intent-simplicity"
+              "intent-simplicity",
+              "docs-accuracy",
+              "docs-followability",
+              "docs-consistency"
             ]
           }
         },
@@ -307,7 +320,10 @@
             "enum": [
               "failure-modes",
               "contracts-rollout",
-              "intent-simplicity"
+              "intent-simplicity",
+              "docs-accuracy",
+              "docs-followability",
+              "docs-consistency"
             ]
           },
           "reason": {
@@ -365,14 +381,18 @@
             "config",
             "tests",
             "intent-gap",
-            "design"
+            "design",
+            "docs"
           ]
         },
         "lens": {
           "enum": [
             "failure-modes",
             "contracts-rollout",
-            "intent-simplicity"
+            "intent-simplicity",
+            "docs-accuracy",
+            "docs-followability",
+            "docs-consistency"
           ]
         },
         "file": {
@@ -451,7 +471,10 @@
             "enum": [
               "failure-modes",
               "contracts-rollout",
-              "intent-simplicity"
+              "intent-simplicity",
+              "docs-accuracy",
+              "docs-followability",
+              "docs-consistency"
             ]
           },
           "description": "every lens that raised it (independent agreement is a signal)"

@@ -4,6 +4,12 @@ Each lens is a different way of attacking the change. A reviewer with one lens s
 because the other lenses are covered elsewhere. A `quick` reviewer works through all three
 in order.
 
+There are two sets. The **code lenses** (Failure modes, Contracts & rollout, Intent &
+simplicity) are for code, config and agent instructions. The **docs lenses** (Accuracy,
+Followability, Consistency) are for docs-only changes. Step 3 of `SKILL.md` picks the set.
+
+# Code lenses
+
 ## Failure modes
 
 What actually breaks? Assume the happy path works and go after everything else.
@@ -75,3 +81,55 @@ Does this change do what it is for, and nothing it shouldn't?
   or reuse of something already in the repo? Report it only if the simpler path is concrete
   and the extra complexity carries real risk. "Could be cleaner" is not a finding.
 - Do docs, examples, and comments that the change touches still tell the truth?
+
+# Docs lenses
+
+The source of truth for a doc is what it describes: the code, config, schemas, CLI help
+and counterpart repos (at the version in your brief), not other docs. Find it before you
+judge a claim. A docs finding still needs a failure scenario: *a reader does what the doc
+says → this goes wrong*. A claim you can't trace to any source isn't a finding.
+
+## Accuracy
+
+Is every claim the change makes true of the system it describes?
+
+- Commands, flags, config keys, env vars, file paths, ports, API routes and fields: find
+  each in the source and check the name, spelling and shape match.
+- Defaults, limits, versions, and "required" or "optional": check the code that sets them.
+- Examples: would the sample config or request pass the real schema or validation? Would
+  the code block run against the current interface?
+- Behaviour descriptions ("retries three times", "deleting X also removes Y"): trace the
+  code path, as the Intent lens does for author claims.
+- Version drift: does the doc say which version it describes, and is that still current?
+
+## Followability
+
+Can the intended reader do the task from this doc alone, as written?
+
+- Walk the steps in order as the stated audience. What do they need that the doc doesn't
+  give them: access, tools and versions, env vars, which cluster, namespace or account,
+  which directory to run from?
+- Order: does any step depend on something done later, or on state an earlier step
+  didn't create?
+- Placeholders: is each `<value>` explained, with where to get it?
+- Commands that fail as pasted: wrong shell for the platform, missing line continuations,
+  smart quotes, a prompt (`$`) inside the block.
+- Outcomes: can the reader tell a step worked, and what to do if it didn't? Destructive or
+  production steps need a warning, a check first and a way back.
+- Harm: does following it leak a secret (shell history, logs, a URL), turn off TLS
+  verification, grant more access than the task needs, or target production by default?
+
+## Consistency
+
+Does the change agree with itself, the rest of the docs, and its intent?
+
+- Search the repo for other pages on the same topic, command or setting. Does the change
+  contradict them, or leave them stale (a renamed thing, a changed default, a removed
+  step)?
+- Within the change: the same name, value and version for the same thing everywhere;
+  step numbers and cross-references still point at the right place.
+- Links and anchors the change adds or touches: do the targets exist in the repo at
+  `HEAD_SHA`? You can't check external links offline; leave them.
+- Intent: go through the acceptance criteria one at a time. Does the change publish
+  anything it shouldn't, such as internal hostnames, credentials or personal data in a
+  public repo?

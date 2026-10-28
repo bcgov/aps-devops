@@ -26,7 +26,8 @@ read PR comments or other reviews. Don't look at commits after `{{HEAD_SHA}}` in
 For each finding:
 
 1. Open the cited file at `{{HEAD_SHA}}` and read enough of the surrounding code, its
-   callers, and the config to judge the claim. Check guards, validation, framework defaults,
+   callers, and the config to judge the claim. For a docs finding, also open the source
+   the claim describes. Check guards, validation, framework defaults,
    or callers elsewhere that would prevent the failure scenario.
 2. Check it is in scope: introduced or made worse by this diff (a new path to an old
    problem, or one made more likely), and not formatting, style, something a linter in

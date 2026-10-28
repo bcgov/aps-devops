@@ -1,7 +1,8 @@
 ---
 name: adversarial-review
 description: >-
-  Independent, adversarial pre-review of a pull request, branch, or local diff. Builds the
+  Independent, adversarial pre-review of a pull request, branch, or local diff, whether code,
+  agent skills or docs. Builds the
   author's intent from the PR and its Jira ticket, sends lens-focused reviewers at the
   change (more reviewers for bigger changes), tries to refute every finding before
   reporting it, and writes a structured report (Markdown + JSON) that the author can act
@@ -34,8 +35,9 @@ Take these from the user's message; ask only if the target is ambiguous.
 | `src` | none | Existing checkout of `head` to review in; skips fetching and worktree creation |
 | `intent` | auto-detect | Jira key, path to a spec/ADR, or free text |
 | `depth` | auto (by size) | `quick` = 1 reviewer, `standard` = 2, `deep` = 3 |
+| `lenses` | auto (Step 3) | `code` or `docs`: force a lens set, e.g. `docs` for a docs repo change that also touches a script |
 | `reviewer` | `gh auth status` login, else `git config user.name` | Who ran the review; may be null |
-| `out` | `$TMPDIR/adversarial-review/` | Where the `.md` and `.json` reports go |
+| `out` | `${TMPDIR:-/tmp}/adversarial-review/` | Where the `.md` and `.json` reports go. `TMPDIR` is often unset on Linux |
 | `post` | on for PRs | Post the report as a PR comment when done. `post: off` keeps it local only |
 | `ci` | off | Non-interactive: never ask, never post (the CI workflow owns delivery), write files and print the summary table and paths |
 
@@ -71,10 +73,13 @@ Take these from the user's message; ask only if the target is ambiguous.
   check is listed in `scope.checks_not_run` and the summary.
 - **In scope:** correctness, failure handling, security, data integrity, contracts between
   components, config/deploy/rollout safety, missing or misleading tests for changed
-  behaviour, and gaps against stated intent.
+  behaviour, and gaps against stated intent. For docs: claims that don't match the source
+  they describe, steps a reader can't follow as written, contradictions with other docs,
+  and advice that is unsafe to follow.
 - **Out of scope:** formatting, whitespace, naming and style preferences, anything a
   linter/formatter/type-checker in this repo would catch, and pre-existing problems the
-  change does not touch. "Made worse" counts only when the change adds a new path to the
+  change does not touch. For docs, also prose style, tone, structure, and spelling outside
+  commands, code and names. "Made worse" counts only when the change adds a new path to the
   old problem or makes it more likely. Running the same old code more often doesn't count.
 
 ## Step 1 — Freeze the target
@@ -102,8 +107,12 @@ Resolve exact `BASE_SHA` and `HEAD_SHA` before reading anything, and review only
   commits. From here the snapshot is an ordinary commit. Set `target.local_snapshot`,
   since `HEAD_SHA` exists only in this repo.
 
+Before any review work, create a scratch directory for the run with `RUN=$(mktemp -d)`
+(which works when `TMPDIR` is unset) and `mkdir -p` the `out` directory, so a
+bad path fails now rather than after the review.
+
 Source to read from: `src` if given (check it is at `HEAD_SHA`); else the current checkout if `HEAD_SHA` is checked
-out; else a detached worktree you create in a temp dir (`git worktree add --detach "$RUN/src" "$HEAD_SHA"`)
+out; else a detached worktree in the run directory (`git worktree add --detach "$RUN/src" "$HEAD_SHA"`)
 and remove at the end. Use `git diff BASE_SHA HEAD_SHA` everywhere.
 
 If `HEAD_SHA` differs from the PR's current head, record both. The report must say
@@ -150,15 +159,29 @@ lockfiles, generated or vendored code (files marked "generated" or "DO NOT EDIT"
 emitted by a tool such as an OpenAPI or ORM generator), snapshots, and data/fixture files.
 List the exclusions in the report. Count files the same way.
 
+Classify a file by what it does, not its extension:
+
+- **Agent instructions count as code.** Skill files (`SKILL.md` and the references,
+  prompts and assets it loads), agent and subagent definitions, prompt templates, and
+  Markdown or text that a tool or workflow reads at runtime. Changing them changes
+  behaviour.
+- **Docs** are prose for people: READMEs, guides, runbooks, ADRs, changelogs, docs-site
+  pages.
+
+**Docs-only change:** when nothing is left after the exclusions and the change touches
+docs, count the docs instead and use the docs lenses. Otherwise use the code lenses; the
+Intent & simplicity lens still checks the docs a code change touches. A `lenses` input
+overrides this. Record the lens set in `scope.lens_set`.
+
 Excluded files are **still reviewed**. They just don't drive the tier. Reviewers skim
 generated files instead of reading them in full. They do check where data, fixture and
 binary files end up (e.g. a test fixture copied into a production image).
 
-| Tier | Changed lines / files | Reviewers |
-|---|---|---|
-| quick | ≤ 150 lines and ≤ 4 files | 1 reviewer running all three lenses |
-| standard | ≤ 600 lines and ≤ 12 files | 2: **Failure modes**; **Contracts & rollout** + **Intent & simplicity** |
-| deep | larger | 3: one per lens |
+| Tier | Changed lines / files | Code lenses | Docs lenses |
+|---|---|---|---|
+| quick | ≤ 150 lines and ≤ 4 files | 1 reviewer running all three | 1 reviewer running all three |
+| standard | ≤ 600 lines and ≤ 12 files | 2: **Failure modes**; **Contracts & rollout** + **Intent & simplicity** | 2: **Accuracy**; **Followability** + **Consistency** |
+| deep | larger | 3: one per lens | 3: one per lens |
 
 Bump a `standard`-size change to `deep` when the diff changes any of the following. A
 `quick`-size change stays at one reviewer: in dry runs on small risky diffs, a second
@@ -171,11 +194,13 @@ reviewer mostly repeated the first. Name the trigger in that reviewer's brief in
 - database migrations or data backfills
 - sync, cleanup or reconcile jobs that delete or overwrite data in bulk
 - CI/CD workflows, beyond a version or tag bump
+- docs-only: steps for granting access or handling credentials, production runbooks
+  (incident, failover, rollback), or migration and upgrade procedures
 
 This is a crude stand-in for a risk model. Name the trigger in the report, including for a
 `quick` change that wasn't bumped. An explicit `depth` overrides all of this.
 
-Lenses are defined in `references/lenses.md`.
+Both lens sets are defined in `references/lenses.md`.
 
 ## Step 4 — Review
 
@@ -251,7 +276,7 @@ If the range has several authors or tickets, judge by the newest commits and say
 If the person running the review is the PR author, say so in the header (self-review).
 
 Show the user the Markdown report and both file paths (in `ci` mode, the summary table
-and the paths). Clean up any worktree you created.
+and the paths). Clean up any worktree you created and `$RUN`.
 
 ## Step 7 — Post (PRs only)
 
