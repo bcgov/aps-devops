@@ -61,8 +61,11 @@
           "type": "string"
         },
         "head_sha": {
-          "type": "string",
-          "description": "'WORKTREE' for unpinned local review"
+          "type": "string"
+        },
+        "local_snapshot": {
+          "type": "boolean",
+          "description": "true when head_sha is a snapshot commit of uncommitted changes, which exists only in the reviewer's repo"
         },
         "pr_head_sha": {
           "type": [

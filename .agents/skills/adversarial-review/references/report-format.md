@@ -17,6 +17,7 @@ Markdown inside to render.
 > **Note:** Author model unknown. @<author>, please state which assistant and model (if any) wrote this in the PR description, so reviewers can pick a different one.
 > **Note:** Self-review. The person running this review authored the PR.
 > **Note:** Reviewed <head_sha:7>, but the PR head is now <pr_head_sha:7>. Later commits may address these findings.
+> **Note:** Local review of uncommitted changes on <base_sha:7>. <head_sha:7> is a snapshot commit that exists only in the reviewer's repo.
 > **Note:** Incomplete: <lens not covered / reason>.
 
 **Summary:** <2–4 sentences: overall merge risk, the most important problem, and anything

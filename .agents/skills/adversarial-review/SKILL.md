@@ -59,7 +59,8 @@ Take these from the user's message; ask only if the target is ambiguous.
   approve, or request changes. Network reads are limited to PR metadata, the ticket, and
   `git fetch` of this repo and counterpart repos, all done by you (the orchestrator) in
   Steps 1–2. Reviewers and verifiers make no network calls. The only write is the report
-  comment in Step 7.
+  comment in Step 7, apart from the `local` snapshot's unreferenced objects in `.git`
+  (Step 1), which change no files, index, branch or ref.
 - **Running checks.** Reviewers read, and may run cheap offline syntax checks that write
   nothing, such as `node --check <file>` or `bash -n <file>`. Tests and builds belong to
   the verifier. A verifier may run an existing check (a unit test, `terraform validate`,
@@ -87,7 +88,19 @@ Resolve exact `BASE_SHA` and `HEAD_SHA` before reading anything, and review only
   If the diff is empty or huge because the PR is merged and the base moved on, ask for a
   pinned `base` (in `ci` mode, stop and report `incomplete: base required`).
 - **Branch:** base is the repo's default branch unless told otherwise; same merge-base rule.
-- **local:** `git diff HEAD` plus untracked files; record `head_sha` as `WORKTREE`.
+- **local:** snapshot the working tree (tracked changes, staged or not, plus untracked
+  files that aren't ignored) as a commit, using a throwaway copy of the index so the
+  checkout and real index stay as they are:
+
+  ```bash
+  IDX=$(mktemp); cp "$(git rev-parse --git-path index)" "$IDX"
+  TREE=$(GIT_INDEX_FILE="$IDX" sh -c 'git add -A && git write-tree'); rm -f "$IDX"
+  HEAD_SHA=$(git commit-tree "$TREE" -p HEAD -m "adversarial-review local snapshot")
+  ```
+
+  `BASE_SHA` = `HEAD`, or the merge-base with the base branch to include the branch's
+  commits. From here the snapshot is an ordinary commit. Set `target.local_snapshot`,
+  since `HEAD_SHA` exists only in this repo.
 
 Source to read from: `src` if given (check it is at `HEAD_SHA`); else the current checkout if `HEAD_SHA` is checked
 out; else a detached worktree you create in a temp dir (`git worktree add --detach "$RUN/src" "$HEAD_SHA"`)
