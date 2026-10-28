@@ -140,18 +140,21 @@ Write the body file in a temp directory, not the repo.
 
 At the end, **Not covered by any item** lists every changed line that no block claims. Use it as a coverage check: each leftover is either a change the description should mention (add a LOW row or a Gaps line) or a mapping you missed. In PR 377 it surfaced two undocumented dev-only `sdx-reference-impl` bumps.
 
-Run it from the api-serv-infra clone, with `<skill>` being this skill's directory:
+Always build the page after the description is saved, and always zip it. In a dry run, build it from the local draft with `--body-file`. GitHub won't accept `.html` attachments, and there's no API for comment attachments, so the person running the skill attaches the zip by hand. Run from the api-serv-infra clone, with `<skill>` being this skill's directory and `<tmp>` a directory outside the repo:
 
 ```bash
-python3 -I <skill>/scripts/review_page.py <N> -o <tmp>/pr<N>-review.html                     # standalone file, to share anywhere
-python3 -I <skill>/scripts/review_page.py <N> --fragment -o <tmp>/pr<N>-review.html          # body only, for hosts that add <html>/<head> (e.g. Claude Artifacts)
-python3 -I <skill>/scripts/review_page.py <N> --body-file draft.md -o <tmp>/preview.html     # preview mappings before editing the PR
+python3 -I <skill>/scripts/review_page.py <N> -o <tmp>/pr<N>-review.html
+(cd <tmp> && rm -f pr<N>-review.zip && zip -q -9 pr<N>-review.zip pr<N>-review.html)
 ```
 
-It needs only python3, git and an authenticated `gh`, so anyone can rerun it after the description changes. How to share the page:
+Other modes, when useful:
 
-- **Agent hosts that publish HTML** (e.g. Claude Artifacts): publish the `--fragment` output, reusing the same path or URL on each rebuild so the link stays the same. These pages are usually private until shared.
-- **On the PR:** GitHub won't accept `.html` attachments, so zip the standalone file and drag the zip into a PR comment.
+```bash
+python3 -I <skill>/scripts/review_page.py <N> --body-file draft.md -o <tmp>/preview.html     # preview mappings before editing the PR
+python3 -I <skill>/scripts/review_page.py <N> --fragment -o <tmp>/pr<N>-page.html            # body only, for hosts that add <html>/<head> (e.g. Claude Artifacts)
+```
+
+It needs only python3, git and an authenticated `gh`, so anyone can rerun it after the description changes. If your agent host can publish HTML (e.g. Claude Artifacts), you can also publish the `--fragment` output, reusing the same path or URL on each rebuild so the link stays the same. That's in addition to the zip, not instead of it.
 
 The TEST/PROD boxes stay in the PR. The page shows their state when it was built and links back to the PR for ticking.
 
@@ -162,6 +165,8 @@ If the title is generic, suggest one built from the two or three main themes, ke
 ### 11. Report back
 
 In chat, lead with the blockers and the HIGH items, then link the PR. List the gaps: anything you couldn't diff (moving tags like `:dev`) or confirm (whether a namespace is live). Fixing blockers is a separate step; offer it, don't do it unasked.
+
+End by handing over the code view. Give the full path to `pr<N>-review.zip` (and the published page's link, if you made one). Ask the person to attach the zip by dragging it into a comment on the PR, because you can't attach it yourself. If the description changes later, rebuild the page and zip, and remind them to attach the new one.
 
 ## Installing
 
