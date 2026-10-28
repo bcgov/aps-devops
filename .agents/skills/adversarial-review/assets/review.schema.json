@@ -1,0 +1,472 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bcgov/aps-devops/.agents/skills/adversarial-review/assets/review.schema.json",
+  "title": "AdversarialReview",
+  "description": "One reviewer's adversarial review of one change. Consumed by adversarial-review-consolidate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "target",
+    "reviewer",
+    "intent",
+    "scope",
+    "findings",
+    "refuted"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "incomplete"
+      ],
+      "description": "incomplete when a lens could not run or the target could not be pinned; explain in summary"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "base_sha",
+        "head_sha"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "owner/name"
+        },
+        "pr": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "base_sha": {
+          "type": "string"
+        },
+        "head_sha": {
+          "type": "string",
+          "description": "'WORKTREE' for unpinned local review"
+        },
+        "pr_head_sha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "PR head at review time, when it differs from head_sha (reviewing an older commit)"
+        }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent",
+        "model",
+        "reviewed_at"
+      ],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "description": "e.g. claude-code, codex, copilot-cli, gemini-cli, cursor"
+        },
+        "model": {
+          "type": "string",
+          "description": "exact model id if known"
+        },
+        "human": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "GitHub login of the person who ran it"
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "author_model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "author's assistant if detectable, else null (report says 'unknown')"
+        },
+        "same_family_as_author": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "null when the author's model is unknown"
+        },
+        "self_review": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "true when the person running the review authored the PR"
+        }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirements",
+        "sources",
+        "strength"
+      ],
+      "properties": {
+        "requirements": {
+          "type": "string",
+          "description": "what this PR must achieve, narrowed to this repo"
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "author_claims": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "behaviour the PR body claims; tested, not trusted"
+        },
+        "delivered_elsewhere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "counterparts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "other repos/PRs and the version checked against"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "e.g. APS-1234, PR body, docs/adr/0007.md"
+        },
+        "strength": {
+          "enum": [
+            "strong",
+            "partial",
+            "weak"
+          ]
+        },
+        "unread_sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "linked docs outside the repo that were not read"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier",
+        "lenses",
+        "changed_lines",
+        "changed_files"
+      ],
+      "properties": {
+        "tier": {
+          "enum": [
+            "quick",
+            "standard",
+            "deep"
+          ]
+        },
+        "tier_reason": {
+          "type": "string"
+        },
+        "lenses": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "failure-modes",
+              "contracts-rollout",
+              "intent-simplicity"
+            ]
+          }
+        },
+        "changed_lines": {
+          "type": "integer",
+          "description": "added + deleted, excluding tests, docs, lockfiles, generated, fixtures"
+        },
+        "changed_files": {
+          "type": "integer"
+        },
+        "excluded_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "used_subagents": {
+          "type": "boolean"
+        },
+        "lenses_not_covered": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "failure-modes",
+              "contracts-rollout",
+              "intent-simplicity"
+            ]
+          }
+        },
+        "checks_not_run": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "checks that would have settled a finding but could not run (network, install, no image built from head_sha), and which finding"
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "2-4 sentences: overall merge risk and the most important finding"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "refuted": {
+      "type": "array",
+      "description": "Candidates dropped in verification (refuted or out-of-scope), kept for calibration",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "file",
+          "verdict",
+          "reason"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "verdict": {
+            "enum": [
+              "refuted",
+              "out-of-scope"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "blocker",
+              "major",
+              "minor"
+            ],
+            "description": "severity the reviewer originally gave"
+          },
+          "lens": {
+            "enum": [
+              "failure-modes",
+              "contracts-rollout",
+              "intent-simplicity"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "confidence",
+        "category",
+        "lens",
+        "file",
+        "evidence",
+        "failure_scenario",
+        "verification"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "F1, F2, ... in severity order"
+        },
+        "title": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "blocker",
+            "major",
+            "minor"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium"
+          ],
+          "description": "high = verifier confirmed; medium = plausible"
+        },
+        "category": {
+          "enum": [
+            "correctness",
+            "reliability",
+            "security",
+            "contract",
+            "rollout",
+            "config",
+            "tests",
+            "intent-gap",
+            "design"
+          ]
+        },
+        "lens": {
+          "enum": [
+            "failure-modes",
+            "contracts-rollout",
+            "intent-simplicity"
+          ]
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "end_line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "failure_scenario": {
+          "type": "string"
+        },
+        "suggested_fix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "verdict",
+            "note"
+          ],
+          "properties": {
+            "verdict": {
+              "enum": [
+                "confirmed",
+                "plausible"
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        },
+        "author_action": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision"
+          ],
+          "description": "Omitted by the reviewer; the consolidate skill records the author's decision",
+          "properties": {
+            "decision": {
+              "enum": [
+                null,
+                "fix",
+                "ignore",
+                "defer"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "lenses": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "failure-modes",
+              "contracts-rollout",
+              "intent-simplicity"
+            ]
+          },
+          "description": "every lens that raised it (independent agreement is a signal)"
+        },
+        "merged_from": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "number of raw candidates merged into this finding"
+        },
+        "original_severity": {
+          "enum": [
+            "blocker",
+            "major",
+            "minor"
+          ],
+          "description": "severity the reviewer gave, when the verifier changed it"
+        }
+      }
+    }
+  }
+}
