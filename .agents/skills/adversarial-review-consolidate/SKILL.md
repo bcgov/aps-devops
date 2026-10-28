@@ -91,7 +91,7 @@ Summary body:
 **Skill:** adversarial-review-consolidate · **Reviews:** @alice (claude-code / claude-opus-5-5 @ abc1234) · @bob (codex / gpt-5.x @ abc1234)
 **Author model:** <if known> · **Coverage gaps:** <e.g. "only one model family reviewed">
 
-Reply in each finding's thread starting with **Fix**, **Ignore: <why>** or **Defer: <ticket>**.
+Reply in each finding's thread starting with **Fix**, **Ignore: <why>** or **Defer: [JIRA-TICKET]**.
 For findings without a thread, comment on the PR starting with the ID, e.g. `C3: Fix`.
 
 | ID | Sev | Conf | Found by | Location | Finding | Decision |
@@ -137,7 +137,7 @@ are in the summary table.
 
 <optional suggestion block, see below>
 
-Reply **Fix**, **Ignore: <why>** or **Defer: <ticket>**.
+Reply **Fix**, **Ignore: <why>** or **Defer: [JIRA-TICKET]**.
 <!-- adversarial-review-consolidated:v1 id=C1 -->
 ```
 
