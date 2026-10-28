@@ -49,7 +49,6 @@ One tag covers several images. Map each to its source directory and check which 
 - `bcgov-aps-portal` sets the Portal **and** feeder (`data-feeder` image) tags. `bcgov-provisioner-api` sets `provisioner-svc`.
 - The default branch is `dev`, which is often far ahead of the release. Check `compare/<release>...dev --jq .ahead_by`.
 - For every new Portal, feeder or provisioner env var, read it at the release tag. Known pattern: the infra adds config for features merged to Portal `dev` but not released. That's inert (LOW) unless the old code misreads it.
-- Feeder `KONG_ADMIN_URL`: v3.0.14 and older split commas only in `forceSync` and pass the whole string to full `sync`. Multi-Kong support without cross-deletes is bcgov/api-services-portal#1575 (APS-5013). Don't send a list to a feeder release that lacks it.
 
 ## sdx-edge chart: `bcgov/aps-devops`, `sdx/chart/sdx-edge`
 
