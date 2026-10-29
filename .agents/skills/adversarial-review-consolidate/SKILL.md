@@ -194,19 +194,40 @@ show "code changed, no decision".
 Unless `post: off`, post. Running this skill on a PR is the request to post. Don't ask
 again.
 
-- **First run:** build the review payload as a JSON file (`commit_id` = current PR head,
-  `event: "COMMENT"`, `body`, and `comments` as `{path, line, side, body}`, with `side`
-  `"RIGHT"`, or `"LEFT"` for a `"side": "base"` finding, plus `start_line`/`start_side`
-  (the same side) for ranges), then
-  `gh api repos/{owner}/{repo}/pulls/<n>/reviews --input <file>`. If GitHub rejects it with
-  422 because a line isn't in the diff, move that finding to the unanchored list and retry
-  once.
+- **Before posting,** check that you have no pending review on the PR: `gh api
+  repos/{owner}/{repo}/pulls/<n>/reviews --paginate` with `state` `PENDING` and your
+  login. GitHub allows one per person, and it may be a review you're writing by hand. If
+  there is one, stop and tell the user. Never edit, submit or delete it.
+- **First run:** post the review in three steps, so one bad anchor can't sink the rest.
+  1. Create it as pending: `gh api repos/{owner}/{repo}/pulls/<n>/reviews --input <file>`
+     with `commit_id` = current PR head and the summary `body`, and no `event`. Keep its
+     `id` and `node_id`.
+  2. Add the threads one at a time:
+
+     ```bash
+     gh api graphql -f review=<node_id> -f path=<path> -F line=<line> -f side=RIGHT \
+       -F body=@<comment file> -f query='mutation($review: ID!, $path: String!,
+       $line: Int!, $side: DiffSide!, $body: String!) {
+       addPullRequestReviewThread(input: {pullRequestReviewId: $review, path: $path,
+         line: $line, side: $side, body: $body}) { thread { id } } }'
+     ```
+
+     Use `side` `LEFT` for a `"side": "base"` finding, and add `startLine`/`startSide`
+     (the same side) for a range. If GitHub says the line or path isn't part of the diff,
+     move that finding to the unanchored list and carry on. Any other error aborts the run.
+  3. Submit it: `gh api repos/{owner}/{repo}/pulls/<n>/reviews/<id>/events -f
+     event=COMMENT -F body=@<file>`, with the summary rebuilt to list any findings that
+     moved to the unanchored list.
+
+  If the run aborts after step 1, delete the pending review you created (`gh api -X DELETE
+  repos/{owner}/{repo}/pulls/<n>/reviews/<id>`), so it doesn't block the next run, and tell
+  the user what failed.
 - **Re-run:** comments can't be added to a review that's already posted, so:
   - update the summary review's body in place (`gh api -X PUT
     repos/{owner}/{repo}/pulls/<n>/reviews/<id> -F body=@<file>`), with the decisions you
     read back in the Decision column;
-  - post the new findings' threads as a second `COMMENT` review, whose body is one line
-    starting `🤖 Pre-review:` that links to the summary review;
+  - post the new findings' threads as a second `COMMENT` review in the same three steps,
+    whose body is one line starting `🤖 Pre-review:` that links to the summary review;
   - for a matched finding whose severity or text materially changed, reply in its
     thread with the change, carrying the marker. Don't edit the original comment.
 - After posting, hide each review comment you merged as outdated, so the PR shows one current
