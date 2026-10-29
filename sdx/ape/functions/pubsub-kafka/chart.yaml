@@ -17,6 +17,9 @@ config:
   - filename: main.ts
     mountPath: /app/main.ts
 
+  - filename: history.ts
+    mountPath: /app/history.ts
+
 command:
   - deno
 
