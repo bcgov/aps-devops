@@ -29,7 +29,7 @@ Take these from the user's message; ask only if the target is ambiguous.
 
 | Input | Default | Notes |
 |---|---|---|
-| target | current branch vs its base | PR URL or number, branch name, or `local` (uncommitted changes) |
+| target | current branch vs its base | PR URL or number, branch name, or `local` (the current branch plus uncommitted changes) |
 | `head` | PR head / `HEAD` | Pin an exact commit to review (e.g. the commit a human reviewed) |
 | `base` | merge-base with the base branch | Pin the base commit (needed when re-reviewing an old head after the base moved on) |
 | `src` | none | Existing checkout of `head` to review in; skips fetching and worktree creation |
@@ -85,6 +85,9 @@ Take these from the user's message; ask only if the target is ambiguous.
 ## Step 1 — Freeze the target
 
 Resolve exact `BASE_SHA` and `HEAD_SHA` before reading anything, and review only that range.
+Both are full commit SHAs (`git rev-parse`), never `HEAD` or a branch name: reviewers run
+in a worktree where those names point somewhere else. Pass only the SHAs to briefs and the
+JSON.
 
 - **PR:** `gh pr view <pr> --json number,url,title,body,baseRefName,headRefName,headRefOid,author,state`.
   Unless `src` was given, `git fetch origin <baseRefName> "pull/<n>/head"`.
@@ -98,13 +101,17 @@ Resolve exact `BASE_SHA` and `HEAD_SHA` before reading anything, and review only
   checkout and real index stay as they are:
 
   ```bash
+  PARENT=$(git rev-parse HEAD)
   IDX=$(mktemp); cp "$(git rev-parse --git-path index)" "$IDX"
   TREE=$(GIT_INDEX_FILE="$IDX" sh -c 'git add -A && git write-tree'); rm -f "$IDX"
-  HEAD_SHA=$(git commit-tree "$TREE" -p HEAD -m "adversarial-review local snapshot")
+  HEAD_SHA=$(git commit-tree "$TREE" -p "$PARENT" -m "adversarial-review local snapshot")
+  BASE_SHA=$(git merge-base "origin/<base branch>" "$HEAD_SHA")
   ```
 
-  `BASE_SHA` = `HEAD`, or the merge-base with the base branch to include the branch's
-  commits. From here the snapshot is an ordinary commit. Set `target.local_snapshot`,
+  The base branch follows the **Branch** rule, so by default this reviews the branch's
+  commits plus the uncommitted changes, as a PR would show them. A pinned `base` replaces
+  the merge-base; resolve it in the checkout, so `base: HEAD` reviews only the uncommitted
+  changes. From here the snapshot is an ordinary commit. Set `target.local_snapshot`,
   since `HEAD_SHA` exists only in this repo.
 
 Before any review work, create a scratch directory for the run with `RUN=$(mktemp -d)`
