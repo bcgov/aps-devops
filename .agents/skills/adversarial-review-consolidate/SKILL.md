@@ -230,22 +230,23 @@ again.
     whose body is one line starting `🤖 Pre-review:` that links to the summary review;
   - for a matched finding whose severity or text materially changed, reply in its
     thread with the change, carrying the marker. Don't edit the original comment.
-- After posting, hide each review comment you merged as outdated, so the PR shows one current
-  summary. Hidden comments stay readable and are still collected on the next run. Use the
-  `node_id` from the comments listing:
+- After posting, hide each report you merged as outdated, so the PR shows one current
+  summary. The reports are PR conversation (issue) comments, from the Collect listing
+  (`/issues/<n>/comments`). Hidden comments stay readable and are still collected on the
+  next run. Use each one's `node_id` from that listing:
 
   ```bash
   gh api graphql -f id=<node_id> -f query='mutation($id: ID!) {
     minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }'
   ```
 
-  Hide only review comments carrying `adversarial-review:v1` that you merged, never
-  invalid or skipped ones, and never consolidated threads or anyone's replies. If GitHub
-  refuses one (no permission), skip it and list it for the user. Never edit or delete
-  review comments.
+  Hide only issue comments carrying `adversarial-review:v1` that you merged, never
+  invalid or skipped ones. Never hide inline review comments (`/pulls/<n>/comments`),
+  consolidated threads or anyone's replies. If GitHub refuses one (no permission), skip it
+  and list it for the user. Never edit or delete them.
 
 Give the user the review URL, the number of threads posted and findings left unanchored,
-and the number of reviews hidden or skipped. With `post: off`, write the payload and a
+and the number of reports hidden or skipped. With `post: off`, write the payload and a
 Markdown preview locally, show the preview and both paths, and post or hide nothing.
 
 ## `misses` mode (after human review)
