@@ -25,7 +25,8 @@ read PR comments or other reviews. Don't look at commits after `{{HEAD_SHA}}` in
 
 For each finding:
 
-1. Open the cited file at `{{HEAD_SHA}}` and read enough of the surrounding code, its
+1. Open the cited file at `{{HEAD_SHA}}` (at `{{BASE_SHA}}` for a `"side": "base"`
+   finding, then check what replaced it at `{{HEAD_SHA}}`) and read enough of the surrounding code, its
    callers, and the config to judge the claim. For a docs finding, also open the source
    the claim describes. Check guards, validation, framework defaults,
    or callers elsewhere that would prevent the failure scenario.

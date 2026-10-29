@@ -52,6 +52,9 @@ does not touch, or speculation you cannot tie to specific code.
 responsible, and give a concrete failure scenario: *this input/state/sequence → this wrong
 outcome*. If you can't write the scenario, it isn't a finding.
 
+Cite lines at `{{HEAD_SHA}}`. When the problem is code the change removed (a deleted check,
+a deleted file), cite its line in `git show {{BASE_SHA}}:<path>` and set `"side": "base"`.
+
 **Severity:**
 - `blocker`: will cause an incident, data loss/corruption, a security hole, or a deploy
   that breaks what is running in normal use, or clearly fails a core requirement.
@@ -83,6 +86,7 @@ Return a JSON array and nothing else:
     "severity": "blocker | major | minor",
     "file": "path/from/repo/root",
     "line": 123,
+    "side": "head | base",
     "evidence": "the code responsible and why it behaves as claimed",
     "failure_scenario": "concrete input/state/sequence -> wrong outcome",
     "suggested_fix": "smallest change that resolves it, or null"

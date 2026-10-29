@@ -33,7 +33,7 @@ docs not read.>
 <details><summary>Blocker and major details (<n>)</summary>
 
 ### F1 · <title>
-**<severity> · <confidence> confidence · <category> · <lens(es)>** — `path/file.ts:123`
+**<severity> · <confidence> confidence · <category> · <lens(es)>** — `path/file.ts:123` (add "(removed)" for a `side: base` finding)
 
 <evidence: 1–3 sentences. If several lenses found it independently, say so.>
 

@@ -410,6 +410,13 @@
             "null"
           ]
         },
+        "side": {
+          "enum": [
+            "head",
+            "base"
+          ],
+          "description": "which commit line and end_line refer to: head_sha (the default) or base_sha, for code the change removed"
+        },
         "evidence": {
           "type": "string"
         },
