@@ -23,12 +23,13 @@ comment in the PR description, placed inside the list item:
              compare on GitHub and the upstream PRs named in its commit subjects.
              The path prefixes only scope the "files changed" count.
 
-Every changed hunk that no item claims is listed at the end under
+Every changed line that no item claims is listed at the end under
 "Not covered by any item", which doubles as a coverage check for the review.
+Whitespace-only lines are left out of it; renames, binaries and mode changes are not.
 
 Needs only python3, git and an authenticated gh. Run it from a clone of the repo:
 
-    python3 review_page.py 377 -o pr377-review.html
+    python3 review_page.py 377 -o pr377-review.html --zip
     python3 review_page.py 377 --fragment -o page.html   # body-only, for hosts that add <html>/<head>
 """
 import argparse
@@ -40,9 +41,14 @@ import re
 import subprocess
 import sys
 import tempfile
+import zipfile
 
 MAX_LINES_PER_FILE = 400
 REVIEW_RE = re.compile(r"^([ \t]*)<!--\s*review\b(.*?)-->[ \t]*$", re.S | re.M)
+# GraphQL rather than `gh pr view --json`: older gh releases (e.g. 2.45) don't know baseRefOid.
+PR_QUERY = """query($owner:String!, $name:String!, $n:Int!) {
+  repository(owner:$owner, name:$name) { pullRequest(number:$n) {
+    number title url state body baseRefName headRefName baseRefOid headRefOid mergeCommit { oid } } } }"""
 
 
 def run(*args, ok_codes=(0,)):
@@ -55,6 +61,23 @@ def run(*args, ok_codes=(0,)):
 def gh_json(*args):
     out, _ = run("gh", *args)
     return json.loads(out)
+
+
+def fetch_pr(repo, number):
+    owner, name = repo.split("/", 1)
+    data = gh_json("api", "graphql", "-f", f"query={PR_QUERY}", "-F", f"owner={owner}", "-F", f"name={name}",
+                   "-F", f"n={number}")
+    pr = data["data"]["repository"]["pullRequest"]
+    if pr is None:
+        sys.exit(f"no PR {number} in {repo}")
+    return pr
+
+
+def origin_repo():
+    """owner/name of the origin remote, from an https or ssh URL."""
+    out, _ = run("git", "remote", "get-url", "origin")
+    m = re.search(r"[:/]([^/:]+/[^/]+?)(?:\.git)?/?$", out.strip())
+    return m.group(1) if m else out.strip()
 
 
 # ---------- diff parsing ----------
@@ -132,6 +155,11 @@ def trim(h, keep, context=2):
     return out
 
 
+def no_text_diff(f):
+    """Binary files, pure renames, mode changes and empty files: changed, but no lines to show."""
+    return f["binary"] or not f["hunks"]
+
+
 def filter_hunks(files, regex, claimed=None):
     """Keep the changes matching regex (all changes when regex is None); record them in claimed."""
     rx = re.compile(regex) if regex else None
@@ -144,9 +172,9 @@ def filter_hunks(files, regex, claimed=None):
                 for r in numbered(h):
                     if r[0][:1] in "+-" and match(r):
                         claimed.add(line_key(f["path"], r))
-            if rx is None and f["binary"]:
-                claimed.add((f["path"], "binary", None))
-        if hunks or (rx is None and f["binary"]):
+            if rx is None and no_text_diff(f):
+                claimed.add((f["path"], "file", None))
+        if hunks or (rx is None and no_text_diff(f)):
             out.append({**f, "hunks": hunks})
     return out
 
@@ -184,6 +212,8 @@ class Ctx:
         self.url = pr["url"]
         self.notes = []
         if pr["state"] == "MERGED":
+            # A fresh clone may not have these commits yet; pull/<n>/head survives branch deletion.
+            run("git", "fetch", "-q", "origin", pr["baseRefName"], f'pull/{pr["number"]}/head')
             self.base, self.result = pr["baseRefOid"], pr["mergeCommit"]["oid"]
             self.range = f'{pr["baseRefOid"]}..{pr["headRefOid"]}'
             self.head_ref = pr["headRefOid"]
@@ -201,11 +231,10 @@ class Ctx:
         out, _ = run("git", "diff", "-M", self.base, self.result, "--", path)
         return filter_hunks(parse_diff(out), rx, claimed)
 
-    def commits(self, path, rx=None):
-        args = ["git", "log", "--no-merges", "--format=%H%x1f%an%x1f%ad%x1f%ct%x1f%s", "--date=short", self.range]
-        if rx:
-            args.append(f"-G{rx}")
-        out, _ = run(*args, "--", path)
+    def commits(self, path):
+        """Every commit in range that touched path. Callers filter by regex in Python (git -G is POSIX ERE)."""
+        out, _ = run("git", "log", "--no-merges", "--format=%H%x1f%an%x1f%ad%x1f%ct%x1f%s", "--date=short",
+                     self.range, "--", path)
         return [dict(zip(("sha", "author", "date", "ts", "subject"), l.split("\x1f"))) for l in out.splitlines() if l]
 
     def commit_diff(self, sha, path, rx=None):
@@ -249,8 +278,10 @@ def render_files(files, link_base=None):
         link = f' <a class="ext" href="{esc(link_base + f["path"])}">view file</a>' if link_base else ""
         out.append(f'<div class="file"><div class="file-head"><span class="path">{name}</span>'
                    f'<span class="delta"><span class="plus">+{add}</span> <span class="minus">−{rem}</span></span>{link}</div>')
-        if f["binary"] or not f["hunks"]:
-            out.append('<div class="note">Binary file or no text diff available.</div></div>')
+        if no_text_diff(f):
+            what = ("Binary file." if f["binary"] else "Renamed, content unchanged." if f["old"]
+                    else "No text diff (mode change or empty file).")
+            out.append(f'<div class="note">{what}</div></div>')
             continue
         rows, shown, total = [], 0, sum(len(h["lines"]) for h in f["hunks"])
         for h in f["hunks"]:
@@ -283,9 +314,12 @@ def render_block(ctx, spec, claimed):
     net_files, commits, per_commit = [], {}, {}
     for path, rx in spec["files"]:
         net_files.extend(ctx.net(path, rx, claimed))
-        for c in ctx.commits(path, rx):
+        for c in ctx.commits(path):
+            diff = ctx.commit_diff(c["sha"], path, rx)
+            if rx and not diff:
+                continue  # touched the file, but none of the lines this item is about
             commits.setdefault(c["sha"], c)
-            per_commit.setdefault(c["sha"], []).extend(ctx.commit_diff(c["sha"], path, rx))
+            per_commit.setdefault(c["sha"], []).extend(diff)
 
     blob = f'https://github.com/{ctx.repo}/blob/{ctx.result if ctx.pr["state"] == "MERGED" else ctx.pr["headRefName"]}/'
     add, rem = stats(net_files)
@@ -332,17 +366,19 @@ def render_uncovered(ctx, claimed):
     out, _ = run("git", "diff", "-M", ctx.base, ctx.result)
     left = []
     for f in parse_diff(out):
-        # Lines with no letters or digits (blank lines, lone braces) don't need an owner.
-        unclaimed = lambda r, p=f["path"]: line_key(p, r) not in claimed and bool(re.search(r"\w", r[0][1:]))
+        # Whitespace-only lines don't need an owner; braces, commas and "---" do.
+        unclaimed = lambda r, p=f["path"]: line_key(p, r) not in claimed and bool(r[0][1:].strip())
         hunks = [s for h in f["hunks"] for s in trim(h, unclaimed)]
-        if hunks or (f["binary"] and (f["path"], "binary", None) not in claimed):
+        if hunks or (no_text_diff(f) and (f["path"], "file", None) not in claimed):
             left.append({**f, "hunks": hunks})
     if not left:
-        return '<p class="muted">Every changed hunk is covered by an item above.</p>'
+        return ('<p class="muted">Every changed line, rename and binary file is covered by an item above '
+                '(whitespace-only lines aren\'t counted).</p>')
     rows = []
     for f in left:
         a, r = stats([f])
-        rows.append(f'<details class="commit"><summary><span class="path">{esc(f["path"])}</span> '
+        name = esc(f["path"]) if not f["old"] else f'{esc(f["old"])} → {esc(f["path"])}'
+        rows.append(f'<details class="commit"><summary><span class="path">{name}</span> '
                     f'<span class="delta"><span class="plus">+{a}</span> <span class="minus">−{r}</span></span></summary>'
                     f'{render_files([f])}</details>')
     return (f'<p class="muted">{len(left)} file{"s" if len(left) != 1 else ""} with changes that no item claims. '
@@ -361,6 +397,11 @@ def cell_text(cell_html):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", cell_html))).strip()
 
 
+def starts_with_key(text, key):
+    """Prefix match, but a key ending in a digit can't match a longer number (APS-501 vs APS-5011)."""
+    return text.startswith(key) and not (key[-1:].isdigit() and text[len(key):len(key) + 1].isdigit())
+
+
 def place_row_blocks(rendered, specs, blocks):
     """Move blocks that name a table row into a full-width row right under it.
 
@@ -377,9 +418,14 @@ def place_row_blocks(rendered, specs, blocks):
             if not cells or "<th" in r.group(0):
                 return r.group(0)
             first = cell_text(cells[0])
+            matches = [(i, k) for i, k in wanted.items() if i not in placed and starts_with_key(first, k)]
+            if not matches:
+                return r.group(0)
+            # Only the longest key owns the row, so "MISC: Gateway" is left for its own row.
+            longest = max(len(k) for _, k in matches)
             extra = ""
-            for i, key in wanted.items():
-                if i not in placed and first.startswith(key):
+            for i, key in matches:
+                if len(key) == longest:
                     placed.add(i)
                     hit = True
                     extra += f'<tr class="code-row"><td colspan="{len(cells)}">{blocks[i]}</td></tr>'
@@ -475,10 +521,16 @@ def main():
     ap.add_argument("--body-file", help="use this Markdown instead of the live PR description (for previews)")
     ap.add_argument("--fragment", action="store_true", help="omit <!doctype>/<html>/<head>/<body>")
     ap.add_argument("-o", "--output", default="-")
+    ap.add_argument("--zip", action="store_true", help="also write <output>.zip holding the page, for PR attachments")
     args = ap.parse_args()
+    if args.zip and args.output == "-":
+        ap.error("--zip needs -o")
 
-    pr = gh_json("pr", "view", args.pr, "--repo", args.repo, "--json",
-                 "number,title,url,state,body,baseRefName,headRefName,baseRefOid,headRefOid,mergeCommit")
+    # The diff comes from the local clone, so it has to be a clone of the PR's repo.
+    if origin_repo().lower() != args.repo.lower():
+        sys.exit(f"origin is {origin_repo()}, not {args.repo}. Run this from a clone of {args.repo}.")
+
+    pr = fetch_pr(args.repo, int(args.pr))
     body = open(args.body_file).read() if args.body_file else pr["body"]
     ctx = Ctx(pr, args.repo)
 
@@ -528,6 +580,11 @@ def main():
         with open(args.output, "w") as fh:
             fh.write(doc)
         print(f"wrote {args.output} ({len(doc) // 1024} KB, {len(specs)} mapped item(s))", file=sys.stderr)
+        if args.zip:
+            zpath = os.path.splitext(args.output)[0] + ".zip"
+            with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+                z.write(args.output, os.path.basename(args.output))
+            print(f"wrote {zpath}", file=sys.stderr)
 
 
 if __name__ == "__main__":

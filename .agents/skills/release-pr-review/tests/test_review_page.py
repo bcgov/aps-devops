@@ -63,9 +63,15 @@ class FilterAndClaims(unittest.TestCase):
     def test_no_regex_claims_everything_including_binaries(self):
         claimed = set()
         files = rp.filter_hunks(rp.parse_diff(VERSIONS_DIFF), None, claimed)
-        self.assertEqual(len(files), 2)  # the pure rename has no hunks and isn't binary
-        self.assertIn(("dockerfiles/fixtures/data.mdb", "binary", None), claimed)
+        self.assertEqual(len(files), 3)  # the pure rename is kept even though it has no hunks
+        self.assertIn(("dockerfiles/fixtures/data.mdb", "file", None), claimed)
+        self.assertIn(("archive/app-old.tf", "file", None), claimed)
         self.assertEqual(sum(1 for k in claimed if k[1] in "+-"), 4)
+
+    def test_regex_mapping_does_not_claim_a_rename(self):
+        claimed = set()
+        rp.filter_hunks(rp.parse_diff(VERSIONS_DIFF), "switchover", claimed)
+        self.assertNotIn(("archive/app-old.tf", "file", None), claimed)
 
     def test_trim_splits_distant_changes(self):
         hunk = rp.parse_diff(VERSIONS_DIFF)[0]["hunks"][0]
@@ -118,6 +124,22 @@ class RowPlacement(unittest.TestCase):
         self.assertNotIn("REVIEWBLOCK1", out)
         self.assertIn("REVIEWBLOCK2", out)  # unmatched block stays where it was
         self.assertIn('class="table-scroll"', out)
+
+    def test_longest_key_wins_and_jira_keys_need_a_boundary(self):
+        table = ("<table><tbody>"
+                 "<tr><td>APS-5011 SDX image</td><td>x</td></tr>"
+                 "<tr><td>APS-501 Other</td><td>x</td></tr>"
+                 "<tr><td>MISC: Gateway DP tuning</td><td>x</td></tr>"
+                 "<tr><td>MISC: Gateway</td><td>x</td></tr>"
+                 "</tbody></table>")
+        specs = [{"title": None, "row": "APS-501"}, {"title": None, "row": "APS-5011"},
+                 {"title": None, "row": "MISC: Gateway"}, {"title": None, "row": "MISC: Gateway DP tuning"}]
+        out, unplaced = rp.place_row_blocks(table, specs, ["<b>501</b>", "<b>5011</b>", "<b>gw</b>", "<b>dp</b>"])
+        self.assertEqual(unplaced, [])
+        self.assertIn("SDX image</td><td>x</td></tr><tr class=\"code-row\"><td colspan=\"2\"><b>5011</b></td></tr><tr>", out)
+        self.assertIn("Other</td><td>x</td></tr><tr class=\"code-row\"><td colspan=\"2\"><b>501</b></td></tr>", out)
+        self.assertIn("DP tuning</td><td>x</td></tr><tr class=\"code-row\"><td colspan=\"2\"><b>dp</b></td></tr><tr>", out)
+        self.assertIn("Gateway</td><td>x</td></tr><tr class=\"code-row\"><td colspan=\"2\"><b>gw</b></td></tr></tbody>", out)
 
     def test_row_key_falls_back_to_jira_key_in_title(self):
         self.assertEqual(rp.row_key({"title": "APS-4938 America/Vancouver", "row": None}), "APS-4938")

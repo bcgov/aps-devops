@@ -21,7 +21,7 @@ The value is in the checking, not the summary. Commit messages like "bump switch
 ### 1. Collect the commits and the net diff
 
 ```bash
-gh pr view <N> --repo bcgov-c/api-serv-infra --json title,body,state,baseRefName,headRefName,baseRefOid,headRefOid,mergeCommit
+gh api graphql -F owner=bcgov-c -F name=api-serv-infra -F n=<N> -f query='query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name){pullRequest(number:$n){title body state baseRefName headRefName baseRefOid headRefOid mergeCommit{oid}}}}'
 git fetch -q origin master dev
 ```
 
@@ -138,13 +138,12 @@ Write the body file in a temp directory, not the repo.
 - the commits that touched it, each expandable to its own diff
 - links to any upstream compare and the upstream PRs in it
 
-At the end, **Not covered by any item** lists every changed line that no block claims. Use it as a coverage check: each leftover is either a change the description should mention (add a LOW row or a Gaps line) or a mapping you missed. In PR 377 it surfaced two undocumented dev-only `sdx-reference-impl` bumps.
+At the end, **Not covered by any item** lists every changed line, rename, binary and mode change that no block claims (whitespace-only lines are ignored). Use it as a coverage check: each leftover is either a change the description should mention (add a LOW row or a Gaps line) or a mapping you missed. In PR 377 it surfaced two undocumented dev-only `sdx-reference-impl` bumps.
 
 Always build the page after the description is saved, and always zip it. In a dry run, build it from the local draft with `--body-file`. GitHub won't accept `.html` attachments, and there's no API for comment attachments, so the person running the skill attaches the zip by hand. Run from the api-serv-infra clone, with `<skill>` being this skill's directory and `<tmp>` a directory outside the repo:
 
 ```bash
-python3 -I <skill>/scripts/review_page.py <N> -o <tmp>/pr<N>-review.html
-(cd <tmp> && rm -f pr<N>-review.zip && zip -q -9 pr<N>-review.zip pr<N>-review.html)
+python3 -I <skill>/scripts/review_page.py <N> -o <tmp>/pr<N>-review.html --zip   # also writes <tmp>/pr<N>-review.zip
 ```
 
 Other modes, when useful:
@@ -154,7 +153,7 @@ python3 -I <skill>/scripts/review_page.py <N> --body-file draft.md -o <tmp>/prev
 python3 -I <skill>/scripts/review_page.py <N> --fragment -o <tmp>/pr<N>-page.html            # body only, for hosts that add <html>/<head> (e.g. Claude Artifacts)
 ```
 
-It needs only python3, git and an authenticated `gh`, so anyone can rerun it after the description changes. If your agent host can publish HTML (e.g. Claude Artifacts), you can also publish the `--fragment` output, reusing the same path or URL on each rebuild so the link stays the same. That's in addition to the zip, not instead of it.
+It needs only python3, git and an authenticated `gh` (no `zip` binary; `--zip` uses Python's `zipfile`), so anyone can rerun it after the description changes. If your agent host can publish HTML (e.g. Claude Artifacts), you can also publish the `--fragment` output, reusing the same path or URL on each rebuild so the link stays the same. That's in addition to the zip, not instead of it.
 
 The TEST/PROD boxes stay in the PR. The page shows their state when it was built and links back to the PR for ticking.
 
