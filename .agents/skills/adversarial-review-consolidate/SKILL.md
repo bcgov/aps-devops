@@ -5,7 +5,8 @@ description: >-
   and models) into one deduplicated PR review with an inline thread per finding, where
   the PR author records fix / ignore / defer decisions as replies. Also has a `misses` mode for after human review: list what human reviewers
   found that the AI reviews missed. Use when a PR author asks to consolidate, merge, or
-  triage adversarial reviews, or asks what pre-review missed.
+  triage adversarial reviews, asks what pre-review missed, or asks how pre-review works
+  or what to do next on a PR.
 ---
 
 # Consolidate adversarial reviews
@@ -14,6 +15,12 @@ Input: a PR (URL or number), optionally plus local review JSON files. Output: on
 consolidated PR review (event `COMMENT`) with a summary and one inline thread per finding,
 posted unless the user says `post: off`. The author records decisions as thread replies.
 You never edit code.
+
+The team's process is in `../adversarial-review/references/team-workflow.md`. If someone
+asks how pre-review works, answer from its steps. If they ask what to do next on a PR,
+read the PR's comments and reviews (the read-only `gh` calls in Collect and "Decisions
+already recorded"), find its row in the workflow's "Telling someone what comes next"
+table, and name that step. Don't post, hide or change anything to answer.
 
 ## Collect
 
@@ -246,7 +253,10 @@ again.
   and list it for the user. Never edit or delete them.
 
 Give the user the review URL, the number of threads posted and findings left unanchored,
-and the number of reports hidden or skipped. With `post: off`, write the payload and a
+and the number of reports hidden or skipped. Then name the author's next step from the
+team workflow's table: on a first run, reply **Fix**, **Ignore** or **Defer** in each
+thread, then run consolidate again; once every finding has a decision, update the PR
+description and request human review. With `post: off`, write the payload and a
 Markdown preview locally, show the preview and both paths, and post or hide nothing.
 
 ## `misses` mode (after human review)
