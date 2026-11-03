@@ -300,8 +300,10 @@ as **one** PR comment. Running this skill on a PR is the request to post. Don't 
 - Don't edit or delete other people's comments. Run once per PR for now: there is no
   update-in-place for a repeat run.
 
-Give the user the comment URL. For a branch or local diff, offer to walk through findings
-with the author instead. Don't fix anything unless they ask.
+Give the user the comment URL and the next step from `references/team-workflow.md`:
+usually, the author runs `adversarial-review-consolidate` once the reviews are in. For a
+branch or local diff, offer to walk through findings with the author instead. Don't fix
+anything unless they ask.
 
 ## Cost discipline
 
@@ -331,14 +333,7 @@ install. Copy or symlink it once from this skill's `assets/agents/`:
 On any agent, start the review in a fresh session with only the MCP servers it needs
 (e.g. Jira).
 
-1. The author links the Jira ticket in the PR title or branch name, and states in the PR
-   description which AI assistant and model (if any) wrote the change.
-2. One or two teammates, ideally on a different model from the author's, each run this
-   skill on the PR in a new session. Each posts one comment.
-3. The author runs `adversarial-review-consolidate <PR>`, which posts one PR review with
-   an inline thread per finding, and replies in each thread with Fix / Ignore / Defer.
-4. After merge, `adversarial-review-consolidate <PR> misses` lists what human reviewers
-   caught that pre-review missed; feed that into `references/lenses.md`.
+The team's process, from draft PR to human review, is in `references/team-workflow.md`.
 
 For CI later, `ci: on` runs headless without posting, e.g.
 `claude -p "Run adversarial-review on PR <n>, ci: on, out: ./review"` or `codex exec "..."`.
