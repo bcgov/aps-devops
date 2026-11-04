@@ -12,8 +12,6 @@ image:
 persistence:
   deno-dir:
     mountPath: /deno-dir
-  work:
-    mountPath: /app/public/fonts
 
 env:
   PORT:

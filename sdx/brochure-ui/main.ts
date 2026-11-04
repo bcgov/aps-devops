@@ -26,6 +26,7 @@ import { OrgSubsystemsPage } from "./pages/OrgSubsystemsPage.tsx";
 import { TrafficPage } from "./pages/TrafficPage.tsx";
 import { TrustPage } from "./pages/TrustPage.tsx";
 import { ConnectionsPage } from "./pages/ConnectionsPage.tsx";
+import { OnboardingInvitePage } from "./pages/OnboardingInvitePage.tsx";
 import { VerificationBadge } from "./components/custom/VerificationBadge.tsx";
 import { loadJwks } from "./lib/jwks.ts";
 import {
@@ -61,7 +62,7 @@ import {
   type PublicBody,
   type PublicBodyType,
 } from "./lib/public-bodies.ts";
-import { downloadAndSetupFonts } from "./lib/fonts.ts";
+import { ensureFonts } from "./lib/fonts.ts";
 import {
   DEFAULT_ENV,
   ENVIRONMENTS,
@@ -69,7 +70,7 @@ import {
   ORG_KEYSETS_URL_BY_ENV,
 } from "./lib/environments.ts";
 
-await downloadAndSetupFonts();
+await ensureFonts();
 
 const SDX_API_BASE =
   Deno.env.get("SDX_API_BASE") ??
@@ -535,6 +536,18 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     clearLocalJwksCache();
     clearPublicBodyCache();
     await loadCatalog();
+  }
+
+  if (path === "/onboarding/invite") {
+    const integrationId =
+      url.searchParams.get("integrationId")?.trim() ?? "";
+    return htmlResponse(
+      React.createElement(OnboardingInvitePage, {
+        integrationId,
+        currentPath: `${path}${url.search}`,
+        user,
+      }),
+    );
   }
 
   if (path === "/") {

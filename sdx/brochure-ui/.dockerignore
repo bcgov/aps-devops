@@ -11,3 +11,4 @@ chart.yaml
 config*.yaml
 .values-*.yaml
 samples
+public/fonts

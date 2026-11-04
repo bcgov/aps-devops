@@ -1,0 +1,39 @@
+name: Reusable edge image and chart publication
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
+      version:
+        type: string
+        default: ''
+      chart-version:
+        type: string
+        default: ''
+      plugins-ref:
+        type: string
+        default: ''
+      publish:
+        type: boolean
+        default: true
+jobs:
+  image:
+    uses: ./.github/workflows/.build.yml
+    with:
+      name: sdx-access-point
+      context: .
+      file: sdx/image/Dockerfile
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      publish: ${{ inputs.publish }}
+      plugins-ref: ${{ inputs.plugins-ref }}
+  chart:
+    needs: image
+    if: inputs.publish
+    uses: ./.github/workflows/.chart.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.chart-version }}
+      edge-image: ${{ needs.image.outputs.image }}
+      image-digest: ${{ needs.image.outputs.digest }}
