@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P2P Emulator</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f6f8;
+        color: #292929;
+        font: 16px/1.5 system-ui, sans-serif;
+      }
+      header {
+        background: #003366;
+        color: white;
+        border-bottom: 4px solid #fcba19;
+        padding: 20px max(24px, calc((100% - 1100px) / 2));
+      }
+      h1 {
+        margin: 0;
+        font-size: 26px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 32px auto;
+        padding: 0 24px;
+      }
+      section {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 21px;
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+      }
+      input, select {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #666;
+        border-radius: 4px;
+        font: inherit;
+        margin-top: 6px;
+      }
+      fieldset {
+        border: 0;
+        padding: 0;
+        margin: 0 0 24px;
+      }
+      legend {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      .scope-choice {
+        display: block;
+        font-weight: 400;
+        margin-top: 8px;
+      }
+      .scope-choice input {
+        display: inline;
+        width: auto;
+        margin-right: 8px;
+      }
+      button {
+        padding: 10px 16px;
+        border: 1px solid #003366;
+        border-radius: 4px;
+        background: #003366;
+        color: white;
+        font: inherit;
+        cursor: pointer;
+        margin: 16px 8px 0 0;
+      }
+      button.secondary {
+        background: white;
+        color: #003366;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      a {
+        color: #145a94;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td, th {
+        text-align: left;
+        padding: 12px 8px;
+        border-bottom: 1px solid #ddd;
+      }
+      td button {
+        margin: 0 8px 4px 0;
+        padding: 6px 10px;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #f1f3f5;
+        padding: 16px;
+        font-size: 13px;
+      }
+      #message {
+        min-height: 24px;
+      }
+      #message.error {
+        color: #a12622;
+      }
+      .table {
+        overflow: auto;
+      }
+      small {
+        color: #555;
+      }
+      @media (max-width: 650px) {
+        .fields {
+          grid-template-columns: 1fr;
+        }
+        section {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>P2P Emulator</h1>
+      <div>SDX development tools</div>
+    </header>
+    <main>
+      <p>
+        Create a signed access token for a service and user context. Save
+        profiles to reuse them later.
+      </p>
+      <p>
+        <a href="/.well-known/openid-configuration">OIDC discovery</a> · <a
+          href="/jwks"
+        >Public signing keys (JWKS)</a>
+      </p>
+      <p id="message" role="status" aria-live="polite"></p>
+      <section>
+        <h2>Profile</h2>
+        <form id="profileForm">
+          <fieldset>
+            <legend>Client</legend>
+            <div class="fields">
+              <label>Initial AZP<input
+                  name="initialAzp"
+                  required
+                  maxlength="256"
+                  placeholder="Original authorized party"
+                ></label>
+              <label>Client Subsystem<input
+                  name="clientSubsystem"
+                  required
+                  maxlength="256"
+                  placeholder="Client subsystem identifier"
+                ></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Service</legend>
+            <p id="catalogStatus" role="status">Loading service catalog…</p>
+            <button type="button" id="retryCatalog" class="secondary" hidden>
+              Retry catalog
+            </button>
+            <div class="fields">
+              <label>Service<select name="service" required disabled>
+                  <option value="">Select a service</option>
+                </select></label>
+              <label>Environment<select name="environment" required>
+                  <option value="">Select a service first</option>
+                </select></label>
+              <label>Privacy zone<select name="privacyZone">
+                  <option value="">Select a service first</option>
+                </select></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Scopes</legend>
+            <p>Select the service scopes to include in this profile’s token.</p>
+            <div id="scopeOptions">
+              <small>Select a service to see available scopes.</small>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>User</legend>
+            <label>Subject identifier<input
+                name="user"
+                required
+                maxlength="256"
+                placeholder="Subject identifier / token subject"
+              ></label>
+          </fieldset>
+          <button type="submit">Generate access token</button>
+          <button type="button" id="save" class="secondary">
+            Save profile
+          </button>
+        </form>
+      </section>
+      <section>
+        <h2>Saved profiles</h2><small>Profiles are stored on the server and
+          survive restarts. Tokens are generated on demand.</small><div
+          class="table"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Initial AZP</th>
+                <th>Client Subsystem</th>
+                <th>Service</th>
+                <th>Environment</th>
+                <th>User</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="profiles"></tbody>
+          </table>
+        </div>
+        <p id="empty" hidden>No saved profiles yet.</p>
+      </section>
+      <section id="result" hidden>
+        <h2>Access token</h2>
+        <button type="button" id="copy" class="secondary">Copy token</button>
+        <pre id="token"></pre>
+        <h2>Request headers</h2>
+        <p>Use these headers when calling the selected service.</p>
+        <pre id="headers"></pre>
+        <h2>Token claims</h2>
+        <pre id="claims"></pre>
+      </section>
+    </main>
+    <script type="module">
+      const form = document.querySelector("form");
+      const message = document.querySelector("#message");
+      let token = "";
+      let catalog = [];
+      function option(value, label = value) {
+        return new Option(label, value);
+      }
+      function backfill(service) {
+        form.elements.environment.replaceChildren(option(service.environment));
+        form.elements.privacyZone.replaceChildren(
+          option(
+            service.privacyZone,
+            service.privacyZone || "No privacy zone configured",
+          ),
+        );
+      }
+      function renderScopes(service, selected = []) {
+        const container = document.querySelector("#scopeOptions");
+        container.replaceChildren();
+        const available = new Map(
+          (service?.scopes || []).map((scope) => [scope.name, scope]),
+        );
+        for (const name of selected) {
+          if (!available.has(name)) {
+            available.set(name, {
+              name,
+              description: "Saved scope (not in current catalog)",
+            });
+          }
+        }
+        if (!available.size) {
+          const hint = document.createElement("small");
+          hint.textContent = service
+            ? "This service has no scopes."
+            : "Select a service to see available scopes.";
+          container.append(hint);
+        }
+        for (const scope of available.values()) {
+          const label = document.createElement("label");
+          label.className = "scope-choice";
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.name = "scopes";
+          checkbox.value = scope.name;
+          checkbox.checked = selected.includes(scope.name);
+          label.append(
+            checkbox,
+            document.createTextNode(
+              scope.name + (scope.description ? " — " + scope.description : ""),
+            ),
+          );
+          container.append(label);
+        }
+      }
+      function loadProfile(profile) {
+        const service = form.elements.service;
+        if (![...service.options].some((o) => o.value === profile.service)) {
+          service.add(
+            option(profile.service, profile.service + " (saved profile)"),
+          );
+        }
+        service.disabled = false;
+        service.value = profile.service;
+        backfill(profile);
+        renderScopes(
+          catalog.find((item) => item.name === profile.service),
+          profile.scopes || [],
+        );
+        form.elements.user.value = profile.user;
+        form.elements.initialAzp.value = profile.initialAzp || "";
+        form.elements.clientSubsystem.value = profile.clientSubsystem || "";
+      }
+      async function loadCatalog() {
+        const status = document.querySelector("#catalogStatus");
+        const retry = document.querySelector("#retryCatalog");
+        status.textContent = "Loading service catalog…";
+        retry.hidden = true;
+        try {
+          catalog = await api("/api/catalog/services");
+          const current = values();
+          const service = form.elements.service;
+          service.replaceChildren(option("", "Select a service"));
+          for (const item of catalog) {
+            service.add(option(item.name, item.title + " — " + item.name));
+          }
+          service.disabled = false;
+          if (current.service) loadProfile(current);
+          status.textContent = catalog.length
+            ? "Environment and privacy zone are filled from the selected service."
+            : "No services found in the catalog.";
+        } catch (error) {
+          status.textContent = error.message;
+          retry.hidden = false;
+        }
+      }
+      form.elements.service.addEventListener("change", () => {
+        const selected = catalog.find((item) =>
+          item.name === form.elements.service.value
+        );
+        backfill(selected || { environment: "", privacyZone: "" });
+        renderScopes(selected);
+      });
+      document.querySelector("#retryCatalog").addEventListener(
+        "click",
+        () => run(loadCatalog),
+      );
+      function report(text, error = false) {
+        message.textContent = text;
+        message.className = error ? "error" : "";
+      }
+      async function api(path, method = "GET", body) {
+        const response = await fetch(path, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : {},
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Request failed");
+        return data;
+      }
+      async function run(action) {
+        const buttons = document.querySelectorAll("button");
+        buttons.forEach((b) => b.disabled = true);
+        try {
+          await action();
+        } catch (error) {
+          report(error.message, true);
+        } finally {
+          document.querySelectorAll("button").forEach((b) =>
+            b.disabled = false
+          );
+        }
+      }
+      function values() {
+        const data = new FormData(form);
+        return { ...Object.fromEntries(data), scopes: data.getAll("scopes") };
+      }
+      async function generate(body) {
+        const result = await api("/token", "POST", body);
+        token = result.access_token;
+        document.querySelector("#token").textContent = token;
+        document.querySelector("#headers").textContent = JSON.stringify(
+          result.headers,
+          null,
+          2,
+        );
+        document.querySelector("#claims").textContent = JSON.stringify(
+          result.claims,
+          null,
+          2,
+        );
+        document.querySelector("#result").hidden = false;
+        report(
+          "Access token generated. Expires in " + result.expires_in +
+            " seconds.",
+        );
+      }
+      async function load() {
+        const profiles = await api("/api/profiles");
+        const tbody = document.querySelector("#profiles");
+        tbody.replaceChildren();
+        document.querySelector("#empty").hidden = profiles.length > 0;
+        for (const profile of profiles) {
+          const row = document.createElement("tr");
+          for (
+            const field of [
+              "initialAzp",
+              "clientSubsystem",
+              "service",
+              "environment",
+              "user",
+            ]
+          ) {
+            const cell = document.createElement("td");
+            cell.textContent = profile[field];
+            row.append(cell);
+          }
+          const actions = document.createElement("td");
+          for (
+            const [label, action] of [
+              ["Load", async () => {
+                loadProfile(profile);
+                report("Profile loaded.");
+              }],
+              ["Generate", () => generate({ profileId: profile.id })],
+              ["Delete", async () => {
+                await api("/api/profiles/" + profile.id, "DELETE");
+                await load();
+                report("Profile deleted.");
+              }],
+            ]
+          ) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "secondary";
+            button.textContent = label;
+            button.addEventListener("click", () => run(action));
+            actions.append(button);
+          }
+          row.append(actions);
+          tbody.append(row);
+        }
+      }
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        run(() => generate(values()));
+      });
+      document.querySelector("#save").addEventListener("click", () => {
+        if (form.reportValidity()) {
+          run(async () => {
+            await api("/api/profiles", "POST", values());
+            await load();
+            report("Profile saved.");
+          });
+        }
+      });
+      document.querySelector("#copy").addEventListener(
+        "click",
+        () =>
+          run(async () => {
+            await navigator.clipboard.writeText(token);
+            report("Token copied.");
+          }),
+      );
+      run(async () => {
+        await load();
+        await loadCatalog();
+      });
+    </script>
+  </body>
+</html>
