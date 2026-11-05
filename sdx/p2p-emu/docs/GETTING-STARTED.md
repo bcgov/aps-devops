@@ -95,7 +95,7 @@ were selected. It does not contain `aud`, `service`, `environment`, `user`, or
 ## 4. Use the generated headers downstream
 
 Set the target API URL. This example uses the token response from step 3 and
-sends its four request headers. The emulator does not forward this request for
+sends its five request headers. The emulator does not forward this request for
 you.
 
 ```bash
@@ -103,12 +103,14 @@ TARGET_API_URL='https://your-api.example/widgets'
 ORIGINAL_AZP=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.headers["X-SDX-Original-AZP"]')
 CLIENT_SUBSYSTEM=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.headers["X-SDX-Client-Subsystem-Id"]')
 CORRELATION_ID=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.headers["Correlation-Id"]')
+EDGE_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.headers["X-Edge-Token"]')
 
 curl --fail-with-body --silent --show-error \
   "$TARGET_API_URL" \
   --header "X-SDX-Original-AZP: $ORIGINAL_AZP" \
   --header "X-SDX-Client-Subsystem-Id: $CLIENT_SUBSYSTEM" \
   --header "Correlation-Id: $CORRELATION_ID" \
+  --header "X-Edge-Token: $EDGE_TOKEN" \
   --header "Authorization: Bearer $SUBJECT_ACCESS_TOKEN"
 ```
 
@@ -128,6 +130,21 @@ curl --fail-with-body --silent --show-error \
 
 Discovery describes the emulator's generated-token issuer, not LoginProxy. JWKS
 exposes only the public signing key; its `kid` matches generated JWT headers.
+
+The independent P2P origin issuer publishes its own discovery and signing keys:
+
+```bash
+curl --fail-with-body --silent --show-error \
+  "$P2P_BASE_URL/p2p-origin/.well-known/openid-configuration" | jq .
+
+curl --fail-with-body --silent --show-error \
+  "$P2P_BASE_URL/p2p-origin/jwks" | jq .
+```
+
+Each token response includes `headers["X-Edge-Token"]`, whose signed payload
+contains only `iss`, `jti`, `iat`, and `exp`. Validate this token against the
+origin JWKS rather than the subject-token JWKS. Its default lifetime is 300
+seconds.
 
 ## Optional: save and reuse profiles
 
@@ -219,5 +236,5 @@ Success returns `{"ok":true}`. A missing profile returns HTTP 404.
 Clear shell variables after finishing:
 
 ```bash
-unset OAUTH_ACCESS_TOKEN SUBJECT_ACCESS_TOKEN TOKEN_RESPONSE PROFILE_RESPONSE
+unset OAUTH_ACCESS_TOKEN SUBJECT_ACCESS_TOKEN EDGE_TOKEN TOKEN_RESPONSE PROFILE_RESPONSE
 ```

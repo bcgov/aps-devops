@@ -69,51 +69,57 @@ export async function createApp(
     issuerUrl.pathname !== "/" || issuerUrl.search || issuerUrl.hash
   ) throw new Error("issuer must be an HTTP(S) origin.");
   await Deno.mkdir(config.dataDir, { recursive: true, mode: 0o700 });
-  const keyPath = `${config.dataDir}/signing-key.json`;
-  let jwk: JsonWebKey;
-  try {
-    jwk = JSON.parse(await Deno.readTextFile(keyPath));
-  } catch (err) {
-    if (!(err instanceof Deno.errors.NotFound)) throw err;
-    const pair = await crypto.subtle.generateKey(
-      {
-        name: "RSASSA-PKCS1-v1_5",
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: "SHA-256",
-      },
-      true,
-      ["sign", "verify"],
+  async function loadSigningKey(filename: string) {
+    const keyPath = `${config.dataDir}/${filename}`;
+    let jwk: JsonWebKey;
+    try {
+      jwk = JSON.parse(await Deno.readTextFile(keyPath));
+    } catch (err) {
+      if (!(err instanceof Deno.errors.NotFound)) throw err;
+      const pair = await crypto.subtle.generateKey(
+        {
+          name: "RSASSA-PKCS1-v1_5",
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: "SHA-256",
+        },
+        true,
+        ["sign", "verify"],
+      );
+      jwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+      await Deno.writeTextFile(keyPath, JSON.stringify(jwk), {
+        mode: 0o600,
+        createNew: true,
+      });
+    }
+    const key = await crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"],
     );
-    jwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
-    await Deno.writeTextFile(keyPath, JSON.stringify(jwk), {
-      mode: 0o600,
-      createNew: true,
-    });
-  }
-  const key = await crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const kid = b64(
-    new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        enc.encode(JSON.stringify({ e: jwk.e, kty: "RSA", n: jwk.n })),
+    const kid = b64(
+      new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          enc.encode(JSON.stringify({ e: jwk.e, kty: "RSA", n: jwk.n })),
+        ),
       ),
-    ),
-  );
-  const publicKey = {
-    kty: "RSA",
-    n: jwk.n,
-    e: jwk.e,
-    kid,
-    alg: "RS256",
-    use: "sig",
-  };
+    );
+    const publicKey = {
+      kty: "RSA",
+      n: jwk.n,
+      e: jwk.e,
+      kid,
+      alg: "RS256",
+      use: "sig",
+    };
+    return { key, kid, publicKey };
+  }
+  const { key, kid, publicKey } = await loadSigningKey("signing-key.json");
+  const origin = await loadSigningKey("origin-signing-key.json");
+  const originIssuer = `${issuer}/p2p-origin`;
   const profilesPath = `${config.dataDir}/profiles.json`;
   let profiles: Profile[] = [];
   try {
@@ -185,8 +191,32 @@ export async function createApp(
           subject_types_supported: ["public"],
         });
       }
+      if (
+        req.method === "GET" &&
+        url.pathname === "/p2p-origin/.well-known/openid-configuration"
+      ) {
+        return json({
+          issuer: originIssuer,
+          jwks_uri: `${originIssuer}/jwks`,
+          id_token_signing_alg_values_supported: ["RS256"],
+          grant_types_supported: [],
+          response_types_supported: [],
+          subject_types_supported: ["public"],
+        });
+      }
+      if (req.method === "GET" && url.pathname === "/p2p-origin/jwks") {
+        return json({ keys: [origin.publicKey] });
+      }
       if (req.method === "GET" && url.pathname === "/api/config") {
-        return json({ tokenUrl: config.tokenUrl || "" });
+        return json({
+          tokenUrl: config.tokenUrl || "",
+          origin: {
+            issuer: originIssuer,
+            discoveryUrl: `${originIssuer}/.well-known/openid-configuration`,
+            jwksUrl: `${originIssuer}/jwks`,
+            kid: origin.kid,
+          },
+        });
       }
       if (req.method === "GET" && url.pathname === "/jwks") {
         return json({ keys: [publicKey] });
@@ -290,11 +320,33 @@ export async function createApp(
           enc.encode(unsigned),
         );
         const token = `${unsigned}.${b64(new Uint8Array(signature))}`;
+        const originClaims = {
+          iss: originIssuer,
+          jti: crypto.randomUUID(),
+          iat: now,
+          exp: now + config.ttl,
+        };
+        const originUnsigned = `${
+          b64(
+            enc.encode(
+              JSON.stringify({ alg: "RS256", typ: "JWT", kid: origin.kid }),
+            ),
+          )
+        }.${b64(enc.encode(JSON.stringify(originClaims)))}`;
+        const originSignature = await crypto.subtle.sign(
+          "RSASSA-PKCS1-v1_5",
+          origin.key,
+          enc.encode(originUnsigned),
+        );
+        const edgeToken = `${originUnsigned}.${
+          b64(new Uint8Array(originSignature))
+        }`;
         const headers: Record<string, string> = {
           "X-SDX-Original-AZP": profile.initialAzp,
           "X-SDX-Client-Subsystem-Id": profile.clientSubsystem,
           "Correlation-Id": crypto.randomUUID(),
           Authorization: `Bearer ${token}`,
+          "X-Edge-Token": edgeToken,
         };
         return json(
           {
@@ -302,6 +354,7 @@ export async function createApp(
             token_type: "Bearer",
             expires_in: config.ttl,
             claims,
+            origin_claims: originClaims,
             headers,
           },
           200,

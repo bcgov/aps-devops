@@ -239,6 +239,21 @@
         </form>
       </section>
       <section>
+        <h2>P2P Origin</h2>
+        <p>
+          Origin tokens use a separate persistent signing key and are returned
+          in <code>X-Edge-Token</code>.
+        </p>
+        <p>
+          <a
+            id="originDiscovery"
+            href="/p2p-origin/.well-known/openid-configuration"
+          >OIDC discovery</a>
+        </p>
+        <p><a id="originJwks" href="/p2p-origin/jwks">JWKS</a></p>
+        <p>Signing key ID: <code id="originKid">Loading…</code></p>
+      </section>
+      <section>
         <h2>Saved profiles</h2><small>Profiles are stored on the server and
           survive restarts. Tokens are generated on demand.</small><div
           class="table"
@@ -266,6 +281,8 @@
         <pre id="headers"></pre>
         <h2>Token claims</h2>
         <pre id="claims"></pre>
+        <h2>P2P origin token claims</h2>
+        <pre id="originClaims"></pre>
       </section>
     </main>
     <script type="module">
@@ -460,6 +477,11 @@
           null,
           2,
         );
+        document.querySelector("#originClaims").textContent = JSON.stringify(
+          result.origin_claims,
+          null,
+          2,
+        );
         document.querySelector("#result").hidden = false;
         report(
           "Access token generated. Expires in " + result.expires_in +
@@ -538,6 +560,21 @@
         clearAuthorization();
       }
       run(async () => {
+        const response = await fetch("/api/config");
+        if (response.ok) {
+          const { origin } = await response.json();
+          for (
+            const [id, url] of [["originDiscovery", origin.discoveryUrl], [
+              "originJwks",
+              origin.jwksUrl,
+            ]]
+          ) {
+            const link = document.querySelector("#" + id);
+            link.href = url;
+            link.textContent = url;
+          }
+          document.querySelector("#originKid").textContent = origin.kid;
+        }
         await load();
       });
     </script>

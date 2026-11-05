@@ -41,12 +41,13 @@ curl http://localhost:8000/token -H 'Content-Type: application/json' \
 ```
 
 Token responses use `Cache-Control: no-store` and `Pragma: no-cache`. The
-`headers` object contains exactly these four headers, in order:
+`headers` object contains these five headers, in order:
 
 - `X-SDX-Original-AZP`: the profile's Initial AZP.
 - `X-SDX-Client-Subsystem-Id`: the profile's Client Subsystem.
 - `Correlation-Id`: a fresh UUID for each generation.
 - `Authorization`: `Bearer <access_token>`.
+- `X-Edge-Token`: an independently signed P2P origin token.
 
 The app displays these for callers; it does not forward service requests. These
 request headers are separate from the HTTP response's JSON/cache headers.
@@ -81,7 +82,7 @@ fields are ignored when saving or generating a token.
 scope names. Selected names become a space-separated `scope` claim in the signed
 JWT; the claim is omitted when none are selected. Older profiles default to no
 scopes. The emulator validates scope syntax but permits supplied scopes
-independently of catalog availability. The four generated request headers remain
+independently of catalog availability. The generated request headers remain
 unchanged.
 
 ## Image builds
@@ -121,3 +122,19 @@ dialog. Direct Deno invocations must allow both variables:
 Write requests with an Origin header must match the configured `issuer` origin.
 Behind HTTPS termination, set `issuer` to the public HTTPS origin; the internal
 HTTP scheme does not affect this check. Forwarded headers do not override it.
+
+## P2P Origin
+
+P2P Origin has its own persistent RSA key pair, stored in
+`data/origin-signing-key.json`. Its issuer is the public app issuer followed by
+`/p2p-origin`. The UI shows its signing key ID and verification endpoints:
+
+- `GET /p2p-origin/.well-known/openid-configuration`
+- `GET /p2p-origin/jwks`
+
+Every `POST /token` also generates an origin token in `headers["X-Edge-Token"]`.
+Its payload contains only `iss`, `jti`, `iat`, and `exp`, using the same
+lifetime as the subject token (300 seconds by default). `origin_claims` in the
+response shows that payload. Its JWT header identifies the independent key with
+`kid`. Only public parameters are exposed through the origin JWKS. The key pair
+is created once and reused; generating tokens does not rotate it.

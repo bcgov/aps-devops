@@ -67,7 +67,7 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     assert(token.headers["X-SDX-Client-Subsystem-Id"] === "MIN.TEST.CLIENT");
     assert(
       Object.keys(token.headers).join(",") ===
-        "X-SDX-Original-AZP,X-SDX-Client-Subsystem-Id,Correlation-Id,Authorization",
+        "X-SDX-Original-AZP,X-SDX-Client-Subsystem-Id,Correlation-Id,Authorization,X-Edge-Token",
     );
     assert(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -94,6 +94,14 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     );
     const jwks = await (await req("/jwks")).json();
     assert(!jwks.keys[0].d && !jwks.keys[0].p);
+    const originDiscovery =
+      await (await req("/p2p-origin/.well-known/openid-configuration")).json();
+    const originKeys = await (await req("/p2p-origin/jwks")).json();
+    assert(originDiscovery.issuer === config.issuer + "/p2p-origin");
+    assert(originDiscovery.jwks_uri === config.issuer + "/p2p-origin/jwks");
+    assert(
+      originKeys.keys[0].kid !== jwks.keys[0].kid && !originKeys.keys[0].d,
+    );
     const [header, payload, signature] = token.access_token.split(".");
     const decode = (v: string) =>
       Uint8Array.from(
@@ -107,6 +115,43 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     assert(
       JSON.parse(new TextDecoder().decode(decode(payload))).scope ===
         "widgets:read widgets:write",
+    );
+    const [edgeHeader, edgePayload, edgeSignature] = token
+      .headers["X-Edge-Token"].split(".");
+    const edgeClaims = JSON.parse(
+      new TextDecoder().decode(decode(edgePayload)),
+    );
+    assert(Object.keys(edgeClaims).sort().join(",") === "exp,iat,iss,jti");
+    assert(
+      edgeClaims.iss === originDiscovery.issuer &&
+        edgeClaims.exp - edgeClaims.iat === 300,
+    );
+    assert(
+      JSON.parse(new TextDecoder().decode(decode(edgeHeader))).kid ===
+        originKeys.keys[0].kid,
+    );
+    const edgeKey = await crypto.subtle.importKey(
+      "jwk",
+      originKeys.keys[0],
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    assert(
+      await crypto.subtle.verify(
+        "RSASSA-PKCS1-v1_5",
+        edgeKey,
+        decode(edgeSignature),
+        new TextEncoder().encode(edgeHeader + "." + edgePayload),
+      ),
+    );
+    assert(
+      !(await crypto.subtle.verify(
+        "RSASSA-PKCS1-v1_5",
+        edgeKey,
+        decode(signature),
+        new TextEncoder().encode(header + "." + payload),
+      )),
     );
     const key = await crypto.subtle.importKey(
       "jwk",
@@ -124,6 +169,10 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
       ),
     );
     app = await createApp(config);
+    assert(
+      (await (await req("/p2p-origin/jwks")).json()).keys[0].kid ===
+        originKeys.keys[0].kid,
+    );
     assert(
       (await (await req("/jwks")).json()).keys[0].kid === jwks.keys[0].kid,
     );
