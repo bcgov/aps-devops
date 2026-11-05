@@ -74,3 +74,25 @@ export function requestApi(path, method, body, accessToken, request = fetch) {
     redirect: "error",
   });
 }
+
+const AUTH_SESSION_KEY = "p2p-emu.authorization";
+export function saveAuthorization(storage, session) {
+  storage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+}
+export function clearSavedAuthorization(storage) {
+  storage.removeItem(AUTH_SESSION_KEY);
+}
+export function restoreAuthorization(storage, now = Date.now()) {
+  try {
+    const session = JSON.parse(storage.getItem(AUTH_SESSION_KEY) || "null");
+    if (
+      session && typeof session.accessToken === "string" &&
+      session.accessToken &&
+      typeof session.clientId === "string" &&
+      Number.isFinite(session.expiresAt) &&
+      (session.expiresAt === 0 || session.expiresAt > now)
+    ) return session;
+  } catch { /* Invalid or unavailable storage is treated as signed out. */ }
+  clearSavedAuthorization(storage);
+  return null;
+}

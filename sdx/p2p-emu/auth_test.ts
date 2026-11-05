@@ -1,4 +1,10 @@
-import { authorizeClient, requestApi } from "./auth.js";
+import {
+  authorizeClient,
+  clearSavedAuthorization,
+  requestApi,
+  restoreAuthorization,
+  saveAuthorization,
+} from "./auth.js";
 function assert(value: unknown): asserts value {
   if (!value) throw new Error("Assertion failed");
 }
@@ -122,4 +128,30 @@ Deno.test("profile and generation API requests all carry the OAuth bearer token"
     blocked = true;
   }
   assert(blocked && calls.length === 5);
+});
+
+Deno.test("authorization survives refresh, expires, and clears with the session", () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+    removeItem: (key: string) => {
+      values.delete(key);
+    },
+  };
+  const session = {
+    accessToken: "oauth-token",
+    clientId: "client",
+    expiresAt: 5000,
+  };
+  saveAuthorization(storage, session);
+  assert(restoreAuthorization(storage, 1000)?.accessToken === "oauth-token");
+  assert(restoreAuthorization(storage, 5000) === null && values.size === 0);
+  saveAuthorization(storage, session);
+  clearSavedAuthorization(storage);
+  assert(restoreAuthorization(storage, 1000) === null);
+  // A new tab session has no entries.
+  assert(values.size === 0);
 });

@@ -269,7 +269,13 @@
       </section>
     </main>
     <script type="module">
-      import { authorizeClient, requestApi } from "/auth.js";
+      import {
+        authorizeClient,
+        clearSavedAuthorization,
+        requestApi,
+        restoreAuthorization,
+        saveAuthorization,
+      } from "/auth.js";
       const form = document.querySelector("#profileForm");
       const message = document.querySelector("#message");
       let token = "";
@@ -296,9 +302,24 @@
       }
       function clearAuthorization() {
         clearTimeout(authTimer);
+        try {
+          clearSavedAuthorization(sessionStorage);
+        } catch {}
         apiToken = "";
         authExpiry = 0;
         renderAuthorization();
+      }
+      function applyAuthorization(session) {
+        apiToken = session.accessToken;
+        authExpiry = session.expiresAt;
+        clearTimeout(authTimer);
+        renderAuthorization(session.clientId);
+        if (authExpiry) {
+          authTimer = setTimeout(() => {
+            clearAuthorization();
+            report("Authorization expired. Authorize again.", true);
+          }, Math.min(authExpiry - Date.now(), 2147483647));
+        }
       }
       document.querySelector("#authorize").addEventListener(
         "click",
@@ -350,17 +371,21 @@
             credentials.clientId,
             credentials.clientSecret,
           );
-          apiToken = result.access_token;
-          authExpiry = result.expires_in
-            ? Date.now() + result.expires_in * 1000
-            : 0;
-          clearTimeout(authTimer);
-          renderAuthorization(credentials.clientId.trim());
-          if (authExpiry) {
-            authTimer = setTimeout(() => {
-              clearAuthorization();
-              report("Authorization expired. Authorize again.", true);
-            }, Math.min(authExpiry - Date.now(), 2147483647));
+          const session = {
+            accessToken: result.access_token,
+            expiresAt: result.expires_in
+              ? Date.now() + result.expires_in * 1000
+              : 0,
+            clientId: credentials.clientId.trim(),
+          };
+          applyAuthorization(session);
+          try {
+            saveAuthorization(sessionStorage, session);
+          } catch {
+            report(
+              "Authorized, but browser storage is unavailable; refreshing will clear authorization.",
+              true,
+            );
           }
           authDialog.close();
           report("Authorized successfully.");
@@ -506,6 +531,12 @@
             report("Token copied.");
           }),
       );
+      try {
+        const session = restoreAuthorization(sessionStorage);
+        if (session) applyAuthorization(session);
+      } catch {
+        clearAuthorization();
+      }
       run(async () => {
         await load();
       });

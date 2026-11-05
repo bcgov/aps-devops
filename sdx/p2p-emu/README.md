@@ -98,9 +98,11 @@ them directly to the configured token endpoint using `client_credentials` and
 form-encoded `client_id`/`client_secret`. The endpoint must use HTTPS, except
 for local development on localhost.
 
-The frontend keeps the returned access token only in memory and attaches
-`Authorization: Bearer ...` to this app's API calls (including profile
-operations and token generation). Reloading or Clear authorization removes it.
+The frontend keeps the returned access token in tab-scoped session storage and
+attaches `Authorization: Bearer ...` to this app's API calls (including profile
+operations and token generation). Refresh restores authorization until expiry.
+Clear authorization removes it; closing the tab ends its storage session.
+Browsers that restore previous sessions may restore session storage as well.
 Credentials are not persisted; the secret field is cleared after each exchange.
 Expired tokens require reauthorization. The OAuth token is separate from the
 emulator's generated subject token. The endpoint must allow this app’s origin
