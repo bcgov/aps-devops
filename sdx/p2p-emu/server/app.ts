@@ -329,6 +329,7 @@ export async function createApp(
         const token = `${unsigned}.${b64(new Uint8Array(signature))}`;
         const originClaims = {
           iss: originIssuer,
+          client_id: profile.clientSubsystem,
           jti: crypto.randomUUID(),
           request_id: crypto.randomUUID(),
           iat: now,

@@ -143,9 +143,9 @@ curl --fail-with-body --silent --show-error \
 ```
 
 Each token response includes `headers["X-Edge-Token"]`, whose signed payload
-contains only `iss`, `jti`, `request_id`, `iat`, and `exp`. Validate this token
-against the origin JWKS rather than the subject-token JWKS. Its default lifetime
-is 300 seconds.
+contains only `iss`, `client_id`, `jti`, `request_id`, `iat`, and `exp`.
+Validate this token against the origin JWKS rather than the subject-token JWKS.
+Its default lifetime is 300 seconds.
 
 ## Optional: save and reuse profiles
 
@@ -245,3 +245,6 @@ than the profile’s `initialAzp`.
 
 Each edge token has a fresh UUID `request_id`, generated independently of both
 its `jti` and the `Correlation-Id` header.
+
+The edge token’s `client_id` is the profile’s Client Subsystem, matching the
+`X-SDX-Client-Subsystem-Id` header.

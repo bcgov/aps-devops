@@ -137,12 +137,15 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
       new TextDecoder().decode(decode(edgePayload)),
     );
     assert(
-      Object.keys(edgeClaims).sort().join(",") === "exp,iat,iss,jti,request_id",
+      Object.keys(edgeClaims).sort().join(",") ===
+        "client_id,exp,iat,iss,jti,request_id",
     );
     assert(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
         .test(edgeClaims.request_id),
     );
+    assert(edgeClaims.client_id === token.headers["X-SDX-Client-Subsystem-Id"]);
+    assert(edgeClaims.client_id === profile.clientSubsystem);
     assert(edgeClaims.request_id !== token.headers["Correlation-Id"]);
     assert(edgeClaims.request_id !== edgeClaims.jti);
     assert(edgeClaims.request_id !== second.origin_claims.request_id);

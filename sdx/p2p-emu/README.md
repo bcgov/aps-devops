@@ -133,17 +133,21 @@ P2P Edge Runtime has its own persistent RSA key pair, stored in
 - `GET /p2p-origin/jwks`
 
 Every `POST /token` also generates an origin token in `headers["X-Edge-Token"]`.
-Its payload contains only `iss`, `jti`, `request_id`, `iat`, and `exp`, using
-the same lifetime as the subject token (300 seconds by default). `origin_claims`
-in the response shows that payload. Its JWT header identifies the independent
-key with `kid`. Only public parameters are exposed through the origin JWKS. The
-key pair is created once and reused; generating tokens does not rotate it.
+Its payload contains only `iss`, `client_id`, `jti`, `request_id`, `iat`, and
+`exp`, using the same lifetime as the subject token (300 seconds by default).
+`origin_claims` in the response shows that payload. Its JWT header identifies
+the independent key with `kid`. Only public parameters are exposed through the
+origin JWKS. The key pair is created once and reused; generating tokens does not
+rotate it.
 
 The main token's `azp` claim comes from `P2P_CLIENT_ID` (for example
 `sdx-edge-gw`). Set this environment variable before generating tokens; missing
 configuration returns HTTP 503. It is independent of the profile's Initial AZP,
 which supplies `X-SDX-Original-AZP`. The origin token still contains only `iss`,
-`jti`, `request_id`, `iat`, and `exp`.
+`client_id`, `jti`, `request_id`, `iat`, and `exp`.
 
 Each edge token has a fresh UUID `request_id`, generated independently of both
 its `jti` and the `Correlation-Id` header.
+
+The edge token’s `client_id` is the profile’s Client Subsystem, matching the
+`X-SDX-Client-Subsystem-Id` header.
