@@ -57,3 +57,20 @@ export async function authorizeClient(
       : null,
   };
 }
+
+// Every app API call uses the OAuth token, never the generated subject token.
+export function requestApi(path, method, body, accessToken, request = fetch) {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("App API requests must use a same-origin path.");
+  }
+  const headers = new Headers();
+  if (body !== undefined) headers.set("Content-Type", "application/json");
+  if (accessToken) headers.set("Authorization", "Bearer " + accessToken);
+  return request(path, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+    redirect: "error",
+  });
+}

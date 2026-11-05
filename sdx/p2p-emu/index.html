@@ -109,6 +109,15 @@
         padding: 16px;
         font-size: 13px;
       }
+      header[data-authorized="true"] #authorize {
+        background: #dff0d8;
+        color: #173d14;
+        border-color: #b4d7a8;
+      }
+      #authStatus {
+        display: inline-block;
+        margin: 0 12px;
+      }
       header button {
         background: white;
         color: #003366;
@@ -259,19 +268,36 @@
       </section>
     </main>
     <script type="module">
-      import { authorizeClient } from "/auth.js";
+      import { authorizeClient, requestApi } from "/auth.js";
       const form = document.querySelector("#profileForm");
       const message = document.querySelector("#message");
       let token = "";
       let apiToken = "";
       let authExpiry = 0;
+      let authTimer;
       const authDialog = document.querySelector("#authDialog");
       const authForm = document.querySelector("#authForm");
+      function renderAuthorization(clientId = "") {
+        const authorized = Boolean(apiToken);
+        document.querySelector("header").dataset.authorized = String(
+          authorized,
+        );
+        document.querySelector("#authorize").textContent = authorized
+          ? "Authorized"
+          : "Authorize";
+        document.querySelector("#authStatus").textContent = authorized
+          ? "Authorized as " + clientId +
+            (authExpiry
+              ? " · Expires " + new Date(authExpiry).toLocaleTimeString()
+              : "")
+          : "Not authorized";
+        document.querySelector("#clearAuth").hidden = !authorized;
+      }
       function clearAuthorization() {
+        clearTimeout(authTimer);
         apiToken = "";
         authExpiry = 0;
-        document.querySelector("#authStatus").textContent = "Not authorized";
-        document.querySelector("#clearAuth").hidden = true;
+        renderAuthorization();
       }
       document.querySelector("#authorize").addEventListener("click", () => {
         document.querySelector("#authError").textContent = "";
@@ -307,9 +333,16 @@
           authExpiry = result.expires_in
             ? Date.now() + result.expires_in * 1000
             : 0;
-          document.querySelector("#authStatus").textContent = "Authorized";
-          document.querySelector("#clearAuth").hidden = false;
+          clearTimeout(authTimer);
+          renderAuthorization(credentials.clientId.trim());
+          if (authExpiry) {
+            authTimer = setTimeout(() => {
+              clearAuthorization();
+              report("Authorization expired. Authorize again.", true);
+            }, Math.min(authExpiry - Date.now(), 2147483647));
+          }
           authDialog.close();
+          report("Authorized successfully.");
           await run(load);
         } catch (error) {
           document.querySelector("#authError").textContent = error.message;
@@ -329,21 +362,11 @@
         message.className = error ? "error" : "";
       }
       async function api(path, method = "GET", body) {
-        const headers = new Headers(
-          body ? { "Content-Type": "application/json" } : {},
-        );
-        {
-          if (authExpiry && Date.now() >= authExpiry) {
-            clearAuthorization();
-            throw new Error("Authorization expired. Authorize again.");
-          }
-          if (apiToken) headers.set("Authorization", "Bearer " + apiToken);
+        if (authExpiry && Date.now() >= authExpiry) {
+          clearAuthorization();
+          throw new Error("Authorization expired. Authorize again.");
         }
-        const response = await fetch(path, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-        });
+        const response = await requestApi(path, method, body, apiToken);
         const data = await response.json();
         if (!response.ok) {
           if (response.status === 401) {

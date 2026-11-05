@@ -164,7 +164,10 @@ export async function createApp(
       }
       if (req.method === "GET" && url.pathname === "/") {
         return new Response(html, {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+          },
         });
       }
       if (
