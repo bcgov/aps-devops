@@ -166,9 +166,10 @@ export function Layout({
             align-items: center;
             justify-content: space-between;
             gap: 1rem 1.5rem;
-            max-width: 80rem;
-            margin: 0 auto;
-            padding: 0.75rem 1.5rem;
+            /* Full-bleed so the bottom border runs edge to edge; the inline
+               padding keeps the content on the same 80rem column as
+               .sdx-main-nav-inner and the page body. */
+            padding: 0.75rem max(1.5rem, calc((100% - 80rem) / 2 + 1.5rem));
             background: #fff;
             border-bottom: 1px solid var(--surface-color-border-default);
             position: sticky;
