@@ -95,3 +95,23 @@ manual runs publish `ghcr.io/bcgov/aps-devops/p2p-emu:sha-<commit>`; pushes also
 refresh the sanitized branch alias (for example `feature-p2p-emu`). Pull
 requests build without publishing. Local profiles, configuration, and signing
 keys are excluded from the Docker build context.
+
+## Frontend authorization
+
+Set `P2P_TOKEN_URL` to the OAuth token endpoint and restart the app. The
+banner's Authorize button accepts Client ID and Client Secret. The server
+exchanges them using `client_credentials` and form-encoded
+`client_id`/`client_secret`. The endpoint must use HTTPS, except for local
+development on localhost.
+
+The frontend keeps the returned access token only in memory and attaches
+`Authorization: Bearer ...` to this app's API calls (including profile
+operations and token generation). Reloading or Clear authorization removes it.
+Credentials are not persisted; the secret field is cleared after each exchange.
+Expired tokens require reauthorization. The OAuth token is separate from the
+emulator's generated subject token. This adds frontend authorization headers; it
+does not add token verification or access enforcement to the emulator backend.
+
+`P2P_TOKEN_URL` is environment-only, like `P2P_CLIENT_ID`. Direct Deno
+invocations must allow both variables:
+`--allow-env=P2P_CLIENT_ID,P2P_TOKEN_URL`.

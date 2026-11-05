@@ -109,6 +109,18 @@
         padding: 16px;
         font-size: 13px;
       }
+      header button {
+        background: white;
+        color: #003366;
+      }
+      dialog {
+        border: 1px solid #666;
+        border-radius: 6px;
+        width: min(480px, 95vw);
+      }
+      dialog::backdrop {
+        background: #0008;
+      }
       #message {
         min-height: 24px;
       }
@@ -135,7 +147,29 @@
     <header>
       <h1>P2P Emulator</h1>
       <div>SDX development tools</div>
+      <button type="button" id="authorize">Authorize</button>
+      <span id="authStatus" role="status">Not authorized</span>
+      <button type="button" id="clearAuth" hidden>Clear authorization</button>
     </header>
+    <dialog id="authDialog" aria-labelledby="authTitle">
+      <h2 id="authTitle">Authorize</h2>
+      <form id="authForm">
+        <label>Client ID<input
+            name="clientId"
+            required
+            autocomplete="off"
+          ></label>
+        <label>Client Secret<input
+            name="clientSecret"
+            type="password"
+            required
+            autocomplete="off"
+          ></label>
+        <p id="authError" role="alert"></p>
+        <button type="submit">Get token</button>
+        <button type="button" id="cancelAuth" class="secondary">Cancel</button>
+      </form>
+    </dialog>
     <main>
       <p>
         Create a signed access token for a subject and optional scopes. Save
@@ -225,9 +259,58 @@
       </section>
     </main>
     <script type="module">
-      const form = document.querySelector("form");
+      const form = document.querySelector("#profileForm");
       const message = document.querySelector("#message");
       let token = "";
+      let apiToken = "";
+      let authExpiry = 0;
+      const authDialog = document.querySelector("#authDialog");
+      const authForm = document.querySelector("#authForm");
+      function clearAuthorization() {
+        apiToken = "";
+        authExpiry = 0;
+        document.querySelector("#authStatus").textContent = "Not authorized";
+        document.querySelector("#clearAuth").hidden = true;
+      }
+      document.querySelector("#authorize").addEventListener("click", () => {
+        document.querySelector("#authError").textContent = "";
+        authDialog.showModal();
+      });
+      document.querySelector("#cancelAuth").addEventListener(
+        "click",
+        () => authDialog.close(),
+      );
+      authDialog.addEventListener("close", () => authForm.reset());
+      document.querySelector("#clearAuth").addEventListener(
+        "click",
+        clearAuthorization,
+      );
+      authForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = authForm.querySelector('[type="submit"]');
+        button.disabled = true;
+        document.querySelector("#authError").textContent = "";
+        try {
+          const result = await api(
+            "/api/authorize",
+            "POST",
+            Object.fromEntries(new FormData(authForm)),
+          );
+          apiToken = result.access_token;
+          authExpiry = result.expires_in
+            ? Date.now() + result.expires_in * 1000
+            : 0;
+          document.querySelector("#authStatus").textContent = "Authorized";
+          document.querySelector("#clearAuth").hidden = false;
+          authDialog.close();
+          await run(load);
+        } catch (error) {
+          document.querySelector("#authError").textContent = error.message;
+        } finally {
+          authForm.elements.clientSecret.value = "";
+          button.disabled = false;
+        }
+      });
       function loadProfile(profile) {
         form.elements.scopes.value = (profile.scopes || []).join("\n");
         form.elements.user.value = profile.user;
@@ -239,13 +322,28 @@
         message.className = error ? "error" : "";
       }
       async function api(path, method = "GET", body) {
+        const headers = new Headers(
+          body ? { "Content-Type": "application/json" } : {},
+        );
+        if (path !== "/api/authorize") {
+          if (authExpiry && Date.now() >= authExpiry) {
+            clearAuthorization();
+            throw new Error("Authorization expired. Authorize again.");
+          }
+          if (apiToken) headers.set("Authorization", "Bearer " + apiToken);
+        }
         const response = await fetch(path, {
           method,
-          headers: body ? { "Content-Type": "application/json" } : {},
+          headers,
           body: body ? JSON.stringify(body) : undefined,
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Request failed");
+        if (!response.ok) {
+          if (response.status === 401 && path !== "/api/authorize") {
+            clearAuthorization();
+          }
+          throw new Error(data.error || "Request failed");
+        }
         return data;
       }
       async function run(action) {

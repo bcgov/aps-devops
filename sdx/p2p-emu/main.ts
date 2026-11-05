@@ -14,6 +14,7 @@ const config: Config = {
   ttl: 3600,
   ...overrides,
   clientId: Deno.env.get("P2P_CLIENT_ID")?.trim() ?? "",
+  tokenUrl: Deno.env.get("P2P_TOKEN_URL")?.trim() ?? "",
 };
 const handler = await createApp(
   config,
