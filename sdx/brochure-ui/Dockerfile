@@ -44,13 +44,13 @@ COPY deno.json deno.lock ./
 
 # Application source. config*.yaml is intentionally NOT copied here — it is
 # environment-specific, untracked in git, and supplied at deploy time
-# (mounted over ./config.yaml by the Helm chart). client/ is copied because
-# the server-rendered components import it.
+# (mounted over ./config.yaml by the Helm chart). client/ and scripts/ are
+# only needed by the assets stage; the server loads the bundled
+# public/js/client.js instead.
 COPY main.ts types.ts verify.ts metrics-queries.yaml ./
 COPY lib ./lib
 COPY pages ./pages
 COPY components ./components
-COPY client ./client
 COPY public ./public
 COPY --from=assets /app/public/js ./public/js
 COPY --from=assets /app/public/fonts ./public/fonts
