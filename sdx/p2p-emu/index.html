@@ -259,6 +259,7 @@
       </section>
     </main>
     <script type="module">
+      import { authorizeClient } from "/auth.js";
       const form = document.querySelector("#profileForm");
       const message = document.querySelector("#message");
       let token = "";
@@ -291,10 +292,16 @@
         button.disabled = true;
         document.querySelector("#authError").textContent = "";
         try {
-          const result = await api(
-            "/api/authorize",
-            "POST",
-            Object.fromEntries(new FormData(authForm)),
+          const configResponse = await fetch("/api/config");
+          if (!configResponse.ok) {
+            throw new Error("Unable to load authorization settings.");
+          }
+          const { tokenUrl } = await configResponse.json();
+          const credentials = Object.fromEntries(new FormData(authForm));
+          const result = await authorizeClient(
+            tokenUrl,
+            credentials.clientId,
+            credentials.clientSecret,
           );
           apiToken = result.access_token;
           authExpiry = result.expires_in
@@ -325,7 +332,7 @@
         const headers = new Headers(
           body ? { "Content-Type": "application/json" } : {},
         );
-        if (path !== "/api/authorize") {
+        {
           if (authExpiry && Date.now() >= authExpiry) {
             clearAuthorization();
             throw new Error("Authorization expired. Authorize again.");
@@ -339,7 +346,7 @@
         });
         const data = await response.json();
         if (!response.ok) {
-          if (response.status === 401 && path !== "/api/authorize") {
+          if (response.status === 401) {
             clearAuthorization();
           }
           throw new Error(data.error || "Request failed");

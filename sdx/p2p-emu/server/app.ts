@@ -181,82 +181,8 @@ export async function createApp(
           subject_types_supported: ["public"],
         });
       }
-      if (req.method === "POST" && url.pathname === "/api/authorize") {
-        if (!config.tokenUrl) {
-          return json({ error: "Set P2P_TOKEN_URL before authorizing." }, 503);
-        }
-        const credentials = await req.json();
-        if (
-          typeof credentials?.clientId !== "string" ||
-          !credentials.clientId.trim() ||
-          typeof credentials?.clientSecret !== "string" ||
-          !credentials.clientSecret || credentials.clientId.length > 4096 ||
-          credentials.clientSecret.length > 16384
-        ) {
-          return json(
-            { error: "Client ID and Client Secret are required." },
-            400,
-          );
-        }
-        const endpoint = new URL(config.tokenUrl);
-        if (
-          endpoint.protocol !== "https:" &&
-          !(endpoint.protocol === "http:" &&
-            ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname))
-        ) {
-          return json({
-            error:
-              "P2P_TOKEN_URL must use HTTPS (HTTP is allowed for localhost).",
-          }, 503);
-        }
-        try {
-          const form = new URLSearchParams({
-            grant_type: "client_credentials",
-            client_id: credentials.clientId.trim(),
-            client_secret: credentials.clientSecret,
-          });
-          const response = await catalogFetch(endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              Accept: "application/json",
-            },
-            body: form,
-            redirect: "error",
-            signal: AbortSignal.timeout(15000),
-          });
-          if (!response.ok) {
-            return json({
-              error:
-                "Authorization failed. Check the client credentials and token endpoint.",
-            }, response.status === 400 || response.status === 401 ? 401 : 502);
-          }
-          const result = await response.json();
-          if (
-            typeof result.access_token !== "string" || !result.access_token ||
-            /[\r\n]/.test(result.access_token) ||
-            (result.token_type &&
-              String(result.token_type).toLowerCase() !== "bearer")
-          ) {
-            return json({
-              error: "Token endpoint did not return a Bearer access token.",
-            }, 502);
-          }
-          return json(
-            {
-              access_token: result.access_token,
-              token_type: "Bearer",
-              expires_in:
-                typeof result.expires_in === "number" && result.expires_in > 0
-                  ? result.expires_in
-                  : null,
-            },
-            200,
-            { Pragma: "no-cache" },
-          );
-        } catch {
-          return json({ error: "Unable to contact the token endpoint." }, 502);
-        }
+      if (req.method === "GET" && url.pathname === "/api/config") {
+        return json({ tokenUrl: config.tokenUrl || "" });
       }
       if (req.method === "GET" && url.pathname === "/jwks") {
         return json({ keys: [publicKey] });

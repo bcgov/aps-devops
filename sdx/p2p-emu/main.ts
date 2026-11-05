@@ -20,7 +20,17 @@ const handler = await createApp(
   config,
   await Deno.readTextFile(new URL("index.html", root)),
 );
+const authJs = await Deno.readTextFile(new URL("auth.js", root));
 Deno.serve({
   port: overrides.port ?? 8000,
   hostname: overrides.hostname ?? "127.0.0.1",
-}, handler);
+}, (request) => {
+  if (
+    request.method === "GET" && new URL(request.url).pathname === "/auth.js"
+  ) {
+    return new Response(authJs, {
+      headers: { "Content-Type": "application/javascript; charset=utf-8" },
+    });
+  }
+  return handler(request);
+});
