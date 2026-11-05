@@ -4,37 +4,38 @@ A standalone Deno micro-app, alongside `sdx-playground-login`, for generating
 RS256 access tokens and managing reusable user profiles.
 
 Run `deno task start` in this directory and open http://localhost:8000. No
-external packages or environment variables are required. Optionally copy
+external packages are required. Set `P2P_CLIENT_ID` before starting, for example
+`P2P_CLIENT_ID=sdx-edge-gw deno task start`. Optionally copy
 `config.local.json.example` to `config.local.json`. Set `issuer` to the
 externally reachable origin used by token validators. Set `hostname` to
 `0.0.0.0` for containers and mount configuration and a persistent writable
 `/app/data` volume.
 
 The UI accepts Initial AZP and Client Subsystem in a Client section, plus
-service, environment, user, and privacy zone, and generates tokens, shows claims
+subject identifier and zero or more scopes, and generates tokens, shows claims
 and request headers, and saves, loads, and deletes profiles. `P2P_CLIENT_ID`
 becomes `aud`; the subject identifier becomes `sub`. Tokens contain `iss`,
-`sub`, `aud`, `iat`, `exp`, and `jti`, plus `scope` when selected. Service,
-environment, user, and privacy zone remain profile fields and are not added as
-custom token claims. Default lifetime is one hour.
+`sub`, `aud`, `iat`, `exp`, and `jti`, plus `scope` when selected. The subject
+identifier and privacy zone are not added as custom token claims. Default
+lifetime is one hour.
 
 ## Endpoints
 
 - `GET /.well-known/openid-configuration`: issuer metadata with `jwks_uri` and
   token endpoint.
 - `GET /jwks`: public RSA key with matching JWT `kid`.
-- `POST /token`: JSON containing `initialAzp`, `clientSubsystem`, `service`,
-  `environment`, `user`, `privacyZone`, or a saved `profileId`. Returns
+- `POST /token`: JSON containing `initialAzp`, `clientSubsystem`, `user`,
+  `privacyZone`, and optional `scopes`, or a saved `profileId`. Returns
   `access_token`, `token_type`, `expires_in`, `claims`, and request `headers`.
 - `GET /api/profiles`: list saved profiles.
-- `POST /api/profiles`: save all six profile fields.
+- `POST /api/profiles`: save the profile fields and scope selections.
 - `DELETE /api/profiles/:id`: delete a profile.
 
 Example:
 
 ```sh
 curl http://localhost:8000/token -H 'Content-Type: application/json' \
-  -d '{"initialAzp":"original-client","clientSubsystem":"MIN.TEST.CLIENT","service":"example-api","environment":"dev","user":"alice","privacyZone":"zone-a"}'
+  -d '{"initialAzp":"original-client","clientSubsystem":"MIN.TEST.CLIENT","user":"alice","scopes":["nrs:widgets:read"]}'
 ```
 
 Token responses use `Cache-Control: no-store` and `Pragma: no-cache`. The
@@ -66,26 +67,13 @@ OAuth client authentication.
 
 Run `deno task test` and `deno check main.ts` for verification.
 
-## Service catalog
-
-The Service section loads the live SDX catalog through
-`GET /api/catalog/services`, which fetches
-https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1/catalog/services on the
-server. Selecting a service uses its `name` as the profile service,
-`environment` as the environment, and `subsystem.privacyZone` as the privacy
-zone. Services without a privacy zone show “No privacy zone configured” and use
-an empty privacy zone. The User section remains independent; both sections save
-together as a single profile. Previously saved profiles retain their saved
-values when loaded, including services no longer in the catalog. Catalog
-failures show a retry control without preventing saved-profile token generation.
-
 ## Scopes
 
-The Scopes section lists the selected service's unique operation scopes, with
-checkboxes and descriptions. Select any subset (none by default). Selections are
-saved in the profile's `scopes` array and restored when loaded. Changing
-services clears the previous selections. Saved scopes absent from the current
-catalog are labeled explicitly and can be unchecked.
+Enter zero or more scope names separated by spaces or new lines. No service or
+environment details are required. Scopes are entered directly; the form does not
+depend on the catalog. Scopes are saved and restored with the profile.
+Previously saved profiles still load; old service/environment/privacy-zone
+fields are ignored when saving or generating a token.
 
 `POST /token` and `POST /api/profiles` accept an optional `scopes` array of
 scope names. Selected names become a space-separated `scope` claim in the signed

@@ -2,10 +2,7 @@ export interface Profile {
   id: string;
   initialAzp: string;
   clientSubsystem: string;
-  service: string;
-  environment: string;
   user: string;
-  privacyZone: string;
   scopes: string[];
 }
 export interface Config {
@@ -30,15 +27,12 @@ function input(value: unknown): Omit<Profile, "id"> {
     const field of [
       "initialAzp",
       "clientSubsystem",
-      "service",
-      "environment",
       "user",
-      "privacyZone",
     ] as const
   ) {
     const v = (value as Record<string, unknown>)[field];
     if (
-      typeof v !== "string" || (!v.trim() && field !== "privacyZone") ||
+      typeof v !== "string" || !v.trim() ||
       v.length > 256 ||
       /[\r\n\x00-\x1f\x7f-\uffff]/.test(v)
     ) {

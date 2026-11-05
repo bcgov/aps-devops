@@ -32,10 +32,7 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     const profile = {
       initialAzp: "original-client",
       clientSubsystem: "MIN.TEST.CLIENT",
-      service: "api",
-      environment: "dev",
       user: "alice",
-      privacyZone: "zone-a",
       scopes: ["widgets:read", "widgets:write", "widgets:read"],
     };
     const saved = await (await req("/api/profiles", "POST", profile)).json();
@@ -53,6 +50,19 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     }
     const persisted = await (await req("/api/profiles")).json();
     assert(persisted[0].scopes.join(" ") === "widgets:read widgets:write");
+    assert(
+      !("service" in persisted[0]) && !("environment" in persisted[0]) &&
+        !("privacyZone" in persisted[0]),
+    );
+    const noScopes =
+      await (await req("/token", "POST", { ...profile, scopes: [] })).json();
+    assert(!("scope" in noScopes.claims));
+    const legacy = await req("/token", "POST", {
+      ...profile,
+      service: "old-service",
+      environment: "dev",
+    });
+    assert(legacy.status === 200);
     for (
       const scopes of ["widgets:read", ["bad scope"], [12], ["bad\nvalue"]]
     ) {
@@ -210,10 +220,7 @@ Deno.test("catalog mapping, missing privacy zones, and upstream failures", async
         body: JSON.stringify({
           initialAzp: "original-client",
           clientSubsystem: "MIN.TEST.CLIENT",
-          service: services[1].name,
-          environment: services[1].environment,
           user: "alice",
-          privacyZone: services[1].privacyZone,
         }),
       }),
     );
