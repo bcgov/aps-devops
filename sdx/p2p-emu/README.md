@@ -3,6 +3,9 @@
 A standalone Deno micro-app, alongside `sdx-playground-login`, for generating
 RS256 access tokens and managing reusable user profiles.
 
+See [Getting started](docs/GETTING-STARTED.md) for curl authorization and API
+examples.
+
 Run `deno task start` in this directory and open http://localhost:8000. No
 external packages are required. Run `deno task start`. Optionally copy
 `config.local.json.example` to `config.local.json`. Set `issuer` to the
