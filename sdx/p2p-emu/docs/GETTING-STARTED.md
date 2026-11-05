@@ -131,7 +131,8 @@ curl --fail-with-body --silent --show-error \
 Discovery describes the emulator's generated-token issuer, not LoginProxy. JWKS
 exposes only the public signing key; its `kid` matches generated JWT headers.
 
-The independent P2P origin issuer publishes its own discovery and signing keys:
+The independent P2P Edge Runtime issuer publishes its own discovery and signing
+keys:
 
 ```bash
 curl --fail-with-body --silent --show-error \

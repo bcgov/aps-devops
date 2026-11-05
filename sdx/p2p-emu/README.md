@@ -47,7 +47,7 @@ Token responses use `Cache-Control: no-store` and `Pragma: no-cache`. The
 - `X-SDX-Client-Subsystem-Id`: the profile's Client Subsystem.
 - `Correlation-Id`: a fresh UUID for each generation.
 - `Authorization`: `Bearer <access_token>`.
-- `X-Edge-Token`: an independently signed P2P origin token.
+- `X-Edge-Token`: an independently signed P2P Edge Runtime token.
 
 The app displays these for callers; it does not forward service requests. These
 request headers are separate from the HTTP response's JSON/cache headers.
@@ -123,9 +123,9 @@ Write requests with an Origin header must match the configured `issuer` origin.
 Behind HTTPS termination, set `issuer` to the public HTTPS origin; the internal
 HTTP scheme does not affect this check. Forwarded headers do not override it.
 
-## P2P Origin
+## P2P Edge Runtime
 
-P2P Origin has its own persistent RSA key pair, stored in
+P2P Edge Runtime has its own persistent RSA key pair, stored in
 `data/origin-signing-key.json`. Its issuer is the public app issuer followed by
 `/p2p-origin`. The UI shows its signing key ID and verification endpoints:
 
