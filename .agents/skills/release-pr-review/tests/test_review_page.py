@@ -1,9 +1,12 @@
-"""Tests for the pure helpers in scripts/review_page.py (no git, gh or network needed).
+"""Tests for scripts/review_page.py. Needs git (for the narrow-clone test), but no gh or network.
 
 Run: python3 -I -m unittest discover -s .agents/skills/release-pr-review/tests
 """
 import importlib.util
+import os
 import pathlib
+import subprocess
+import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "review_page.py"
@@ -144,6 +147,43 @@ class RowPlacement(unittest.TestCase):
     def test_row_key_falls_back_to_jira_key_in_title(self):
         self.assertEqual(rp.row_key({"title": "APS-4938 America/Vancouver", "row": None}), "APS-4938")
         self.assertIsNone(rp.row_key({"title": "Gateway DP tuning", "row": None}))
+
+
+class NarrowCloneOpenPR(unittest.TestCase):
+    """An open PR reviewed from a --single-branch clone, which has no origin/<head> ref."""
+
+    def git(self, *args, cwd):
+        return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+
+    def test_merge_result_without_remote_tracking_refs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, origin, clone = (os.path.join(tmp, d) for d in ("src", "origin.git", "clone"))
+            env = ("-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "init.defaultBranch=master")
+            self.git(*env, "init", "-q", src, cwd=tmp)
+            pathlib.Path(src, "a.tf").write_text("x = 1\n")
+            self.git("add", ".", cwd=src)
+            self.git(*env, "commit", "-qm", "base", cwd=src)
+            self.git("checkout", "-qb", "feature/x", cwd=src)
+            pathlib.Path(src, "a.tf").write_text("x = 2\n")
+            self.git(*env, "commit", "-qam", "change", cwd=src)
+            self.git("clone", "-q", "--bare", src, origin, cwd=tmp)
+            head = self.git("rev-parse", "feature/x", cwd=origin)
+            self.git("update-ref", "refs/pull/7/head", head, cwd=origin)
+            self.git("clone", "-q", "--single-branch", "--branch", "master", origin, clone, cwd=tmp)
+            self.assertNotIn("origin/feature/x", self.git("branch", "-r", cwd=clone))
+
+            pr = {"url": "u", "state": "OPEN", "number": 7, "baseRefName": "master", "headRefName": "feature/x"}
+            cwd = os.getcwd()
+            os.chdir(clone)
+            try:
+                ctx = rp.Ctx(pr, "o/r")
+                files = ctx.net("a.tf")
+                commits = ctx.commits("a.tf")
+            finally:
+                os.chdir(cwd)
+            self.assertEqual(ctx.notes, [])
+            self.assertEqual([l for h in files[0]["hunks"] for l in h["lines"]], ["-x = 1", "+x = 2"])
+            self.assertEqual([c["subject"] for c in commits], ["change"])
 
 
 if __name__ == "__main__":

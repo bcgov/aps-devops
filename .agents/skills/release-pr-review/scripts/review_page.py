@@ -73,6 +73,13 @@ def fetch_pr(repo, number):
     return pr
 
 
+def fetch_sha(ref):
+    """Fetch one ref from origin and return its commit, without needing a remote-tracking ref for it."""
+    run("git", "fetch", "-q", "--no-tags", "origin", ref)
+    out, _ = run("git", "rev-parse", "--verify", "FETCH_HEAD^{commit}")
+    return out.strip()
+
+
 def origin_repo():
     """owner/name of the origin remote, from an https or ssh URL."""
     out, _ = run("git", "remote", "get-url", "origin")
@@ -216,14 +223,19 @@ class Ctx:
             run("git", "fetch", "-q", "origin", pr["baseRefName"], f'pull/{pr["number"]}/head')
             self.base, self.result = pr["baseRefOid"], pr["mergeCommit"]["oid"]
             self.range = f'{pr["baseRefOid"]}..{pr["headRefOid"]}'
-            self.head_ref = pr["headRefOid"]
         else:
-            b, h = f'origin/{pr["baseRefName"]}', f'origin/{pr["headRefName"]}'
-            run("git", "fetch", "-q", "origin", pr["baseRefName"], pr["headRefName"])
-            out, code = run("git", "merge-tree", "--write-tree", b, h, ok_codes=(0, 1))
-            self.base, self.result = b, out.splitlines()[0]
-            self.range, self.head_ref = f"{b}..{h}", h
-            if code == 1:
+            # Resolve each tip from FETCH_HEAD rather than origin/<branch>: a clone with a narrow
+            # remote.origin.fetch (e.g. --single-branch) never gets those remote-tracking refs.
+            b = fetch_sha(f'refs/heads/{pr["baseRefName"]}')
+            h = fetch_sha(f'refs/pull/{pr["number"]}/head')
+            p = subprocess.run(["git", "merge-tree", "--write-tree", b, h], capture_output=True, text=True)
+            tree = (p.stdout.splitlines() or [""])[0]
+            # Exit 1 means conflicts only when a tree was written; anything else is a real failure.
+            if p.returncode not in (0, 1) or not re.fullmatch(r"[0-9a-f]{40,64}", tree):
+                sys.exit(f"git merge-tree failed ({p.returncode}) for {b[:12]} and {h[:12]}\n{p.stderr.strip()}")
+            self.base, self.result = b, tree
+            self.range = f"{b}..{h}"
+            if p.returncode == 1:
                 self.notes.append("The branches have merge conflicts, so the net change includes "
                                   "conflict markers where they disagree. Resolve them for a clean view.")
 
