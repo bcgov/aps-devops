@@ -1,156 +1,105 @@
 # P2P Emulator
 
-A standalone Deno micro-app, alongside `sdx-playground-login`, for generating
-RS256 access tokens and managing reusable user profiles.
+A Deno development app for generating signed subject and P2P Edge Runtime
+tokens. The UI manages reusable profiles containing a subject identifier,
+Initial AZP, Client Subsystem, and optional scopes. Each generation returns both
+tokens and request headers for a downstream API; the app does not forward
+requests.
 
-See [Getting started](docs/GETTING-STARTED.md) for curl authorization and API
-examples.
+See [Getting started](docs/GETTING-STARTED.md) for the default curl journey,
+authorization, API payloads, token claims, discovery/JWKS URLs, and optional
+profile management. No saved profile is required to generate tokens.
 
-Run `deno task start` in this directory and open http://localhost:8000. No
-external packages are required. Run `deno task start`. Optionally copy
-`config.local.json.example` to `config.local.json`. Set `issuer` to the
-externally reachable origin used by token validators. Set `hostname` to
-`0.0.0.0` for containers and mount configuration and a persistent writable
-`/app/data` volume.
+## Run locally
 
-The UI accepts Initial AZP and Client Subsystem in a Client section, plus
-subject identifier and zero or more scopes, and generates tokens, shows claims
-and request headers, and saves, loads, and deletes profiles. The subject
-identifier becomes `sub`. Tokens contain `iss`, `sub`, `iat`, `exp`, and `jti`,
-plus `scope` when selected. The subject identifier and privacy zone are not
-added as custom token claims. Default lifetime is 300 seconds (five minutes). No
-`aud` claim is emitted.
-
-## Endpoints
-
-- `GET /.well-known/openid-configuration`: issuer metadata with `jwks_uri` and
-  token endpoint.
-- `GET /jwks`: public RSA key with matching JWT `kid`.
-- `POST /token`: JSON containing `initialAzp`, `clientSubsystem`, `user`,
-  `privacyZone`, and optional `scopes`, or a saved `profileId`. Returns
-  `access_token`, `token_type`, `expires_in`, `claims`, and request `headers`.
-- `GET /api/profiles`: list saved profiles.
-- `POST /api/profiles`: save the profile fields and scope selections.
-- `DELETE /api/profiles/:id`: delete a profile.
-
-Example:
+Install Deno 2, then run from this directory:
 
 ```sh
-curl http://localhost:8000/token -H 'Content-Type: application/json' \
-  -d '{"initialAzp":"original-client","clientSubsystem":"MIN.TEST.CLIENT","user":"alice","scopes":["nrs:widgets:read"]}'
+P2P_CLIENT_ID=sdx-edge-gw \
+P2P_TOKEN_URL=https://dev.loginproxy.gov.bc.ca/auth/realms/apigw/protocol/openid-connect/token \
+deno task start
 ```
 
-Token responses use `Cache-Control: no-store` and `Pragma: no-cache`. The
-`headers` object contains these five headers, in order:
+Open <http://localhost:8000/>. Use `deno task dev` for automatic server restarts
+while editing. Runtime code has no external package dependencies.
 
-- `X-SDX-Original-AZP`: the profile's Initial AZP.
-- `X-SDX-Client-Subsystem-Id`: the profile's Client Subsystem.
-- `Correlation-Id`: a fresh UUID for each generation.
-- `Authorization`: `Bearer <access_token>`.
-- `X-Edge-Token`: an independently signed P2P Edge Runtime token.
+## Configuration
 
-The app displays these for callers; it does not forward service requests. These
-request headers are separate from the HTTP response's JSON/cache headers.
-Existing profiles without client fields can be loaded; fill in the Client
-section and save a new profile before generating a token. Client values are
-persisted with the profile and are used as headers, without adding new token
-claims.
+Copy `config.local.json.example` to `config.local.json` to override server and
+signing defaults. The local configuration is ignored by Git and excluded from
+the image build context.
 
-The private signing key is generated once and stored as `data/signing-key.json`
-with owner-only permissions. JWKS contains only public parameters. Profiles are
-persisted atomically to `data/profiles.json`. Preserve the data directory across
-restarts to preserve signatures and profiles. Run one app instance per data
-directory.
+| Setting         | Source      | Default / purpose                                                                       |
+| --------------- | ----------- | --------------------------------------------------------------------------------------- |
+| `P2P_CLIENT_ID` | Environment | Required for token generation; becomes the main token's `azp`.                          |
+| `P2P_TOKEN_URL` | Environment | Required for the Authorize dialog; OAuth token endpoint called directly by the browser. |
+| `issuer`        | Local JSON  | `http://localhost:8000`; public HTTP(S) origin, with no path.                           |
+| `hostname`      | Local JSON  | `127.0.0.1`; use `0.0.0.0` in a container.                                              |
+| `port`          | Local JSON  | `8000`.                                                                                 |
+| `ttl`           | Local JSON  | `300` seconds; applies to both generated tokens. Valid range: 1–86400.                  |
+| `dataDir`       | Local JSON  | The app's `data` directory; stores profiles and private keys.                           |
 
-This is a development token issuer with no authentication; anyone with access
-can mint identities and manage profiles. It binds to loopback by default.
-Discovery and JWKS support JWT verification; this is not an interactive OIDC
-authorization server and does not implement login, authorization-code flows, or
-OAuth client authentication.
+The two environment settings override any corresponding JSON `clientId` or
+`tokenUrl` values. Restart after configuration changes. Missing `P2P_CLIENT_ID`
+causes token generation to return HTTP 503. The supplied Deno tasks grant access
+to both environment variables.
 
-Run `deno task test` and `deno check main.ts` for verification.
+Set `issuer` to the externally reachable origin when deploying behind a proxy.
+POST and DELETE requests with an `Origin` header must match this origin, even
+when TLS terminates before reaching the app. Forwarded headers do not override
+this check.
 
-## Scopes
+## Authorization behavior
 
-Enter zero or more scope names separated by spaces or new lines. No service or
-environment details are required. Scopes are entered directly; the form does not
-depend on the catalog. Scopes are saved and restored with the profile.
-Previously saved profiles still load; old service/environment/privacy-zone
-fields are ignored when saving or generating a token.
+Authorize performs the client-credentials exchange in the browser. The token
+endpoint must permit the app's origin through CORS and use HTTPS; HTTP is
+allowed for localhost development. Credentials are not sent to the emulator
+server or persisted, and the secret field is cleared after an exchange.
 
-`POST /token` and `POST /api/profiles` accept an optional `scopes` array of
-scope names. Selected names become a space-separated `scope` claim in the signed
-JWT; the claim is omitted when none are selected. Older profiles default to no
-scopes. The emulator validates scope syntax but permits supplied scopes
-independently of catalog availability. The generated request headers remain
-unchanged.
+The OAuth access token is stored in tab-scoped session storage and attached to
+profile and token API requests. Refresh restores it until expiry; Clear
+authorization removes it. Normal tab closure ends the storage session, though
+browser session-restore features may restore it. A token response without an
+expiry has no client-side expiry timer. The OAuth token is separate from the
+subject and Edge Runtime tokens generated by the emulator.
+
+The backend does not validate OAuth tokens or enforce access permissions. Deploy
+behind an access-controlled gateway: anyone who can reach the standalone API can
+generate identities and manage its shared profiles. Discovery supports JWT
+verification; the emulator does not implement interactive OIDC login or an
+authorization-code flow.
+
+## Storage and containers
+
+The app creates and reuses two independent RSA signing key pairs. Their private
+JWKs are written with owner-only permissions; JWKS endpoints expose only public
+parameters.
+
+- `data/signing-key.json`: subject-token signing key.
+- `data/origin-signing-key.json`: Edge Runtime signing key.
+- `data/profiles.json`: profiles, saved through atomic file replacement.
+
+Preserve the data directory across restarts. Run one instance per data
+directory; the file store is not designed for concurrent writers. Mount a
+writable volume at `/app/data` and local JSON configuration at
+`/app/config.local.json` when running the image. Configure the container
+hostname and public issuer as above, and provide both environment variables at
+runtime. Generating tokens does not rotate keys.
 
 ## Image builds
 
-`.github/workflows/p2p-emu.yaml` checks and tests the app, then uses the shared
-image build workflow for Linux amd64 and arm64. Relevant feature/dev pushes and
-manual runs publish `ghcr.io/bcgov/aps-devops/p2p-emu:sha-<commit>`; pushes also
-refresh the sanitized branch alias (for example `feature-p2p-emu`). Pull
-requests build without publishing. Local profiles, configuration, and signing
-keys are excluded from the Docker build context.
+[The GitHub workflow](../../.github/workflows/p2p-emu.yaml) checks and tests the
+app, then uses the repository's shared build workflow for Linux amd64 and arm64.
+Relevant feature/dev pushes and manual runs publish
+`ghcr.io/bcgov/aps-devops/p2p-emu:sha-<commit>`. Pushes also update the
+sanitized branch alias, such as `feature-p2p-emu`. Pull requests build without
+publishing. Local configuration, profiles, and signing keys are excluded from
+the build context.
 
-## Frontend authorization
+## Development checks
 
-Set `P2P_TOKEN_URL` to the OAuth token endpoint and restart the app. The
-banner's Authorize button accepts Client ID and Client Secret. The browser posts
-them directly to the configured token endpoint using `client_credentials` and
-form-encoded `client_id`/`client_secret`. The endpoint must use HTTPS, except
-for local development on localhost.
-
-The frontend keeps the returned access token in tab-scoped session storage and
-attaches `Authorization: Bearer ...` to this app's API calls (including profile
-operations and token generation). Refresh restores authorization until expiry.
-Clear authorization removes it; closing the tab ends its storage session.
-Browsers that restore previous sessions may restore session storage as well.
-Credentials are not persisted; the secret field is cleared after each exchange.
-Expired tokens require reauthorization. The OAuth token is separate from the
-emulator's generated subject token. The endpoint must allow this app’s origin
-through CORS. The app server exposes only the public token URL via
-`GET /api/config` and never receives the client credentials. This adds frontend
-authorization headers; it does not add token verification or access enforcement
-to the emulator backend.
-
-`P2P_TOKEN_URL` is environment-only and displayed read-only in the Authorize
-dialog. Direct Deno invocations must allow both variables:
-`--allow-env=P2P_CLIENT_ID,P2P_TOKEN_URL`.
-
-Write requests with an Origin header must match the configured `issuer` origin.
-Behind HTTPS termination, set `issuer` to the public HTTPS origin; the internal
-HTTP scheme does not affect this check. Forwarded headers do not override it.
-
-## P2P Edge Runtime
-
-P2P Edge Runtime has its own persistent RSA key pair, stored in
-`data/origin-signing-key.json`. Its issuer is the public app issuer followed by
-`/p2p-origin`. The UI shows its signing key ID and verification endpoints:
-
-- `GET /p2p-origin/.well-known/openid-configuration`
-- `GET /p2p-origin/jwks`
-
-Every `POST /token` also generates an origin token in `headers["X-Edge-Token"]`.
-Its payload contains only `iss`, `client_id`, `jti`, `request_id`, `iat`, and
-`exp`, using the same lifetime as the subject token (300 seconds by default).
-`origin_claims` in the response shows that payload. Its JWT header identifies
-the independent key with `kid`. Only public parameters are exposed through the
-origin JWKS. The key pair is created once and reused; generating tokens does not
-rotate it.
-
-The main token's `azp` claim comes from `P2P_CLIENT_ID` (for example
-`sdx-edge-gw`). Set this environment variable before generating tokens; missing
-configuration returns HTTP 503. It is independent of the profile's Initial AZP,
-which supplies `X-SDX-Original-AZP`. The origin token still contains only
-`jwks_uri`, `client_id`, `jti`, `request_id`, `iat`, and `exp`.
-
-Each edge token has a fresh UUID `request_id`, generated independently of both
-its `jti` and the `Correlation-Id` header.
-
-The edge token’s `client_id` is the profile’s Client Subsystem, matching the
-`X-SDX-Client-Subsystem-Id` header.
-
-The edge token uses `jwks_uri` pointing to `/p2p-origin/jwks` instead of an
-`iss` claim. The main token and discovery metadata retain their issuer.
+```sh
+deno fmt --check
+deno check main.ts
+deno task test
+```
