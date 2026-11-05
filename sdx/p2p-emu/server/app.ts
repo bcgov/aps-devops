@@ -296,6 +296,12 @@ export async function createApp(
         );
       }
       if (req.method === "POST" && url.pathname === "/token") {
+        if (!config.clientId?.trim()) {
+          return json(
+            { error: "Set P2P_CLIENT_ID before generating tokens." },
+            503,
+          );
+        }
         const body = await req.json();
         const selectedProfile = body.profileId
           ? profiles.find((p) => p.id === body.profileId)
@@ -306,6 +312,7 @@ export async function createApp(
         const claims = {
           iss: issuer,
           sub: profile.user,
+          azp: config.clientId.trim(),
           iat: now,
           exp: now + config.ttl,
           jti: crypto.randomUUID(),
@@ -323,6 +330,7 @@ export async function createApp(
         const originClaims = {
           iss: originIssuer,
           jti: crypto.randomUUID(),
+          request_id: crypto.randomUUID(),
           iat: now,
           exp: now + config.ttl,
         };

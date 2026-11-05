@@ -88,9 +88,9 @@ SUBJECT_ACCESS_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.access_token')
 
 The response includes `access_token`, `token_type: "Bearer"`, `expires_in: 300`
 with the default configuration, `claims`, and `headers`. The signed JWT contains
-`iss`, `sub`, `iat`, `exp`, `jti`, and a space-separated `scope` when scopes
-were selected. It does not contain `aud`, `service`, `environment`, `user`, or
-`privacy_zone` claims. With no scopes, the `scope` claim is omitted.
+`iss`, `sub`, `azp`, `iat`, `exp`, `jti`, and a space-separated `scope` when
+scopes were selected. It does not contain `aud`, `service`, `environment`,
+`user`, or `privacy_zone` claims. With no scopes, the `scope` claim is omitted.
 
 ## 4. Use the generated headers downstream
 
@@ -142,9 +142,9 @@ curl --fail-with-body --silent --show-error \
 ```
 
 Each token response includes `headers["X-Edge-Token"]`, whose signed payload
-contains only `iss`, `jti`, `iat`, and `exp`. Validate this token against the
-origin JWKS rather than the subject-token JWKS. Its default lifetime is 300
-seconds.
+contains only `iss`, `jti`, `request_id`, `iat`, and `exp`. Validate this token
+against the origin JWKS rather than the subject-token JWKS. Its default lifetime
+is 300 seconds.
 
 ## Optional: save and reuse profiles
 
@@ -238,3 +238,9 @@ Clear shell variables after finishing:
 ```bash
 unset OAUTH_ACCESS_TOKEN SUBJECT_ACCESS_TOKEN EDGE_TOKEN TOKEN_RESPONSE PROFILE_RESPONSE
 ```
+
+The main JWT’s `azp` is the app’s `P2P_CLIENT_ID`, such as `sdx-edge-gw`, rather
+than the profile’s `initialAzp`.
+
+Each edge token has a fresh UUID `request_id`, generated independently of both
+its `jti` and the `Correlation-Id` header.

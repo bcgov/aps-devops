@@ -11,6 +11,16 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
       dataDir,
       ttl: 300,
     };
+    const missingClient = await createApp({ ...config, clientId: "" });
+    assert(
+      (await missingClient(
+        new Request(config.issuer + "/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        }),
+      )).status === 503,
+    );
     let app = await createApp(config);
     const req = (path: string, method = "GET", body?: unknown) =>
       app(
@@ -37,6 +47,7 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     const token = await response.json();
     assert(token.claims.scope === "widgets:read widgets:write");
     assert(token.expires_in === 300);
+    assert(token.claims.azp === config.clientId);
     for (const field of ["service", "environment", "user", "privacy_zone"]) {
       assert(!(field in token.claims));
     }
@@ -118,10 +129,23 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     );
     const [edgeHeader, edgePayload, edgeSignature] = token
       .headers["X-Edge-Token"].split(".");
+    assert(
+      JSON.parse(new TextDecoder().decode(decode(payload))).azp ===
+        config.clientId,
+    );
     const edgeClaims = JSON.parse(
       new TextDecoder().decode(decode(edgePayload)),
     );
-    assert(Object.keys(edgeClaims).sort().join(",") === "exp,iat,iss,jti");
+    assert(
+      Object.keys(edgeClaims).sort().join(",") === "exp,iat,iss,jti,request_id",
+    );
+    assert(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+        .test(edgeClaims.request_id),
+    );
+    assert(edgeClaims.request_id !== token.headers["Correlation-Id"]);
+    assert(edgeClaims.request_id !== edgeClaims.jti);
+    assert(edgeClaims.request_id !== second.origin_claims.request_id);
     assert(
       edgeClaims.iss === originDiscovery.issuer &&
         edgeClaims.exp - edgeClaims.iat === 300,
