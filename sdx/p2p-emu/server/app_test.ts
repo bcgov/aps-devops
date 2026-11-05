@@ -11,15 +11,6 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
       dataDir,
       ttl: 300,
     };
-    const unconfigured = await createApp({ ...config, clientId: "" });
-    const unavailable = await unconfigured(
-      new Request(config.issuer + "/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      }),
-    );
-    assert(unavailable.status === 503);
     let app = await createApp(config);
     const req = (path: string, method = "GET", body?: unknown) =>
       app(
@@ -45,6 +36,7 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     assert(response.headers.get("cache-control") === "no-store");
     const token = await response.json();
     assert(token.claims.scope === "widgets:read widgets:write");
+    assert(token.expires_in === 300);
     for (const field of ["service", "environment", "user", "privacy_zone"]) {
       assert(!(field in token.claims));
     }
@@ -97,7 +89,7 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
       })).status === 400,
     );
     assert(
-      token.claims.aud === "p2p-test-client" && token.claims.sub === "alice" &&
+      !("aud" in token.claims) && token.claims.sub === "alice" &&
         token.claims.exp - token.claims.iat === 300,
     );
     const jwks = await (await req("/jwks")).json();

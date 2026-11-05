@@ -4,8 +4,7 @@ A standalone Deno micro-app, alongside `sdx-playground-login`, for generating
 RS256 access tokens and managing reusable user profiles.
 
 Run `deno task start` in this directory and open http://localhost:8000. No
-external packages are required. Set `P2P_CLIENT_ID` before starting, for example
-`P2P_CLIENT_ID=sdx-edge-gw deno task start`. Optionally copy
+external packages are required. Run `deno task start`. Optionally copy
 `config.local.json.example` to `config.local.json`. Set `issuer` to the
 externally reachable origin used by token validators. Set `hostname` to
 `0.0.0.0` for containers and mount configuration and a persistent writable
@@ -13,11 +12,11 @@ externally reachable origin used by token validators. Set `hostname` to
 
 The UI accepts Initial AZP and Client Subsystem in a Client section, plus
 subject identifier and zero or more scopes, and generates tokens, shows claims
-and request headers, and saves, loads, and deletes profiles. `P2P_CLIENT_ID`
-becomes `aud`; the subject identifier becomes `sub`. Tokens contain `iss`,
-`sub`, `aud`, `iat`, `exp`, and `jti`, plus `scope` when selected. The subject
-identifier and privacy zone are not added as custom token claims. Default
-lifetime is one hour.
+and request headers, and saves, loads, and deletes profiles. The subject
+identifier becomes `sub`. Tokens contain `iss`, `sub`, `iat`, `exp`, and `jti`,
+plus `scope` when selected. The subject identifier and privacy zone are not
+added as custom token claims. Default lifetime is 300 seconds (five minutes). No
+`aud` claim is emitted.
 
 ## Endpoints
 
@@ -82,11 +81,6 @@ scopes. The emulator validates scope syntax but permits supplied scopes
 independently of catalog availability. The four generated request headers remain
 unchanged.
 
-`P2P_CLIENT_ID` is read from the process environment at startup and cannot be
-overridden by local JSON configuration. Restart the app after changing it. Deno
-tasks grant access only to this environment variable. For containers, supply it
-with `-e P2P_CLIENT_ID=your-client-id`.
-
 ## Image builds
 
 `.github/workflows/p2p-emu.yaml` checks and tests the app, then uses the shared
@@ -115,8 +109,8 @@ through CORS. The app server exposes only the public token URL via
 authorization headers; it does not add token verification or access enforcement
 to the emulator backend.
 
-`P2P_TOKEN_URL` is environment-only, like `P2P_CLIENT_ID`. Direct Deno
-invocations must allow both variables:
+`P2P_TOKEN_URL` is environment-only and displayed read-only in the Authorize
+dialog. Direct Deno invocations must allow both variables:
 `--allow-env=P2P_CLIENT_ID,P2P_TOKEN_URL`.
 
 Write requests with an Origin header must match the configured `issuer` origin.

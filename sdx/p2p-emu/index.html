@@ -162,6 +162,7 @@
     </header>
     <dialog id="authDialog" aria-labelledby="authTitle">
       <h2 id="authTitle">Authorize</h2>
+      <label>Token URL<input id="authTokenUrl" type="url" readonly></label>
       <form id="authForm">
         <label>Client ID<input
             name="clientId"
@@ -299,10 +300,29 @@
         authExpiry = 0;
         renderAuthorization();
       }
-      document.querySelector("#authorize").addEventListener("click", () => {
-        document.querySelector("#authError").textContent = "";
-        authDialog.showModal();
-      });
+      document.querySelector("#authorize").addEventListener(
+        "click",
+        async () => {
+          document.querySelector("#authError").textContent = "";
+          const endpoint = document.querySelector("#authTokenUrl");
+          endpoint.value = "";
+          endpoint.placeholder = "Loading…";
+          authDialog.showModal();
+          try {
+            const response = await fetch("/api/config", { cache: "no-store" });
+            if (!response.ok) {
+              throw new Error(
+                "Unable to load authorization settings.",
+              );
+            }
+            endpoint.value = (await response.json()).tokenUrl;
+            endpoint.placeholder = "P2P_TOKEN_URL is not configured";
+          } catch (error) {
+            endpoint.placeholder = "Unavailable";
+            document.querySelector("#authError").textContent = error.message;
+          }
+        },
+      );
       document.querySelector("#cancelAuth").addEventListener(
         "click",
         () => authDialog.close(),
@@ -323,6 +343,7 @@
             throw new Error("Unable to load authorization settings.");
           }
           const { tokenUrl } = await configResponse.json();
+          document.querySelector("#authTokenUrl").value = tokenUrl;
           const credentials = Object.fromEntries(new FormData(authForm));
           const result = await authorizeClient(
             tokenUrl,

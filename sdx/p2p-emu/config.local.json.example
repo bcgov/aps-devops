@@ -2,5 +2,5 @@
   "issuer": "http://localhost:8000",
   "hostname": "127.0.0.1",
   "port": 8000,
-  "ttl": 3600
+  "ttl": 300
 }

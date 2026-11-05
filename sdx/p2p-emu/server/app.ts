@@ -7,7 +7,7 @@ export interface Profile {
 }
 export interface Config {
   issuer: string;
-  clientId: string;
+  clientId?: string;
   tokenUrl?: string;
   dataDir: string;
   ttl: number;
@@ -266,12 +266,6 @@ export async function createApp(
         );
       }
       if (req.method === "POST" && url.pathname === "/token") {
-        if (!config.clientId.trim()) {
-          return json({
-            error:
-              "Set the P2P_CLIENT_ID environment variable before generating tokens.",
-          }, 503);
-        }
         const body = await req.json();
         const selectedProfile = body.profileId
           ? profiles.find((p) => p.id === body.profileId)
@@ -282,7 +276,6 @@ export async function createApp(
         const claims = {
           iss: issuer,
           sub: profile.user,
-          aud: config.clientId,
           iat: now,
           exp: now + config.ttl,
           jti: crypto.randomUUID(),

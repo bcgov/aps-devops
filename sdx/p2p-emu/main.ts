@@ -11,7 +11,7 @@ try {
 const config: Config = {
   issuer: "http://localhost:8000",
   dataDir: new URL("data", root).pathname,
-  ttl: 3600,
+  ttl: 300,
   ...overrides,
   clientId: Deno.env.get("P2P_CLIENT_ID")?.trim() ?? "",
   tokenUrl: Deno.env.get("P2P_TOKEN_URL")?.trim() ?? "",
