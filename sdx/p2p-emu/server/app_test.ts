@@ -239,3 +239,75 @@ Deno.test("catalog mapping, missing privacy zones, and upstream failures", async
     await Deno.remove(dataDir, { recursive: true });
   }
 });
+
+Deno.test("writes use configured public origin behind TLS termination", async () => {
+  const dataDir = await Deno.makeTempDir();
+  try {
+    const app = await createApp({
+      issuer: "https://p2p.example",
+      clientId: "sdx-edge-gw",
+      dataDir,
+      ttl: 300,
+    });
+    const profile = {
+      initialAzp: "client",
+      clientSubsystem: "subsystem",
+      user: "alice",
+      scopes: [],
+    };
+    const write = (origin: string) =>
+      app(
+        new Request("http://p2p-emu:8000/api/profiles", {
+          method: "POST",
+          headers: { Origin: origin, "Content-Type": "application/json" },
+          body: JSON.stringify(profile),
+        }),
+      );
+    const created = await write("https://p2p.example");
+    assert(created.status === 201);
+    const saved = await created.json();
+    for (
+      const origin of [
+        "https://attacker.example",
+        "http://p2p.example",
+        "https://p2p.example:8443",
+        "null",
+      ]
+    ) {
+      assert((await write(origin)).status === 403);
+    }
+    const token = await app(
+      new Request("http://p2p-emu:8000/token", {
+        method: "POST",
+        headers: {
+          Origin: "https://p2p.example",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ profileId: saved.id }),
+      }),
+    );
+    assert(token.status === 200);
+    const removed = await app(
+      new Request("http://p2p-emu:8000/api/profiles/" + saved.id, {
+        method: "DELETE",
+        headers: { Origin: "https://p2p.example" },
+      }),
+    );
+    assert(removed.status === 200);
+    const spoofed = await app(
+      new Request("http://p2p-emu:8000/api/profiles", {
+        method: "POST",
+        headers: {
+          Origin: "https://attacker.example",
+          "X-Forwarded-Host": "attacker.example",
+          "X-Forwarded-Proto": "https",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(profile),
+      }),
+    );
+    assert(spoofed.status === 403);
+  } finally {
+    await Deno.remove(dataDir, { recursive: true });
+  }
+});

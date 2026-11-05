@@ -155,7 +155,8 @@ export async function createApp(
     try {
       if (req.method === "POST" || req.method === "DELETE") {
         if (
-          req.headers.get("origin") && req.headers.get("origin") !== url.origin
+          req.headers.get("origin") &&
+          req.headers.get("origin") !== issuerUrl.origin
         ) return json({ error: "Cross-origin writes are not allowed." }, 403);
         if (
           req.method === "POST" &&

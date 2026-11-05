@@ -118,3 +118,7 @@ to the emulator backend.
 `P2P_TOKEN_URL` is environment-only, like `P2P_CLIENT_ID`. Direct Deno
 invocations must allow both variables:
 `--allow-env=P2P_CLIENT_ID,P2P_TOKEN_URL`.
+
+Write requests with an Origin header must match the configured `issuer` origin.
+Behind HTTPS termination, set `issuer` to the public HTTPS origin; the internal
+HTTP scheme does not affect this check. Forwarded headers do not override it.
