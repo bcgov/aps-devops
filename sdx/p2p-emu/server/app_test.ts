@@ -138,7 +138,7 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     );
     assert(
       Object.keys(edgeClaims).sort().join(",") ===
-        "client_id,exp,iat,iss,jti,request_id",
+        "client_id,exp,iat,jti,jwks_uri,request_id",
     );
     assert(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -146,11 +146,12 @@ Deno.test("token verification and persistent profile lifecycle", async () => {
     );
     assert(edgeClaims.client_id === token.headers["X-SDX-Client-Subsystem-Id"]);
     assert(edgeClaims.client_id === profile.clientSubsystem);
+    assert(!("iss" in edgeClaims));
     assert(edgeClaims.request_id !== token.headers["Correlation-Id"]);
     assert(edgeClaims.request_id !== edgeClaims.jti);
     assert(edgeClaims.request_id !== second.origin_claims.request_id);
     assert(
-      edgeClaims.iss === originDiscovery.issuer &&
+      edgeClaims.jwks_uri === originDiscovery.jwks_uri &&
         edgeClaims.exp - edgeClaims.iat === 300,
     );
     assert(

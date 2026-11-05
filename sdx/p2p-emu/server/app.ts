@@ -328,7 +328,7 @@ export async function createApp(
         );
         const token = `${unsigned}.${b64(new Uint8Array(signature))}`;
         const originClaims = {
-          iss: originIssuer,
+          jwks_uri: `${originIssuer}/jwks`,
           client_id: profile.clientSubsystem,
           jti: crypto.randomUUID(),
           request_id: crypto.randomUUID(),

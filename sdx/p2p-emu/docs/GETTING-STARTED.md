@@ -143,7 +143,7 @@ curl --fail-with-body --silent --show-error \
 ```
 
 Each token response includes `headers["X-Edge-Token"]`, whose signed payload
-contains only `iss`, `client_id`, `jti`, `request_id`, `iat`, and `exp`.
+contains only `jwks_uri`, `client_id`, `jti`, `request_id`, `iat`, and `exp`.
 Validate this token against the origin JWKS rather than the subject-token JWKS.
 Its default lifetime is 300 seconds.
 
@@ -248,3 +248,6 @@ its `jti` and the `Correlation-Id` header.
 
 The edge token’s `client_id` is the profile’s Client Subsystem, matching the
 `X-SDX-Client-Subsystem-Id` header.
+
+The edge token uses `jwks_uri` pointing to `/p2p-origin/jwks` instead of an
+`iss` claim. The main token and discovery metadata retain their issuer.

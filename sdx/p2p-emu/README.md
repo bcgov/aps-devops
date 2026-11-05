@@ -143,11 +143,14 @@ rotate it.
 The main token's `azp` claim comes from `P2P_CLIENT_ID` (for example
 `sdx-edge-gw`). Set this environment variable before generating tokens; missing
 configuration returns HTTP 503. It is independent of the profile's Initial AZP,
-which supplies `X-SDX-Original-AZP`. The origin token still contains only `iss`,
-`client_id`, `jti`, `request_id`, `iat`, and `exp`.
+which supplies `X-SDX-Original-AZP`. The origin token still contains only
+`jwks_uri`, `client_id`, `jti`, `request_id`, `iat`, and `exp`.
 
 Each edge token has a fresh UUID `request_id`, generated independently of both
 its `jti` and the `Correlation-Id` header.
 
 The edge token’s `client_id` is the profile’s Client Subsystem, matching the
 `X-SDX-Client-Subsystem-Id` header.
+
+The edge token uses `jwks_uri` pointing to `/p2p-origin/jwks` instead of an
+`iss` claim. The main token and discovery metadata retain their issuer.
