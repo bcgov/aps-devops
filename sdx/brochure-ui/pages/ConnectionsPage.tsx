@@ -80,11 +80,38 @@ function ProvisionerStatusPill({
       </span>
     );
   }
+  if (status.status === "deprovisioning") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
+        Removing access configuration
+      </span>
+    );
+  }
+  if (status.status === "deprovisioned") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+        Access configuration removed
+      </span>
+    );
+  }
   if (status.status === "failed") {
+    const label = status.operation === "deprovision"
+      ? "Couldn't remove access configuration"
+      : "Provisioning failed";
     return (
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-danger-bg text-support-danger-border">
         <span className="w-1.5 h-1.5 rounded-full bg-support-danger-border" />
-        Provisioning failed
+        {label}
+      </span>
+    );
+  }
+  if (status.status === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
+        <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
+        Provisioning
       </span>
     );
   }
@@ -94,6 +121,26 @@ function ProvisionerStatusPill({
       {status.status}
     </span>
   );
+}
+
+function revokeGuidance(connection: ConnectionRequest): string | null {
+  if (connection.isActive) {
+    return "Deactivate this connection before revoking access.";
+  }
+
+  const status = connection.provisionerStatus;
+  if (status?.status === "deprovisioned") return null;
+  if (status?.status === "deprovisioning") {
+    return "Wait for access configuration removal to finish before revoking access.";
+  }
+  if (
+    status?.status === "failed" &&
+    status.operation === "deprovision"
+  ) {
+    return "Access configuration removal failed. Open Customize and save the inactive connection to retry.";
+  }
+
+  return "Open Customize and save this connection as inactive to remove its access configuration before revoking access.";
 }
 
 const WIZARD_SCRIPT = `
@@ -1500,7 +1547,9 @@ function ConnectionCard({
   // request via the Approve/Reject review dialog.
   const isProviderPending = canApprove && !conn.isApproved;
   // Revoke/cancel deletes by connection id; only offer it when an id is present.
-  const canDelete = Boolean(conn.id);
+  const hasId = Boolean(conn.id);
+  const guidance = conn.isApproved ? revokeGuidance(conn) : null;
+  const canDelete = conn.isApproved ? hasId && guidance === null : hasId;
   const slug = (
     conn.clientId +
     "__" +
@@ -1568,7 +1617,7 @@ function ConnectionCard({
               Approve / Reject
             </button>
           ) : (
-            canDelete && (
+            canDelete ? (
               <button
                 type="button"
                 data-dialog-open={confirmId}
@@ -1576,7 +1625,23 @@ function ConnectionCard({
               >
                 {destructiveAction.label}
               </button>
-            )
+            ) : conn.isApproved && hasId ? (
+              <div className="max-w-xs text-right">
+                <button
+                  type="button"
+                  disabled
+                  title={guidance ?? undefined}
+                  className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
+                >
+                  Revoke access
+                </button>
+                {guidance && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {guidance}
+                  </p>
+                )}
+              </div>
+            ) : null
           )}
         </div>
       </div>
