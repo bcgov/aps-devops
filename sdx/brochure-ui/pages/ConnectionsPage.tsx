@@ -1005,6 +1005,12 @@ const SERVICE_PATTERNS: PatternSpec[] = [
       "Provider-side routing to the upstream service with optional upgrades.",
     fields: [
       {
+        key: "clientRuntimeOverride",
+        label: "Client runtime override",
+        type: "string",
+        placeholder: "Environment policy default, e.g. MIN.CITZ.pzgw",
+      },
+      {
         key: "upstreamUrl",
         label: "Upstream URL",
         type: "string",
