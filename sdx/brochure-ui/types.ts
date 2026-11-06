@@ -230,6 +230,7 @@ export interface ConnectionServiceResources {
 }
 
 export interface ConnectionProvisionerStatus {
+  subsystemClientId?: string;
   status: string;
   message: string;
   endpoint?: string;
