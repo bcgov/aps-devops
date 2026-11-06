@@ -230,7 +230,13 @@ export interface ConnectionServiceResources {
 }
 
 export interface ConnectionProvisionerStatus {
-  status: string;
+  status:
+    | "pending"
+    | "provisioned"
+    | "deprovisioning"
+    | "deprovisioned"
+    | "failed";
+  operation?: "provision" | "deprovision";
   message: string;
   endpoint?: string;
   spec?: string;
