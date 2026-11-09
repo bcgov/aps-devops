@@ -1007,8 +1007,7 @@ const SERVICE_PATTERNS: PatternSpec[] = [
       {
         key: "clientRuntimeOverride",
         label: "Client runtime override",
-        type: "string",
-        placeholder: "Environment policy default, e.g. MIN.CITZ.pzgw",
+        type: "string"
       },
       {
         key: "upstreamUrl",
