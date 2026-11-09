@@ -1,4 +1,4 @@
-import { DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
+import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
 import {
   Breadcrumb,
@@ -1470,7 +1470,7 @@ function ConnectionCard({
           </summary>
           <div className="px-4 py-3 bg-gray-50/50 space-y-4 text-xs">
             {provisionerStatus && (
-              <ProvisionerStatusDetails status={provisionerStatus} clientId={conn.clientId} />
+              <ProvisionerStatusDetails status={provisionerStatus} />
             )}
 
             {rd && (
@@ -2457,14 +2457,7 @@ function ClientGroupSection({
     <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <header className="bg-gray-50 border-b border-gray-200 px-4 py-3">
         <h3 className="font-semibold text-[#003366] break-all">
-          <a
-            href={`/subsystems/${encodeURIComponent(clientId)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            {clientId}
-          </a>
+          <ClientSubsystemLink clientId={clientId} />
         </h3>
         {subsystem?.name && (
           <p className="text-xs text-gray-500">

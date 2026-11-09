@@ -17,9 +17,8 @@ export function DetailSection({
   );
 }
 
-export function ProvisionerStatusDetails({ status, clientId }: {
+export function ProvisionerStatusDetails({ status }: {
   status: import("../types.ts").ConnectionProvisionerStatus;
-  clientId: string;
 }) {
   return (
     <DetailSection title="Provisioner status">
@@ -32,12 +31,6 @@ export function ProvisionerStatusDetails({ status, clientId }: {
         <FieldRow
           label="Message"
           value={status.message}
-        />
-        <FieldRow
-          label="Subsystem Client ID"
-          value={status.subsystemClientId || clientId}
-          mono
-          copy
         />
         {status.endpoint && (
           <>
@@ -113,5 +106,21 @@ export function ScopeChips({ scopes }: { scopes?: string[] }) {
         </span>
       ))}
     </span>
+  );
+}
+
+export function ClientSubsystemLink({ clientId }: { clientId: string }) {
+  return (
+    <>
+      <a
+        href={`/subsystems/${encodeURIComponent(clientId)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:underline"
+      >
+        {clientId}
+      </a>
+      <CopyButton value={clientId} className="ml-2" />
+    </>
   );
 }
