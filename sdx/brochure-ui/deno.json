@@ -6,10 +6,19 @@
   "imports": {
     "react": "npm:react@18",
     "react/jsx-runtime": "npm:react@18/jsx-runtime",
+    "react-dom": "npm:react-dom@18",
     "react-dom/server": "npm:react-dom@18/server",
+    "react-dom/client": "npm:react-dom@18/client",
+    "@bcgov/design-system-react-components": "npm:@bcgov/design-system-react-components@0.8.1",
+    "@bcgov/bc-sans": "npm:@bcgov/bc-sans@2.1.2",
     "@std/yaml": "jsr:@std/yaml",
     "marked": "npm:marked@12",
     "oauth4webapi": "npm:oauth4webapi@^2.17.0",
-    "unzipper": "npm:unzipper@^0.12.5"
+    "unzipper": "npm:unzipper@^0.12.5",
+    "esbuild": "npm:esbuild@0.24.2",
+    "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@0.11"
+  },
+  "tasks": {
+    "build:client": "deno run --allow-net --allow-read --allow-env --allow-run --allow-write scripts/build-client.ts"
   }
 }
