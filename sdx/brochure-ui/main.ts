@@ -10,6 +10,8 @@ import type {
   Service,
 } from "./types.ts";
 import { HomePage } from "./pages/HomePage.tsx";
+import { AboutPage } from "./pages/AboutPage.tsx";
+import { HelpPage } from "./pages/HelpPage.tsx";
 import { SubsystemsPage } from "./pages/SubsystemsPage.tsx";
 import { OrganizationsPage } from "./pages/OrganizationsPage.tsx";
 import { OrgDetailPage } from "./pages/OrgDetailPage.tsx";
@@ -24,7 +26,8 @@ import { OrgSubsystemsPage } from "./pages/OrgSubsystemsPage.tsx";
 import { TrafficPage } from "./pages/TrafficPage.tsx";
 import { TrustPage } from "./pages/TrustPage.tsx";
 import { ConnectionsPage } from "./pages/ConnectionsPage.tsx";
-import { VerificationBadge } from "./components/VerificationBadge.tsx";
+import { OnboardingInvitePage } from "./pages/OnboardingInvitePage.tsx";
+import { VerificationBadge } from "./components/custom/VerificationBadge.tsx";
 import { loadJwks } from "./lib/jwks.ts";
 import {
   MetricsQueryNotFoundError,
@@ -535,6 +538,18 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     await loadCatalog();
   }
 
+  if (path === "/onboarding/invite") {
+    const integrationId =
+      url.searchParams.get("integrationId")?.trim() ?? "";
+    return htmlResponse(
+      React.createElement(OnboardingInvitePage, {
+        integrationId,
+        currentPath: `${path}${url.search}`,
+        user,
+      }),
+    );
+  }
+
   if (path === "/") {
     return htmlResponse(
       React.createElement(HomePage, {
@@ -543,6 +558,24 @@ Deno.serve({ port: PORT }, async (req: Request) => {
         services,
         config,
         currentPath: "/",
+        user,
+      }),
+    );
+  }
+
+  if (path === "/about") {
+    return htmlResponse(
+      React.createElement(AboutPage, {
+        currentPath: "/about",
+        user,
+      }),
+    );
+  }
+
+  if (path === "/help") {
+    return htmlResponse(
+      React.createElement(HelpPage, {
+        currentPath: "/help",
         user,
       }),
     );
