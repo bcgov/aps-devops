@@ -143,6 +143,26 @@ function revokeGuidance(connection: ConnectionRequest): string | null {
   return "Open Customize and save this connection as inactive to remove its access configuration before revoking access.";
 }
 
+function GuidanceTip({ message }: { message: string }) {
+  return (
+    <details className="relative">
+      <summary
+        title={message}
+        className="list-none cursor-help inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-xs font-bold text-gray-500 hover:border-[#003366] hover:text-[#003366] focus:outline-none focus:ring-2 focus:ring-[#FCBA19]"
+      >
+        <span aria-hidden="true">?</span>
+        <span className="sr-only">Why revoke access is unavailable</span>
+      </summary>
+      <div
+        role="note"
+        className="absolute right-0 z-20 mt-2 w-72 rounded border border-gray-200 bg-white p-3 text-left text-xs font-normal text-gray-700 shadow-lg"
+      >
+        {message}
+      </div>
+    </details>
+  );
+}
+
 const WIZARD_SCRIPT = `
 (function(){
   var dlg = document.getElementById('add-dialog');
@@ -1574,7 +1594,7 @@ function ConnectionCard({
     (conn.scopes && conn.scopes.length > 0),
   );
   return (
-    <article className="bg-white border border-border rounded-lg overflow-hidden">
+    <article className="bg-white border border-border rounded-lg">
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <div className="font-mono text-sm text-ink break-all">
@@ -1626,20 +1646,15 @@ function ConnectionCard({
                 {destructiveAction.label}
               </button>
             ) : conn.isApproved && hasId ? (
-              <div className="max-w-xs text-right">
+              <div className="inline-flex items-center gap-1">
                 <button
                   type="button"
                   disabled
-                  title={guidance ?? undefined}
                   className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
                 >
                   Revoke access
                 </button>
-                {guidance && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    {guidance}
-                  </p>
-                )}
+                {guidance && <GuidanceTip message={guidance} />}
               </div>
             ) : null
           )}
