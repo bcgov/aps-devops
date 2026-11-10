@@ -953,7 +953,7 @@ const UP_COUNTER_SIGN: UpgradeSpec = {
   key: "counterSign",
   label: "Counter-sign",
   description:
-    "Apply a second (counter) signature over the request in addition to the primary one.",
+    "Apply a second signature. Requires a valid organization signing certificate for the selected runtime group; omitted by default in R1.",
   fields: [
     {
       key: "signatureAlgorithm",
