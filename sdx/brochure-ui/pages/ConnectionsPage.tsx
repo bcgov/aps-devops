@@ -143,23 +143,29 @@ function revokeGuidance(connection: ConnectionRequest): string | null {
   return "Open Customize and save this connection as inactive to remove its access configuration before revoking access.";
 }
 
-function GuidanceTip({ message }: { message: string }) {
+function GuidanceTip({ id, message }: { id: string; message: string }) {
   return (
-    <details className="relative">
-      <summary
-        title={message}
-        className="list-none cursor-help inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-xs font-bold text-gray-500 hover:border-[#003366] hover:text-[#003366] focus:outline-none focus:ring-2 focus:ring-[#FCBA19]"
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label="Why revoke access is unavailable"
+        aria-describedby={id}
+        className="cursor-help inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-xs font-bold text-gray-500 hover:border-[#003366] hover:text-[#003366] focus:outline-none focus:ring-2 focus:ring-[#FCBA19]"
       >
         <span aria-hidden="true">?</span>
-        <span className="sr-only">Why revoke access is unavailable</span>
-      </summary>
-      <div
-        role="note"
-        className="absolute right-0 z-20 mt-2 w-72 rounded border border-gray-200 bg-white p-3 text-left text-xs font-normal text-gray-700 shadow-lg"
+      </button>
+      <span
+        className="invisible absolute right-0 top-full z-20 w-72 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
       >
-        {message}
-      </div>
-    </details>
+        <span
+          id={id}
+          role="tooltip"
+          className="block rounded border border-gray-200 bg-white p-3 text-left text-xs font-normal text-gray-700 shadow-lg"
+        >
+          {message}
+        </span>
+      </span>
+    </span>
   );
 }
 
@@ -1654,7 +1660,12 @@ function ConnectionCard({
                 >
                   Revoke access
                 </button>
-                {guidance && <GuidanceTip message={guidance} />}
+                {guidance && (
+                  <GuidanceTip
+                    id={`${confirmId}-guidance`}
+                    message={guidance}
+                  />
+                )}
               </div>
             ) : null
           )}
