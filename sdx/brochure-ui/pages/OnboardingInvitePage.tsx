@@ -1,5 +1,5 @@
 import { Layout } from "../components/Layout.tsx";
-import { CopyButton } from "../components/CopyButton.tsx";
+import { CopyButton } from "../components/custom/CopyButton.tsx";
 import type { SessionUser } from "../lib/auth.ts";
 
 interface OnboardingInvitePageProps {
@@ -14,15 +14,6 @@ const NEXT_STEPS = [
   "This integration id is linked to that subsystem.",
   "APS Operations marks the held task complete. SDX then submits the original access request for approval.",
 ];
-
-function displayName(user: SessionUser): string {
-  return (
-    user.name ||
-    user.preferred_username ||
-    user.email ||
-    "your SDX account"
-  );
-}
 
 export function OnboardingInvitePage({
   integrationId,
@@ -68,40 +59,31 @@ export function OnboardingInvitePage({
           )}
         </section>
 
-        <section
-          className="border border-gray-200 rounded-lg p-5 bg-gray-50"
-          aria-labelledby="sign-in-heading"
-        >
-          <h2
-            id="sign-in-heading"
-            className="text-xl font-bold text-[#003366] mb-2"
+        {!user && (
+          <section
+            className="border border-gray-200 rounded-lg p-5 bg-gray-50"
+            aria-labelledby="sign-in-heading"
           >
-            {user ? "You are signed in" : "Sign in to SDX"}
-          </h2>
-          {user ? (
-            <p className="text-gray-700 leading-relaxed">
-              You are signed in as {displayName(user)}.{" "}
+            <h2
+              id="sign-in-heading"
+              className="text-xl font-bold text-[#003366] mb-2"
+            >
+              Sign in to SDX
+            </h2>
+            <p className="text-gray-700 leading-relaxed mb-4">
+              Sign in with your SDX account.
               {hasIntegrationId
-                ? "This integration id and the next steps stay the same."
-                : "The next steps stay the same."}
+                ? " This page keeps the integration id in the link so you can carry it into that flow."
+                : ""}
             </p>
-          ) : (
-            <>
-              <p className="text-gray-700 leading-relaxed mb-4">
-                Sign in with your SDX account.
-                {hasIntegrationId
-                  ? " This page keeps the integration id in the link so you can carry it into that flow."
-                  : ""}
-              </p>
-              <a
-                href={signInHref}
-                className="inline-block bg-[#003366] text-white font-semibold px-6 py-3 rounded hover:bg-[#002654] transition-colors"
-              >
-                Sign in
-              </a>
-            </>
-          )}
-        </section>
+            <a
+              href={signInHref}
+              className="inline-block bg-[#003366] text-white font-semibold px-6 py-3 rounded hover:bg-[#002654] transition-colors"
+            >
+              Sign in with IDIR
+            </a>
+          </section>
+        )}
 
         <section aria-labelledby="next-steps-heading">
           <h2
