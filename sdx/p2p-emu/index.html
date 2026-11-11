@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P2P Emulator</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f6f8;
+        color: #292929;
+        font: 16px/1.5 system-ui, sans-serif;
+      }
+      header {
+        background: #003366;
+        color: white;
+        border-bottom: 4px solid #fcba19;
+        padding: 20px max(24px, calc((100% - 1100px) / 2));
+      }
+      h1 {
+        margin: 0;
+        font-size: 26px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 32px auto;
+        padding: 0 24px;
+      }
+      section {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 21px;
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+      }
+      input, select, textarea {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #666;
+        border-radius: 4px;
+        font: inherit;
+        margin-top: 6px;
+      }
+      fieldset {
+        border: 0;
+        padding: 0;
+        margin: 0 0 24px;
+      }
+      legend {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      button {
+        padding: 10px 16px;
+        border: 1px solid #003366;
+        border-radius: 4px;
+        background: #003366;
+        color: white;
+        font: inherit;
+        cursor: pointer;
+        margin: 16px 8px 0 0;
+      }
+      button.secondary {
+        background: white;
+        color: #003366;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      a {
+        color: #145a94;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td, th {
+        text-align: left;
+        padding: 12px 8px;
+        border-bottom: 1px solid #ddd;
+      }
+      td button {
+        margin: 0 8px 4px 0;
+        padding: 6px 10px;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #f1f3f5;
+        padding: 16px;
+        font-size: 13px;
+      }
+      header[data-authorized="true"] #authorize {
+        background: #dff0d8;
+        color: #173d14;
+        border-color: #b4d7a8;
+      }
+      #authStatus {
+        display: inline-block;
+        margin: 0 12px;
+      }
+      header button {
+        background: white;
+        color: #003366;
+      }
+      dialog {
+        border: 1px solid #666;
+        border-radius: 6px;
+        width: min(480px, 95vw);
+      }
+      dialog::backdrop {
+        background: #0008;
+      }
+      #message {
+        min-height: 24px;
+      }
+      #message.error {
+        color: #a12622;
+      }
+      .table {
+        overflow: auto;
+      }
+      small {
+        color: #555;
+      }
+      @media (max-width: 650px) {
+        .fields {
+          grid-template-columns: 1fr;
+        }
+        section {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>P2P Emulator</h1>
+      <div>SDX development tools</div>
+      <button type="button" id="authorize">Authorize</button>
+      <span id="authStatus" role="status">Not authorized</span>
+      <button type="button" id="clearAuth" hidden>Clear authorization</button>
+    </header>
+    <dialog id="authDialog" aria-labelledby="authTitle">
+      <h2 id="authTitle">Authorize</h2>
+      <label>Token URL<input id="authTokenUrl" type="url" readonly></label>
+      <form id="authForm">
+        <label>Client ID<input
+            name="clientId"
+            required
+            autocomplete="off"
+          ></label>
+        <label>Client Secret<input
+            name="clientSecret"
+            type="password"
+            required
+            autocomplete="off"
+          ></label>
+        <p id="authError" role="alert"></p>
+        <button type="submit">Get token</button>
+        <button type="button" id="cancelAuth" class="secondary">Cancel</button>
+      </form>
+    </dialog>
+    <main>
+      <p>
+        Create a signed access token for a subject and optional scopes. Save
+        profiles to reuse them later.
+      </p>
+      <p>
+        <a href="/.well-known/openid-configuration">OIDC discovery</a> · <a
+          href="/jwks"
+        >Public signing keys (JWKS)</a>
+      </p>
+      <p id="message" role="status" aria-live="polite"></p>
+      <section>
+        <h2>Profile</h2>
+        <form id="profileForm">
+          <fieldset>
+            <legend>User</legend>
+            <label>Subject identifier<input
+                name="user"
+                required
+                maxlength="256"
+                placeholder="Subject identifier / token subject"
+              ></label>
+          </fieldset>
+          <fieldset>
+            <legend>Client</legend>
+            <div class="fields">
+              <label>Initial AZP<input
+                  name="initialAzp"
+                  required
+                  maxlength="256"
+                  placeholder="Original authorized party"
+                ></label>
+              <label>Client Subsystem<input
+                  name="clientSubsystem"
+                  required
+                  maxlength="256"
+                  placeholder="Client subsystem identifier"
+                ></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Service</legend>
+            <label>Scopes<textarea
+                name="scopes"
+                rows="4"
+                placeholder="nrs:widgets:read nrs:widgets:create"
+                aria-describedby="scopeHelp"
+              ></textarea></label>
+            <small id="scopeHelp"
+            >Enter scope names separated by spaces or new lines. Leave empty for
+              no scopes.</small>
+          </fieldset>
+          <button type="submit">Generate access token</button>
+          <button type="button" id="save" class="secondary">
+            Save profile
+          </button>
+        </form>
+      </section>
+      <section>
+        <h2>P2P Edge Runtime</h2>
+        <p>
+          Edge Runtime tokens use a separate persistent signing key and are
+          returned in <code>X-Edge-Token</code>.
+        </p>
+        <p>
+          <a
+            id="originDiscovery"
+            href="/p2p-origin/.well-known/openid-configuration"
+          >OIDC discovery</a>
+        </p>
+        <p><a id="originJwks" href="/p2p-origin/jwks">JWKS</a></p>
+        <p>Signing key ID: <code id="originKid">Loading…</code></p>
+      </section>
+      <section>
+        <h2>Saved profiles</h2><small>Profiles are stored on the server and
+          survive restarts. Tokens are generated on demand.</small><div
+          class="table"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Initial AZP</th>
+                <th>Client Subsystem</th>
+                <th>User</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="profiles"></tbody>
+          </table>
+        </div>
+        <p id="empty" hidden>No saved profiles yet.</p>
+      </section>
+      <section id="result" hidden>
+        <h2>Access token</h2>
+        <button type="button" id="copy" class="secondary">Copy token</button>
+        <pre id="token"></pre>
+        <h2>Request headers</h2>
+        <p>Use these headers when making a request.</p>
+        <pre id="headers"></pre>
+        <h2>Token claims</h2>
+        <pre id="claims"></pre>
+        <h2>P2P Edge Runtime token claims</h2>
+        <pre id="originClaims"></pre>
+      </section>
+    </main>
+    <script type="module">
+      import {
+        authorizeClient,
+        clearSavedAuthorization,
+        requestApi,
+        restoreAuthorization,
+        saveAuthorization,
+      } from "/auth.js";
+      const form = document.querySelector("#profileForm");
+      const message = document.querySelector("#message");
+      let token = "";
+      let apiToken = "";
+      let authExpiry = 0;
+      let authTimer;
+      const authDialog = document.querySelector("#authDialog");
+      const authForm = document.querySelector("#authForm");
+      function renderAuthorization(clientId = "") {
+        const authorized = Boolean(apiToken);
+        document.querySelector("header").dataset.authorized = String(
+          authorized,
+        );
+        document.querySelector("#authorize").textContent = authorized
+          ? "Authorized"
+          : "Authorize";
+        document.querySelector("#authStatus").textContent = authorized
+          ? "Authorized as " + clientId +
+            (authExpiry
+              ? " · Expires " + new Date(authExpiry).toLocaleTimeString()
+              : "")
+          : "Not authorized";
+        document.querySelector("#clearAuth").hidden = !authorized;
+      }
+      function clearAuthorization() {
+        clearTimeout(authTimer);
+        try {
+          clearSavedAuthorization(sessionStorage);
+        } catch {}
+        apiToken = "";
+        authExpiry = 0;
+        renderAuthorization();
+      }
+      function applyAuthorization(session) {
+        apiToken = session.accessToken;
+        authExpiry = session.expiresAt;
+        clearTimeout(authTimer);
+        renderAuthorization(session.clientId);
+        if (authExpiry) {
+          authTimer = setTimeout(() => {
+            clearAuthorization();
+            report("Authorization expired. Authorize again.", true);
+          }, Math.min(authExpiry - Date.now(), 2147483647));
+        }
+      }
+      document.querySelector("#authorize").addEventListener(
+        "click",
+        async () => {
+          document.querySelector("#authError").textContent = "";
+          const endpoint = document.querySelector("#authTokenUrl");
+          endpoint.value = "";
+          endpoint.placeholder = "Loading…";
+          authDialog.showModal();
+          try {
+            const response = await fetch("/api/config", { cache: "no-store" });
+            if (!response.ok) {
+              throw new Error(
+                "Unable to load authorization settings.",
+              );
+            }
+            endpoint.value = (await response.json()).tokenUrl;
+            endpoint.placeholder = "P2P_TOKEN_URL is not configured";
+          } catch (error) {
+            endpoint.placeholder = "Unavailable";
+            document.querySelector("#authError").textContent = error.message;
+          }
+        },
+      );
+      document.querySelector("#cancelAuth").addEventListener(
+        "click",
+        () => authDialog.close(),
+      );
+      authDialog.addEventListener("close", () => authForm.reset());
+      document.querySelector("#clearAuth").addEventListener(
+        "click",
+        clearAuthorization,
+      );
+      authForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = authForm.querySelector('[type="submit"]');
+        button.disabled = true;
+        document.querySelector("#authError").textContent = "";
+        try {
+          const configResponse = await fetch("/api/config");
+          if (!configResponse.ok) {
+            throw new Error("Unable to load authorization settings.");
+          }
+          const { tokenUrl } = await configResponse.json();
+          document.querySelector("#authTokenUrl").value = tokenUrl;
+          const credentials = Object.fromEntries(new FormData(authForm));
+          const result = await authorizeClient(
+            tokenUrl,
+            credentials.clientId,
+            credentials.clientSecret,
+          );
+          const session = {
+            accessToken: result.access_token,
+            expiresAt: result.expires_in
+              ? Date.now() + result.expires_in * 1000
+              : 0,
+            clientId: credentials.clientId.trim(),
+          };
+          applyAuthorization(session);
+          try {
+            saveAuthorization(sessionStorage, session);
+          } catch {
+            report(
+              "Authorized, but browser storage is unavailable; refreshing will clear authorization.",
+              true,
+            );
+          }
+          authDialog.close();
+          report("Authorized successfully.");
+          await run(load);
+        } catch (error) {
+          document.querySelector("#authError").textContent = error.message;
+        } finally {
+          authForm.elements.clientSecret.value = "";
+          button.disabled = false;
+        }
+      });
+      function loadProfile(profile) {
+        form.elements.scopes.value = (profile.scopes || []).join("\n");
+        form.elements.user.value = profile.user;
+        form.elements.initialAzp.value = profile.initialAzp || "";
+        form.elements.clientSubsystem.value = profile.clientSubsystem || "";
+      }
+      function report(text, error = false) {
+        message.textContent = text;
+        message.className = error ? "error" : "";
+      }
+      async function api(path, method = "GET", body) {
+        if (authExpiry && Date.now() >= authExpiry) {
+          clearAuthorization();
+          throw new Error("Authorization expired. Authorize again.");
+        }
+        const response = await requestApi(path, method, body, apiToken);
+        const data = await response.json();
+        if (!response.ok) {
+          if (response.status === 401) {
+            clearAuthorization();
+          }
+          throw new Error(data.error || "Request failed");
+        }
+        return data;
+      }
+      async function run(action) {
+        const buttons = document.querySelectorAll("button");
+        buttons.forEach((b) => b.disabled = true);
+        try {
+          await action();
+        } catch (error) {
+          report(error.message, true);
+        } finally {
+          document.querySelectorAll("button").forEach((b) =>
+            b.disabled = false
+          );
+        }
+      }
+      function values() {
+        const data = new FormData(form);
+        return {
+          ...Object.fromEntries(data),
+          scopes: [
+            ...new Set(
+              String(data.get("scopes") || "").split(/\s+/).filter(Boolean),
+            ),
+          ],
+        };
+      }
+      async function generate(body) {
+        const result = await api("/token", "POST", body);
+        token = result.access_token;
+        document.querySelector("#token").textContent = token;
+        document.querySelector("#headers").textContent = JSON.stringify(
+          result.headers,
+          null,
+          2,
+        );
+        document.querySelector("#claims").textContent = JSON.stringify(
+          result.claims,
+          null,
+          2,
+        );
+        document.querySelector("#originClaims").textContent = JSON.stringify(
+          result.origin_claims,
+          null,
+          2,
+        );
+        document.querySelector("#result").hidden = false;
+        report(
+          "Access token generated. Expires in " + result.expires_in +
+            " seconds.",
+        );
+      }
+      async function load() {
+        const profiles = await api("/api/profiles");
+        const tbody = document.querySelector("#profiles");
+        tbody.replaceChildren();
+        document.querySelector("#empty").hidden = profiles.length > 0;
+        for (const profile of profiles) {
+          const row = document.createElement("tr");
+          for (
+            const field of [
+              "initialAzp",
+              "clientSubsystem",
+              "user",
+            ]
+          ) {
+            const cell = document.createElement("td");
+            cell.textContent = profile[field];
+            row.append(cell);
+          }
+          const actions = document.createElement("td");
+          for (
+            const [label, action] of [
+              ["Load", async () => {
+                loadProfile(profile);
+                report("Profile loaded.");
+              }],
+              ["Generate", () => generate({ profileId: profile.id })],
+              ["Delete", async () => {
+                await api("/api/profiles/" + profile.id, "DELETE");
+                await load();
+                report("Profile deleted.");
+              }],
+            ]
+          ) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "secondary";
+            button.textContent = label;
+            button.addEventListener("click", () => run(action));
+            actions.append(button);
+          }
+          row.append(actions);
+          tbody.append(row);
+        }
+      }
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        run(() => generate(values()));
+      });
+      document.querySelector("#save").addEventListener("click", () => {
+        if (form.reportValidity()) {
+          run(async () => {
+            await api("/api/profiles", "POST", values());
+            await load();
+            report("Profile saved.");
+          });
+        }
+      });
+      document.querySelector("#copy").addEventListener(
+        "click",
+        () =>
+          run(async () => {
+            await navigator.clipboard.writeText(token);
+            report("Token copied.");
+          }),
+      );
+      try {
+        const session = restoreAuthorization(sessionStorage);
+        if (session) applyAuthorization(session);
+      } catch {
+        clearAuthorization();
+      }
+      run(async () => {
+        const response = await fetch("/api/config");
+        if (response.ok) {
+          const { origin } = await response.json();
+          for (
+            const [id, url] of [["originDiscovery", origin.discoveryUrl], [
+              "originJwks",
+              origin.jwksUrl,
+            ]]
+          ) {
+            const link = document.querySelector("#" + id);
+            link.href = url;
+            link.textContent = url;
+          }
+          document.querySelector("#originKid").textContent = origin.kid;
+        }
+        await load();
+      });
+    </script>
+  </body>
+</html>
