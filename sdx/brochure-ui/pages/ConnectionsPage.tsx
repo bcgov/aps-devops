@@ -1,3 +1,4 @@
+import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Btn } from "../components/Btn.tsx";
 import {
@@ -557,53 +558,6 @@ function MetaBadge({ label }: { label: string }) {
   );
 }
 
-function FieldRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value?: string | null;
-  mono?: boolean;
-}) {
-  if (value === undefined || value === null || value === "")
-    return null;
-  return (
-    <>
-      <dt className="text-ink-secondary">{label}</dt>
-      <dd
-        className={
-          mono
-            ? "font-mono text-ink break-all"
-            : "text-ink break-all"
-        }
-      >
-        {value}
-      </dd>
-    </>
-  );
-}
-
-function ScopeChips({ scopes }: { scopes?: string[] }) {
-  if (!scopes || scopes.length === 0) {
-    return (
-      <span className="text-ink-placeholder italic">none</span>
-    );
-  }
-  return (
-    <span className="inline-flex flex-wrap gap-1 align-middle">
-      {scopes.map((s) => (
-        <span
-          key={s}
-          className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
-        >
-          {s}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 function UpgradesView({
   upgrades,
 }: {
@@ -779,23 +733,6 @@ function GatewayPatterns({
         </div>
       ))}
     </div>
-  );
-}
-
-function DetailSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary mb-1.5">
-        {title}
-      </h4>
-      {children}
-    </section>
   );
 }
 
@@ -1588,41 +1525,7 @@ function ConnectionCard({
           </summary>
           <div className="px-4 py-3 bg-surface-muted space-y-4 text-xs">
             {provisionerStatus && (
-              <DetailSection title="Provisioner status">
-                <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1">
-                  <FieldRow
-                    label="Status"
-                    value={provisionerStatus.status}
-                    mono
-                  />
-                  <FieldRow
-                    label="Message"
-                    value={provisionerStatus.message}
-                  />
-                  {provisionerStatus.endpoint && (
-                    <>
-                      <dt className="text-ink-secondary">
-                        Endpoint
-                      </dt>
-                      <dd className="font-mono text-ink break-all">
-                        <a
-                          href={provisionerStatus.endpoint}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-bc-blue underline hover:no-underline"
-                        >
-                          {provisionerStatus.endpoint}
-                        </a>
-                      </dd>
-                    </>
-                  )}
-                  <FieldRow
-                    label="Spec"
-                    value={provisionerStatus.spec}
-                    mono
-                  />
-                </dl>
-              </DetailSection>
+              <ProvisionerStatusDetails status={provisionerStatus} />
             )}
 
             {rd && (
@@ -2605,14 +2508,7 @@ function ClientGroupSection({
     <section className="bg-white border border-border rounded-lg overflow-hidden">
       <header className="bg-surface-muted border-b border-border px-4 py-3">
         <h3 className="font-semibold text-bc-blue break-all">
-          <a
-            href={`/subsystems/${encodeURIComponent(clientId)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            {clientId}
-          </a>
+          <ClientSubsystemLink clientId={clientId} />
         </h3>
         {subsystem?.name && (
           <p className="text-xs text-ink-secondary">
