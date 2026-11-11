@@ -1645,6 +1645,7 @@ async function handleConnectionsApprove(
         clientId,
         serviceId,
         isApproved: true,
+        isActive: true,
       },
       { accessToken: user!.accessToken },
     );

@@ -148,7 +148,7 @@ export async function deleteConnection(
  */
 export async function setConnectionApproval(
   org: string,
-  input: { clientId: string; serviceId: string; isApproved: boolean },
+  input: { clientId: string; serviceId: string; isApproved: boolean; isActive?: boolean },
   opts: SdxCallOpts = {},
 ): Promise<unknown> {
   const url =
