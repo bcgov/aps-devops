@@ -13,7 +13,7 @@ Initial baselines are defined in the component manifest. Historical repository-w
 ## Branches and images
 
 - Feature/dev pushes build through `.build.yml`; PR builds do not publish.
-- Same-repository feature PRs into dev request `gh pr merge --auto --squash`; GitHub applies required checks/reviews. Drafts and forks are excluded.
+- Same-repository feature PRs into dev request `gh pr merge --auto --squash`; GitHub applies required checks/reviews. Drafts and forks are excluded. If `AUTOMERGE_TOKEN` is not configured, the request is skipped.
 - Dev -> main uses a reviewed PR and a merge commit. `Release policy / plan` validates labels and previews component versions. A single increment applies independently to all changed components.
 - After merge, the workflow reserves component Git tags at that exact commit, builds/publishes images and charts, then uses `gh release create` with path-filtered `git log` notes. GitHub supplies source archives. Releases are not marked repository-wide latest.
 
