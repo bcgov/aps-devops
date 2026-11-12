@@ -2762,6 +2762,7 @@ export function ConnectionsPage({
                 {directR0Enabled && (
                   <Btn
                     data={{ "open-dialog": "add-dialog" }}
+                    variant={r1RequestUrl ? "secondary" : "primary"}
                     ariaLabel="Add an R0 connection"
                   >
                     Add R0 connection
@@ -2772,10 +2773,10 @@ export function ConnectionsPage({
                     href={r1RequestUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    variant={directR0Enabled ? "secondary" : "primary"}
-                    ariaLabel="Request an R1 connection through Common SSO (opens in a new tab)"
+                    variant="primary"
+                    ariaLabel="Request a connection through Common SSO (opens in a new tab)"
                   >
-                    Request R1 through Common SSO
+                    Request Connection through Common SSO
                   </Btn>
                 )}
               </div>
