@@ -1325,15 +1325,17 @@ async function handleConnectionsAdd(
     return new Response("method not allowed", {
       status: 405,
     });
+  if (config.connections?.directR0Enabled !== true) {
+    return new Response("Direct R0 connection requests are disabled", {
+      status: 403,
+    });
+  }
 
   const form = await req.formData();
   const org = String(form.get("org") ?? "");
   const clientId = String(form.get("clientId") ?? "");
   const serviceId = String(form.get("serviceId") ?? "");
-  const scopes = form
-    .getAll("scopes")
-    .map((v) => String(v))
-    .filter(Boolean);
+  const scopes: string[] = [];
   if (!org || !clientId || !serviceId) {
     return connectionsRedirect(
       org,
@@ -1391,24 +1393,17 @@ async function handleConnectionsAddMulti(
       status: 405,
     });
   }
+  if (config.connections?.directR0Enabled !== true) {
+    return new Response("Direct R0 connection requests are disabled", {
+      status: 403,
+    });
+  }
 
   const form = await req.formData();
   const org = String(form.get("org") ?? "");
   const clientId = String(form.get("clientId") ?? "");
   const raw = String(form.get("selections") ?? "[]");
-  const rawPolicyVersion = String(
-    form.get("policyVersion") ?? "",
-  );
-  const KNOWN_POLICY_VERSIONS: string[] = [
-    "SDX.R0.00",
-    "SDX.R1.00",
-    "SDX.R2.00",
-  ];
-  const policyVersion = KNOWN_POLICY_VERSIONS.includes(
-      rawPolicyVersion,
-    )
-    ? rawPolicyVersion
-    : "SDX.R0.00";
+  const policyVersion = "SDX.R0.00";
 
   let items: MultiAddItem[];
   try {
@@ -1417,11 +1412,7 @@ async function handleConnectionsAddMulti(
       throw new Error("expected array");
     items = parsed.map((entry) => {
       const serviceId = String(entry?.serviceId ?? "");
-      const scopes = Array.isArray(entry?.scopes)
-        ? entry.scopes
-            .map((s: unknown) => String(s))
-            .filter(Boolean)
-        : [];
+      const scopes: string[] = [];
       return { serviceId, scopes };
     });
   } catch (e) {

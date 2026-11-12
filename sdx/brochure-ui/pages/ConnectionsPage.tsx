@@ -175,8 +175,8 @@ const WIZARD_SCRIPT = `
   if (!dlg) return;
   var form = document.getElementById('wiz-form');
   if (!form) return;
+  var hasDefaultClient = (dlg.getAttribute('data-default-client-id') || '') !== '';
   var clientInput = document.getElementById('wiz-client-id');
-  var policyInput = document.getElementById('wiz-policy');
   var selectionsInput = document.getElementById('wiz-selections');
   var reviewEl = document.getElementById('wiz-review');
   var reviewClientEl = document.getElementById('wiz-review-client');
@@ -207,11 +207,10 @@ const WIZARD_SCRIPT = `
         pills[j].style.color = 'var(--typography-color-secondary)';
       }
     }
-    var step1Hidden = (form.querySelector('[data-step="1"]') || {}).classList && form.querySelector('[data-step="1"]').classList.contains('hidden');
-    var minStep = step1Hidden ? 2 : 1;
+    var minStep = hasDefaultClient ? 2 : 1;
     backBtn.style.display = n === minStep ? 'none' : '';
-    submitBtn.disabled = n !== 4;
-    if (n === 4) {
+    submitBtn.disabled = n !== 3;
+    if (n === 3) {
       nextBtn.classList.add('hidden');
       submitBtn.classList.remove('hidden');
       renderReview();
@@ -219,12 +218,6 @@ const WIZARD_SCRIPT = `
       nextBtn.classList.remove('hidden');
       submitBtn.classList.add('hidden');
     }
-  }
-
-  function applyPolicyMode(policy) {
-    var tree = form.querySelector('.wiz-tree');
-    if (!tree) return;
-    tree.classList.toggle('policy-hide-scopes', policy !== 'SDX.R2.00');
   }
 
   function ownCheckbox(li) {
@@ -287,15 +280,10 @@ const WIZARD_SCRIPT = `
       var cb = ownCheckbox(n);
       if (!cb) continue;
       if (!cb.checked && !cb.indeterminate) continue;
-      var scopes = [];
-      var scopeCbs = n.querySelectorAll('.wz-cb[data-node-type="scope"]');
-      for (var j = 0; j < scopeCbs.length; j++) {
-        if (scopeCbs[j].checked) scopes.push(scopeCbs[j].getAttribute('data-scope'));
-      }
       out.push({
         serviceId: n.getAttribute('data-service'),
         subsystem: n.getAttribute('data-subsystem'),
-        scopes: scopes
+        scopes: []
       });
     }
     return out;
@@ -357,43 +345,31 @@ const WIZARD_SCRIPT = `
       clientInput.value = picked.value;
       setStep(2);
     } else if (current === 2) {
-      var pickedPolicy = form.querySelector('input[name="wiz-policy-radio"]:checked');
-      if (!pickedPolicy) {
-        showWizardError('Choose an auth policy before continuing.', form.querySelector('input[name="wiz-policy-radio"]'));
-        return;
-      }
-      policyInput.value = pickedPolicy.value;
-      applyPolicyMode(pickedPolicy.value);
-      setStep(3);
-    } else if (current === 3) {
       var sel = buildSelections();
       if (sel.length === 0) {
         showWizardError('Select at least one API to request before continuing.', form.querySelector('.wz-cb'));
         return;
       }
       selectionsInput.value = JSON.stringify(sel);
-      setStep(4);
+      setStep(3);
     }
   }
 
   backBtn.addEventListener('click', function() {
     clearWizardError();
-    var step1Hidden = form.querySelector('[data-step="1"]').classList.contains('hidden');
-    var minStep = step1Hidden ? 2 : 1;
+    var minStep = hasDefaultClient ? 2 : 1;
     if (current > minStep) setStep(current - 1);
   });
   nextBtn.addEventListener('click', advance);
   form.addEventListener('submit', function(ev) {
-    if (current !== 4) {
+    if (current !== 3) {
       ev.preventDefault();
       advance();
       return;
     }
     if (!clientInput.value) {
       ev.preventDefault();
-      var step1 = form.querySelector('[data-step="1"]');
-      var skipClient = step1 && step1.classList.contains('hidden');
-      setStep(skipClient ? 2 : 1);
+      setStep(hasDefaultClient ? 2 : 1);
       showWizardError('Choose a client subsystem before submitting the request.', form.querySelector('input[name="wiz-client-radio"]'));
       return;
     }
@@ -401,7 +377,7 @@ const WIZARD_SCRIPT = `
     try { chosen = JSON.parse(selectionsInput.value || '[]'); } catch (_) { chosen = []; }
     if (!chosen.length) {
       ev.preventDefault();
-      setStep(3);
+      setStep(2);
       showWizardError('Select at least one API to request before submitting.', form.querySelector('.wz-cb'));
     }
   });
@@ -465,16 +441,12 @@ const WIZARD_SCRIPT = `
       }
       var radios = form.querySelectorAll('input[name="wiz-client-radio"]');
       for (var i = 0; i < radios.length; i++) radios[i].checked = false;
-      var policyRadios = form.querySelectorAll('input[name="wiz-policy-radio"]');
-      for (var k = 0; k < policyRadios.length; k++) policyRadios[k].checked = false;
       var cbs = form.querySelectorAll('.wz-cb');
       for (var j = 0; j < cbs.length; j++) { cbs[j].checked = false; cbs[j].indeterminate = false; }
       clientInput.value = defaultClient;
-      policyInput.value = '';
       selectionsInput.value = '[]';
       clearWizardError();
       applyEnvFilter('');
-      applyPolicyMode('');
       setStep(defaultClient ? 2 : 1);
       if (typeof target.showModal === 'function') target.showModal();
       else target.setAttribute('open', '');
@@ -2246,12 +2218,6 @@ function AddConnectionWizard({
         />
         <input
           type="hidden"
-          name="policyVersion"
-          id="wiz-policy"
-          value=""
-        />
-        <input
-          type="hidden"
           name="selections"
           id="wiz-selections"
           value="[]"
@@ -2293,16 +2259,11 @@ function AddConnectionWizard({
             <StepPill
               stepId={2}
               displayNum={hasDefault ? 1 : 2}
-              label="Auth policy"
+              label="APIs"
             />
             <StepPill
               stepId={3}
               displayNum={hasDefault ? 2 : 3}
-              label="APIs & scopes"
-            />
-            <StepPill
-              stepId={4}
-              displayNum={hasDefault ? 3 : 4}
               label="Review"
               last
             />
@@ -2351,99 +2312,17 @@ function AddConnectionWizard({
           )}
         </div>
 
-        {/* Step 2: auth policy */}
+        {/* Step 2: API selection */}
         <div
           data-step="2"
           className="wiz-step hidden px-5 py-4"
         >
           <h3 className="text-sm font-semibold text-ink mb-2">
-            Choose the auth policy for this connection
-          </h3>
-          <p className="text-xs text-ink-secondary mb-3">
-            SDX and Common SSO grant access to all
-            operations on the selected service(s). Scoped
-            access lets you request specific OAuth scopes.
-          </p>
-          <ul className="border border-border rounded divide-y divide-border">
-            <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-surface-muted cursor-pointer">
-                <input
-                  type="radio"
-                  name="wiz-policy-radio"
-                  value="SDX.R0.00"
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-ink">
-                    SDX{" "}
-                    <span className="font-mono text-xs text-ink-placeholder font-normal">
-                      SDX.R0.00
-                    </span>
-                  </span>
-                  <span className="block text-xs text-ink-secondary">
-                    Service-level access, no scopes.
-                  </span>
-                </span>
-              </label>
-            </li>
-            <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-surface-muted cursor-pointer">
-                <input
-                  type="radio"
-                  name="wiz-policy-radio"
-                  value="SDX.R1.00"
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-ink">
-                    Common SSO{" "}
-                    <span className="font-mono text-xs text-ink-placeholder font-normal">
-                      SDX.R1.00
-                    </span>
-                  </span>
-                  <span className="block text-xs text-ink-secondary">
-                    Service-level access, no scopes.
-                  </span>
-                </span>
-              </label>
-            </li>
-            <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-surface-muted cursor-pointer">
-                <input
-                  type="radio"
-                  name="wiz-policy-radio"
-                  value="SDX.R2.00"
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-ink">
-                    Scoped access{" "}
-                    <span className="font-mono text-xs text-ink-placeholder font-normal">
-                      SDX.R2.00
-                    </span>
-                  </span>
-                  <span className="block text-xs text-ink-secondary">
-                    Request specific OAuth scopes for the
-                    selected service(s).
-                  </span>
-                </span>
-              </label>
-            </li>
-          </ul>
-        </div>
-
-        {/* Step 3: tree of APIs & scopes */}
-        <div
-          data-step="3"
-          className="wiz-step hidden px-5 py-4"
-        >
-          <h3 className="text-sm font-semibold text-ink mb-2">
-            Choose the APIs and scopes to request
+            Choose the APIs to request
           </h3>
           <p className="text-xs text-ink-secondary mb-3">
             Checking an organization or subsystem selects
-            everything beneath it. Uncheck individual scopes
-            to narrow a request.
+            every API beneath it. R0 grants service-level access.
           </p>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-ink-secondary">
@@ -2477,7 +2356,7 @@ function AddConnectionWizard({
               ))}
             </div>
           </div>
-          <div className="wiz-tree border border-border rounded p-3 max-h-[55vh] overflow-auto">
+          <div className="wiz-tree policy-hide-scopes border border-border rounded p-3 max-h-[55vh] overflow-auto">
             {tree.length === 0 ? (
               <p className="text-sm text-ink-secondary italic">
                 No services available to request access to.
@@ -2611,9 +2490,9 @@ function AddConnectionWizard({
           </div>
         </div>
 
-        {/* Step 4: review */}
+        {/* Step 3: review */}
         <div
-          data-step="4"
+          data-step="3"
           className="wiz-step hidden px-5 py-4"
         >
           <h3 className="text-sm font-semibold text-ink mb-2">
@@ -2732,7 +2611,7 @@ export function ConnectionsPage({
   orgSubsystems,
   allSubsystems,
   services,
-  config: _config,
+  config,
   currentPath,
   user,
   flash,
@@ -2756,6 +2635,8 @@ export function ConnectionsPage({
         organizations,
       )
     : [];
+  const directR0Enabled = config.connections?.directR0Enabled === true;
+  const r1RequestUrl = config.connections?.r1RequestUrl;
 
   // Group every connection by its client (always), regardless of whether the
   // client subsystem belongs to the selected organization.
@@ -2877,14 +2758,26 @@ export function ConnectionsPage({
                   {groups.length === 1 ? "" : "s"}.
                 </p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  data-open-dialog="add-dialog"
-                  className="bg-bc-blue text-white text-sm font-semibold px-4 py-2 rounded hover:bg-bc-blue-hover"
-                >
-                  + Add connection
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {directR0Enabled && (
+                  <Btn
+                    data={{ "open-dialog": "add-dialog" }}
+                    ariaLabel="Add an R0 connection"
+                  >
+                    Add R0 connection
+                  </Btn>
+                )}
+                {r1RequestUrl && (
+                  <Btn
+                    href={r1RequestUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant={directR0Enabled ? "secondary" : "primary"}
+                    ariaLabel="Request an R1 connection through Common SSO (opens in a new tab)"
+                  >
+                    Request R1 through Common SSO
+                  </Btn>
+                )}
               </div>
             </div>
 
@@ -2907,11 +2800,13 @@ export function ConnectionsPage({
               </div>
             )}
 
-            <AddConnectionWizard
-              selectedOrg={selectedOrg}
-              orgSubsystems={orgSubsystems}
-              tree={connectionTree}
-            />
+            {directR0Enabled && (
+              <AddConnectionWizard
+                selectedOrg={selectedOrg}
+                orgSubsystems={orgSubsystems}
+                tree={connectionTree}
+              />
+            )}
           </>
         )}
       </div>
