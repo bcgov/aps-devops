@@ -105,15 +105,15 @@ docker run --rm -p 5500:5500 \
 The app listens on port `5500` by default; override with `-e PORT=xxxx`
 (and adjust `-p` to match).
 
-Connection request entry points are controlled in `config.yaml`. Direct creation
-is disabled unless `directR0Enabled` is explicitly true. When configured,
-`r1RequestUrl` sends R1 users to the Common SSO Requests application:
+The Common SSO connection request entry point is controlled in `config.yaml`:
 
 ```yaml
 connections:
-  directR0Enabled: true
   r1RequestUrl: "https://sso-requests.example.gov.bc.ca/"
 ```
+
+Direct R0 requests remain available through the SDX API for tools such as Restish;
+they are not exposed in this UI.
 
 ## Deployment
 

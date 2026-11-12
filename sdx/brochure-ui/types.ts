@@ -97,8 +97,6 @@ export interface EnvironmentConfig {
 }
 
 export interface ConnectionRequestConfig {
-  /** Enables the direct, service-level R0 request workflow. Disabled by default. */
-  directR0Enabled?: boolean;
   /** Common SSO Requests entry point for integration-backed R1 requests. */
   r1RequestUrl?: string;
 }
