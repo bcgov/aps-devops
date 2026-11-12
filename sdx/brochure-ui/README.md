@@ -105,6 +105,16 @@ docker run --rm -p 5500:5500 \
 The app listens on port `5500` by default; override with `-e PORT=xxxx`
 (and adjust `-p` to match).
 
+Connection request entry points are controlled in `config.yaml`. Direct creation
+is disabled unless `directR0Enabled` is explicitly true. When configured,
+`r1RequestUrl` sends R1 users to the Common SSO Requests application:
+
+```yaml
+connections:
+  directR0Enabled: true
+  r1RequestUrl: "https://sso-requests.example.gov.bc.ca/"
+```
+
 ## Deployment
 
 ```sh

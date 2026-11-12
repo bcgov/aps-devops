@@ -96,9 +96,18 @@ export interface EnvironmentConfig {
   jwks_urls?: string[];
 }
 
+export interface ConnectionRequestConfig {
+  /** Enables the direct, service-level R0 request workflow. Disabled by default. */
+  directR0Enabled?: boolean;
+  /** Common SSO Requests entry point for integration-backed R1 requests. */
+  r1RequestUrl?: string;
+}
+
 export interface SiteConfig {
   site: { title: string; description: string; subtitle: string };
   support_url: string;
+  /** Connection request entry points available in this deployment. */
+  connections?: ConnectionRequestConfig;
   /** Overrides the default "Secure Data Exchange" header banner title for
    * this deployment (e.g. "SDX Playground" for dev/test/local). */
   bannerTitle?: string;
