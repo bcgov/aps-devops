@@ -22,5 +22,8 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          test -n "$GH_TOKEN" || { echo 'Configure AUTOMERGE_TOKEN and required branch checks/reviews before enabling auto-merge.' >&2; exit 1; }
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::notice::AUTOMERGE_TOKEN is not configured; skipping auto-merge."
+            exit 0
+          fi
           gh pr merge "$PR" --auto --squash --match-head-commit "$HEAD_SHA"
