@@ -97,6 +97,9 @@ function normalizeConnection(c: ConnectionRequest): ConnectionRequest {
   return {
     ...c,
     scopes: normalizeScopes(c.scopes) ?? c.scopes,
+    provisionerStatus: c.provisionerStatus?.status
+      ? c.provisionerStatus
+      : undefined,
     requesterDetails: rd
       ? {
           ...rd,
