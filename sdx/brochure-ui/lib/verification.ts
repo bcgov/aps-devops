@@ -246,8 +246,8 @@ async function verifyJwtAgainstJwks(
       const ok = await crypto.subtle.verify(
         params.verifyAlg,
         key,
-        parsed.signature,
-        parsed.signingInput,
+        parsed.signature as BufferSource,
+        parsed.signingInput as BufferSource,
       );
       if (ok) return { ok: true, alg, kid: parsed.header.kid, jwk };
     } catch {
@@ -715,6 +715,7 @@ async function applyCertChainCheck(
 export async function verifyEdgeToken(
   token: string,
   source: HeaderSource,
+  allowedJwksUrls?: readonly string[],
 ): Promise<VerificationResult> {
   let parsed: JwtParts;
   try {
@@ -729,6 +730,9 @@ export async function verifyEdgeToken(
       source,
       message: "token has no jwks_uri claim",
     };
+  }
+  if (allowedJwksUrls && !allowedJwksUrls.includes(jwksUrl)) {
+    return { status: "invalid", source, message: "Edge token JWKS URL is not a configured trust source for this environment" };
   }
   let jwks: Jwks;
   try {

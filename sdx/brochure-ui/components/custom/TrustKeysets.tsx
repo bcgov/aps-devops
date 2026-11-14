@@ -1,3 +1,4 @@
+import { VerifyRequestDialog, VerifyRequestScript } from "../VerifyRequestDialog.tsx";
 import { CopyButton } from "./CopyButton.tsx";
 import { KeysetKeyCard } from "./KeysetKeyCard.tsx";
 import type { JwkRecord } from "../../types.ts";
@@ -15,9 +16,11 @@ export interface EnvKeyset {
 export function TrustKeysets({
   keysets,
   description,
+  verifyOrg,
 }: {
   keysets: EnvKeyset[];
   description: string;
+  verifyOrg?: string;
 }) {
   if (keysets.length === 0) return null;
   const total = keysets.reduce((n, ks) => n + ks.keys.length, 0);
@@ -40,6 +43,7 @@ export function TrustKeysets({
               <span className="text-sm text-ink-secondary">
                 {ks.keys.length} key{ks.keys.length !== 1 ? "s" : ""}
               </span>
+              {verifyOrg && <VerifyRequestDialog org={verifyOrg} environment={ks.environment} />}
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs text-ink-secondary break-all">
               <span>Published at</span>
@@ -61,6 +65,7 @@ export function TrustKeysets({
           </div>
         ))}
       </div>
+      {verifyOrg && <VerifyRequestScript />}
     </div>
   );
 }
