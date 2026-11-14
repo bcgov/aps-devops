@@ -188,6 +188,7 @@ export function OrgDetailPage({ org, subsystems, serviceCounts, publicBody, publ
       {/* Trust keysets — present only when the org publishes keys */}
       <TrustKeysets
         keysets={orgKeys}
+        verifyOrg={org.name}
         description="Public keys published for this organization member in the SDX JWKS registry, by environment."
       />
 

@@ -92,6 +92,8 @@ export interface EnvironmentConfig {
    * signatures are fetched from `<org_keysets_url>/<keysetId>/.well-known/jwks.json`.
    */
   org_keysets_url?: string;
+  /** Trusted root CA PEM used when installing organization signing certificates. */
+  signing_root_ca_pem?: string;
   /** JWKS source URLs published for this environment on the trust registry. */
   jwks_urls?: string[];
 }

@@ -7,12 +7,25 @@ import type { Organization, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 import type { RuntimeGroup } from "../lib/runtime-groups.ts";
 
+// Embed the dialog controller with the SSR page so markup and behavior always
+// update together, without a separately cached JavaScript asset.
+const signingScript = await Deno.readTextFile(
+  new URL("../public/signing.js", import.meta.url),
+);
+
 interface RuntimesPageProps {
   organizations: Organization[];
   selectedOrg: Organization | null;
   ownedGroups: RuntimeGroup[];
   availableGroups: RuntimeGroup[];
   error: string | null;
+  signing?: Record<string, boolean | null>;
+  signingResult?: {
+    group: string;
+    environment: string;
+    csr?: string;
+    message?: string;
+  };
   config: SiteConfig;
   currentPath: string;
   user: SessionUser;
@@ -20,7 +33,13 @@ interface RuntimesPageProps {
 
 function RuntimeGroupCard({
   group,
+  org,
+  signing,
+  signingResult,
 }: {
+  org?: string;
+  signing?: Record<string, boolean | null>;
+  signingResult?: RuntimesPageProps["signingResult"];
   group: RuntimeGroup;
 }) {
   const hosted = Array.isArray(group.hostedOrganizations)
@@ -93,6 +112,234 @@ function RuntimeGroupCard({
           </>
         )}
       </dl>
+      {org && group.environment && (
+        <div className="border-t pt-3 text-sm space-y-2">
+          <p>
+            Organization signing:{" "}
+            <strong>
+              {signing?.[`${group.name}:${group.environment}`] === true
+                ? "Configured"
+                : signing?.[`${group.name}:${group.environment}`] === false
+                ? "Not configured"
+                : "Status unavailable"}
+            </strong>
+          </p>
+          <p className="text-xs text-gray-500">
+            Each edge runtime has its own certificate in the organization’s{" "}
+            {group.environment} signing key set.
+          </p>
+          <button
+            type="button"
+            data-open-signing
+            className="rounded bg-[#003366] text-white px-3 py-2"
+          >
+            {signing?.[`${group.name}:${group.environment}`]
+              ? "Renew"
+              : "Setup"}
+          </button>
+          <dialog
+            data-signing-dialog
+            aria-label="Setup Signing Key"
+            className="rounded-lg p-0 w-full max-w-2xl backdrop:bg-black/40"
+          >
+            <div className="p-6 space-y-4">
+              <header className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold text-[#003366]">
+                  Setup Signing Key
+                </h2>
+                <button
+                  type="button"
+                  data-close-signing
+                  aria-label="Close dialog"
+                  className="text-gray-600 px-2 py-1"
+                >
+                  ✕
+                </button>
+              </header>
+              <p className="text-sm text-gray-600">
+                {group.name} · {group.environment}
+              </p>
+              <div
+                role="tablist"
+                aria-label="Signing setup steps"
+                className="flex border-b gap-4"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  id={`csr-tab-${group.name}-${group.environment}`}
+                  aria-controls={`csr-panel-${group.name}-${group.environment}`}
+                  aria-selected="true"
+                  data-signing-tab="csr"
+                  className="px-3 py-2 border-b-2 border-[#003366] font-semibold"
+                >
+                  Create a CSR
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id={`install-tab-${group.name}-${group.environment}`}
+                  aria-controls={`install-panel-${group.name}-${group.environment}`}
+                  aria-selected="false"
+                  tabIndex={-1}
+                  data-signing-tab="install"
+                  className="px-3 py-2 border-b-2 border-transparent"
+                >
+                  Install Certificate
+                </button>
+              </div>
+              <section
+                role="tabpanel"
+                id={`csr-panel-${group.name}-${group.environment}`}
+                aria-labelledby={`csr-tab-${group.name}-${group.environment}`}
+                data-signing-panel="csr"
+                className="space-y-3"
+              >
+                <p className="text-sm text-gray-600">
+                  Create a CSR and send it to the APS team for approval and
+                  signing. When you receive the signed certificate, install it
+                  in the next tab.
+                </p>
+                <form
+                  method="post"
+                  action="/runtimes/signing"
+                  data-signing-form
+                >
+                  <input type="hidden" name="org" value={org} />
+                  <input type="hidden" name="group" value={group.name} />
+                  <input
+                    type="hidden"
+                    name="environment"
+                    value={group.environment}
+                  />
+                  <input type="hidden" name="operation" value="csr" />
+                  <button className="rounded bg-[#003366] text-white px-3 py-2">
+                    Create a CSR
+                  </button>
+                </form>
+                <div data-csr-result hidden>
+                  <label className="block text-sm">
+                    Certificate signing request<textarea
+                      data-csr
+                      readOnly
+                      className="block w-full border rounded p-3 font-mono text-xs mt-2"
+                      rows={10}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    data-copy-csr
+                    className="mt-2 text-blue-800 underline"
+                  >
+                    Copy CSR to clipboard
+                  </button>
+                </div>
+              </section>
+              <section
+                role="tabpanel"
+                id={`install-panel-${group.name}-${group.environment}`}
+                aria-labelledby={`install-tab-${group.name}-${group.environment}`}
+                data-signing-panel="install"
+                hidden
+                className="space-y-3"
+              >
+                <p className="text-sm text-gray-600">
+                  Paste the signed certificate, including any intermediate CAs,
+                  in PEM format. The root CA is supplied automatically for this
+                  environment.
+                </p>
+                <form
+                  method="post"
+                  action="/runtimes/signing"
+                  data-signing-form
+                  className="space-y-3"
+                >
+                  <input type="hidden" name="org" value={org} />
+                  <input type="hidden" name="group" value={group.name} />
+                  <input
+                    type="hidden"
+                    name="environment"
+                    value={group.environment}
+                  />
+                  <input type="hidden" name="operation" value="review" />
+                  <label className="block text-sm">
+                    Signed certificate (PEM)<textarea
+                      name="certificate"
+                      required
+                      className="block w-full border rounded p-3 font-mono text-xs mt-2"
+                      rows={10}
+                      placeholder="-----BEGIN CERTIFICATE-----"
+                    />
+                  </label>
+                  <button
+                    data-review-install
+                    className="rounded bg-[#003366] text-white px-3 py-2"
+                  >
+                    Install
+                  </button>
+                  <div
+                    data-install-review
+                    hidden
+                    className="rounded border border-blue-200 bg-blue-50 p-3 space-y-3"
+                  >
+                    <p data-install-review-message className="text-sm" />
+                    <input type="hidden" name="confirmation" />
+                    <label className="block text-sm">
+                      <input type="checkbox" name="confirmed" />{" "}
+                      I confirm this change to the environment signing key set.
+                    </label>
+                    <button className="rounded bg-[#003366] text-white px-3 py-2">
+                      Confirm installation
+                    </button>
+                  </div>
+                </form>
+              </section>
+              <p
+                data-signing-status
+                role="status"
+                aria-live="polite"
+                className="text-sm"
+              />
+              <footer className="flex justify-end border-t pt-3">
+                <button
+                  type="button"
+                  data-close-signing
+                  className="rounded border px-4 py-2"
+                >
+                  Close
+                </button>
+              </footer>
+            </div>
+          </dialog>
+          {signing?.[`${group.name}:${group.environment}`] === true && (
+            <form
+              method="post"
+              action="/runtimes/signing"
+              className="space-y-2"
+            >
+              <input type="hidden" name="org" value={org} />
+              <input type="hidden" name="group" value={group.name} />
+              <input
+                type="hidden"
+                name="environment"
+                value={group.environment}
+              />
+              <label className="block text-xs">
+                <input type="checkbox" name="confirm" required />{" "}
+                Remove organization signing for this runtime group and
+                environment
+              </label>
+              <button
+                className="text-red-800 underline"
+                name="operation"
+                value="remove"
+              >
+                Remove
+              </button>
+            </form>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -103,7 +350,13 @@ function GroupSection({
   groups,
   emptyMessage,
   accent,
+  org,
+  signing,
+  signingResult,
 }: {
+  org?: string;
+  signing?: Record<string, boolean | null>;
+  signingResult?: RuntimesPageProps["signingResult"];
   title: string;
   description: string;
   groups: RuntimeGroup[];
@@ -148,7 +401,13 @@ function GroupSection({
           className="grid grid-cols-1 md:grid-cols-2 gap-3"
         >
           {sorted.map((g) => (
-            <RuntimeGroupCard key={g.name} group={g} />
+            <RuntimeGroupCard
+              key={`${g.name}:${g.environment}`}
+              group={g}
+              org={org}
+              signing={signing}
+              signingResult={signingResult}
+            />
           ))}
         </div>
         <p
@@ -169,6 +428,8 @@ export function RuntimesPage({
   ownedGroups,
   availableGroups,
   error,
+  signing,
+  signingResult,
   config: _config,
   currentPath,
   user,
@@ -258,11 +519,15 @@ export function RuntimesPage({
                 groups={availableGroups}
                 emptyMessage="No additional runtime groups are available to this organization."
                 accent="gold"
+                org={selectedOrg.name}
+                signing={signing}
+                signingResult={signingResult}
               />
             </div>
           </>
         )}
       </div>
+      <script dangerouslySetInnerHTML={{ __html: signingScript }} />
     </Layout>
   );
 }

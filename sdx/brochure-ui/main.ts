@@ -1,3 +1,8 @@
+import { verifyOrganizationRequest } from "./lib/request-verification.ts";
+import { keysForKeyset } from "./lib/keysets.ts";
+import { certificatePayload, certificatesWithoutRuntime, fetchSigningKeyset, planCertificateInstall } from "./lib/org-signing-keyset.ts";
+import { registerOrgCertificate, requestOrgCsr } from "./lib/org-signing.ts";
+import { orgKeysetsUrlForEnv } from "./lib/environments.ts";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { config } from "./lib/config.ts";
@@ -229,7 +234,21 @@ async function getKeysetsByEnvironment(
   const results = await Promise.all(
     ENVIRONMENTS.map(async (env): Promise<EnvKeyset | null> => {
       const baseUrl = ORG_KEYSETS_URL_BY_ENV[env.id];
-      if (!baseUrl) return null;
+      if (!baseUrl) {
+        // Deployments may configure only aggregate Trust registry sources.
+        // Those already contain the published org/subsystem keys.
+        const sources = await getJwks();
+        const matches = sources.flatMap((source) => {
+          const keys = keysForKeyset(source.keys, prefix, env.id);
+          return keys.length ? [{ source: source.url, keys }] : [];
+        });
+        if (!matches.length) return null;
+        return {
+          environment: env.id,
+          source: matches[0].source,
+          keys: matches[0].keys,
+        };
+      }
       const data = await getKeyset(`${prefix}.${env.id}`, baseUrl);
       if (!data || data.error || data.keys.length === 0) {
         return null;
@@ -529,6 +548,27 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     return await logout(req);
   }
 
+  if (path === "/api/trust/verify-request") {
+    if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+    if (req.headers.get("origin") !== url.origin) return new Response("Invalid origin", { status: 403 });
+    try {
+      const form = await req.formData();
+      const org = organizations.find((entry) => entry.name === String(form.get("org")));
+      const environment = String(form.get("environment") ?? "");
+      const env = config.environments?.find((entry) => entry.id === environment);
+      if (!org || !env) throw new Error("Select an organization and configured environment");
+      const field = (name: string) => String(form.get(name) ?? "").trim();
+      clearJwksCache();
+      const result = await verifyOrganizationRequest({
+        environment, memberClass:org.member.memberClass, memberId:org.member.memberId,
+        clientId:field("clientId"), edgeToken:field("edgeToken"), entitySig:field("entitySig"),
+      }, { jwksUrls:env.jwks_urls ?? [], registryBase:env.org_keysets_url });
+      return Response.json(result, {headers:{"cache-control":"no-store"}});
+    } catch (error) {
+      return Response.json({verified:false,checks:[{label:"Verification",passed:false,message:(error as Error).message}]}, {headers:{"cache-control":"no-store"}});
+    }
+  }
+
   const user = await getCurrentUser(req);
 
   if (url.searchParams.get("refresh") === "1") {
@@ -769,6 +809,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
         user: user!,
       }),
     );
+  }
+
+  if (path === "/runtimes/signing") {
+    return await handleRuntimes(req, url, user);
   }
 
   if (path === "/runtimes") {
@@ -1090,12 +1134,18 @@ async function handleRuntimes(
   url: URL,
   user: Awaited<ReturnType<typeof getCurrentUser>>,
 ): Promise<Response> {
+  if (url.pathname === "/runtimes/signing" && !user && req.headers.get("accept")?.includes("application/json")) {
+    return Response.json({ error: "Your session has expired. Reload the page and sign in again." }, { status: 401 });
+  }
   const gate = requireAuth(req, user);
   if (gate) return gate;
 
-  const orgName = url.searchParams.get("org") ?? "";
-  const selectedOrg =
-    organizations.find((o) => o.name === orgName) ?? null;
+  const isSigning = url.pathname === "/runtimes/signing";
+  if (isSigning && req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (isSigning && req.headers.get("origin") !== url.origin) return new Response("Invalid origin", { status: 403 });
+  const form = isSigning ? await req.formData() : null;
+  const orgName = String(form?.get("org") ?? url.searchParams.get("org") ?? "");
+  const selectedOrg = organizations.find((o) => o.name === orgName) ?? null;
 
   let ownedGroups: Awaited<
     ReturnType<typeof listRuntimeGroups>
@@ -1117,11 +1167,70 @@ async function handleRuntimes(
     } catch (e) {
       ownedGroups = [];
       availableGroups = [];
-      error =
-        e instanceof SdxApiError
-          ? `Failed to load runtime groups (${e.status}): ${e.body}`
-          : (e as Error).message;
+      error = e instanceof SdxApiError
+        ? `Failed to load runtime groups (${e.status}): ${e.body}`
+        : (e as Error).message;
     }
+  }
+
+  const keysetUrl = (environment: string) => {
+    const base = orgKeysetsUrlForEnv(environment);
+    if (!base || !selectedOrg) throw new Error("Organization signing registry is not configured");
+    const member = selectedOrg.member;
+    const id = `sdx.org.${member.memberClass}.${member.memberId}.${environment}`.toLowerCase();
+    return `${base.replace(/\/$/, "")}/${encodeURIComponent(id)}/.well-known/jwks.json`;
+  };
+  let signingResult: { group: string; environment: string; csr?: string; message?: string; confirmation?: string; review?: string } | undefined;
+  if (isSigning) {
+    try {
+      const group = String(form!.get("group") ?? "");
+      const environment = String(form!.get("environment") ?? "");
+      if (!selectedOrg || !availableGroups.some((g) => g.name === group && g.environment === environment)) throw new Error("Select an available runtime group");
+      const operation = String(form!.get("operation"));
+      const opts = { accessToken: user!.accessToken };
+      signingResult = { group, environment };
+      if (operation === "csr") {
+        signingResult.csr = await requestOrgCsr(orgName, group, environment, opts);
+      } else if (operation === "review" || operation === "install" || operation === "remove") {
+        const certificate = String(form!.get("certificate") ?? "").trim();
+        const caCerts = config.environments?.find((env) => env.id === environment)?.signing_root_ca_pem?.trim() ?? "";
+        const current = await fetchSigningKeyset(keysetUrl(environment), selectedOrg.member, environment);
+        if (operation === "remove") {
+          if (form!.get("confirm") !== "on") throw new Error("Confirm removal for this runtime group and environment");
+          if (!current.certificates.some((entry) => entry.runtime === group.toLowerCase())) throw new Error("No certificate is registered for this runtime group");
+          const retained = certificatesWithoutRuntime(current, group);
+          if (retained.length && !caCerts) throw new Error(`Signing root CA is not configured for ${environment}. Contact your administrator.`);
+          await registerOrgCertificate(orgName, environment, retained.length ? certificatePayload(retained, caCerts) : [], caCerts, retained.length === 0, opts);
+          signingResult.message = "Organization signing removed for this runtime group and environment.";
+        } else {
+          if (!caCerts) throw new Error(`Signing root CA is not configured for ${environment}. Contact your administrator.`);
+          const plan = planCertificateInstall(current, selectedOrg.member, environment, group, certificate, caCerts);
+          if (operation === "review") {
+            signingResult.confirmation = plan.confirmation;
+            signingResult.review = plan.message;
+          } else {
+            if (form!.get("confirmed") !== "on" || form!.get("confirmation") !== plan.confirmation) throw new Error("The key set or certificate has changed. Review the installation again before confirming.");
+            await registerOrgCertificate(orgName, environment, plan.certificatePem, caCerts, false, opts);
+            signingResult.message = "Registration succeeded.";
+          }
+        }
+      } else throw new Error("Unknown signing operation");
+    } catch (e) { error = (e as Error).message; }
+  }
+  if (isSigning && req.headers.get("accept")?.includes("application/json")) {
+    return Response.json(error ? { error } : signingResult, { status: error ? 400 : 200 });
+  }
+  const signing: Record<string, boolean | null> = {};
+  if (selectedOrg) {
+    await Promise.all([...new Set(availableGroups.map((g) => g.environment).filter((e): e is string => !!e))].map(async (environment) => {
+      const groups = availableGroups.filter((g) => g.environment === environment);
+      try {
+        const current = await fetchSigningKeyset(keysetUrl(environment), selectedOrg.member, environment);
+        for (const group of groups) signing[`${group.name}:${environment}`] = current.certificates.some((entry) => entry.runtime === group.name.toLowerCase());
+      } catch {
+        for (const group of groups) signing[`${group.name}:${environment}`] = null;
+      }
+    }));
   }
 
   return htmlResponse(
@@ -1130,6 +1239,8 @@ async function handleRuntimes(
       selectedOrg,
       ownedGroups,
       availableGroups,
+      signing,
+      signingResult,
       error,
       config,
       currentPath: "/runtimes",
