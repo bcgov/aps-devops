@@ -2,7 +2,6 @@
 # calling job must grant the token it passes in `token`:
 #   contents: read
 #   pull-requests: write
-#   issues: write
 
 name: "Remind Pending PR Reviewers"
 description: "Reminds pending reviewers on GitHub pull requests by tagging them in comments."
