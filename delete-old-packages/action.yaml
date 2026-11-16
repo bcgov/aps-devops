@@ -1,3 +1,8 @@
+# Caller permissions: GITHUB_TOKEN is read-only by default from 2026-11-30, so the
+# calling job must grant:
+#   contents: read
+#   packages: write
+
 name: "Delete Old Package Versions"
 description: "This action deletes old package versions from the specified package."
 
