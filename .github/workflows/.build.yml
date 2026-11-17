@@ -30,8 +30,13 @@ on:
         value: ${{ jobs.build-image.outputs.digest }}
       revision:
         value: ${{ jobs.build-image.outputs.revision }}
+permissions:
+  contents: read
 jobs:
   build-image:
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image: ${{ steps.identity.outputs.tag }}
       digest: ${{ steps.identity.outputs.digest || steps.build.outputs.digest }}
