@@ -96,9 +96,16 @@ export interface EnvironmentConfig {
   jwks_urls?: string[];
 }
 
+export interface ConnectionRequestConfig {
+  /** Common SSO Requests entry point for integration-backed R1 requests. */
+  r1RequestUrl?: string;
+}
+
 export interface SiteConfig {
   site: { title: string; description: string; subtitle: string };
   support_url: string;
+  /** Connection request entry points available in this deployment. */
+  connections?: ConnectionRequestConfig;
   /** Overrides the default "Secure Data Exchange" header banner title for
    * this deployment (e.g. "SDX Playground" for dev/test/local). */
   bannerTitle?: string;
@@ -230,7 +237,13 @@ export interface ConnectionServiceResources {
 }
 
 export interface ConnectionProvisionerStatus {
-  status: string;
+  status:
+    | "pending"
+    | "provisioned"
+    | "deprovisioning"
+    | "deprovisioned"
+    | "failed";
+  operation?: "provision" | "deprovision";
   message: string;
   endpoint?: string;
   spec?: string;
