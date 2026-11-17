@@ -42,7 +42,9 @@ const LINKS = [
   </a>,
 ];
 
-export function AppFooter() {
+// buildLabel comes from the server (lib/build-info.ts) through the island's
+// data-bcds-props, since this bundle can't read the server's env.
+export function AppFooter({ buildLabel }: { buildLabel?: string }) {
   return (
     <Footer
       contact={
@@ -50,7 +52,15 @@ export function AppFooter() {
           <p style={{ fontWeight: 700, margin: 0 }}>
             BC Government Secure Data Exchange
           </p>
-          <p style={{ margin: 0 }}>API Programme Services · Connected Services BC</p>
+          <p style={{ margin: 0 }}>API Program Services · Connected Services BC</p>
+          {buildLabel && (
+            <p
+              style={{ margin: "0.5rem 0 0", fontSize: "0.75rem" }}
+              data-testid="footer-version"
+            >
+              {buildLabel}
+            </p>
+          )}
         </div>
       }
       links={<FooterLinks title="More info" links={LINKS} />}

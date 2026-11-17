@@ -60,6 +60,13 @@ RUN deno cache main.ts \
 
 USER deno
 
+# Release version and Git revision for the footer (lib/build-info.ts). Set
+# after the cached layers above so a new revision does not rebuild them.
+ARG APP_VERSION=""
+ARG APP_REVISION=""
+ENV APP_VERSION=${APP_VERSION} \
+    APP_REVISION=${APP_REVISION}
+
 ENV PORT=5500
 EXPOSE 5500
 

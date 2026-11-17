@@ -1,3 +1,5 @@
+import { BUILD_LABEL } from "../lib/build-info.ts";
+
 // B.C. Design System Footer anatomy:
 //   1. A full-width territorial acknowledgment statement on a dark grey
 //      background (#292929, matched from gov.bc.ca's own site chrome — the
@@ -16,7 +18,9 @@ export function Footer() {
     // <footer> here would nest one inside the other once the island
     // replaces this element's children. See the equivalent comment in
     // components/Nav.tsx.
-    <div className="mt-16" data-bcds-island="AppFooter" data-bcds-props="{}">
+    <div className="mt-16" data-bcds-island="AppFooter"
+      data-bcds-props={JSON.stringify({ buildLabel: BUILD_LABEL })}
+    >
       {/* Server-rendered fallback. Replaced by the real <Footer>
           (client/AppFooter.tsx) once public/js/client.js loads. */}
       <footer>
@@ -46,7 +50,10 @@ export function Footer() {
                 <p className="font-semibold text-ink mb-1">
                   BC Government Secure Data Exchange
                 </p>
-                <p>API Programme Services · Connected Services BC</p>
+                <p>API Program Services · Connected Services BC</p>
+                <p className="mt-2 text-xs" data-testid="footer-version">
+                  {BUILD_LABEL}
+                </p>
               </div>
             </div>
             <nav
