@@ -1,24 +1,22 @@
 import { Buffer } from "node:buffer";
 import {
-  clientIdToOrgKeyset,
   type VerificationResult,
   verifyEdgeToken,
   verifyEntitySig,
 } from "./verification.ts";
 
-export interface RequestVerificationInput {
+export interface ResponseVerificationInput {
   environment: string;
   memberClass: string;
   memberId: string;
-  clientId: string;
   edgeToken: string;
   entitySig: string;
 }
-export interface RequestVerificationConfig {
+export interface ResponseVerificationConfig {
   jwksUrls: string[];
   registryBase?: string;
 }
-export interface RequestVerificationCheck {
+export interface ResponseVerificationCheck {
   label: string;
   passed: boolean;
   message: string;
@@ -27,7 +25,7 @@ export interface RequestVerificationCheck {
 function chainCheck(
   label: string,
   result: VerificationResult,
-): RequestVerificationCheck {
+): ResponseVerificationCheck {
   return {
     label,
     passed: result.details?.cert_chain_pass !== "false",
@@ -39,25 +37,14 @@ function chainCheck(
   };
 }
 
-export async function verifyOrganizationRequest(
-  input: RequestVerificationInput,
-  config: RequestVerificationConfig,
+export async function verifyOrganizationResponse(
+  input: ResponseVerificationInput,
+  config: ResponseVerificationConfig,
 ) {
   const { environment, memberClass, memberId } = input;
   const expected = `sdx.org.${memberClass}.${memberId}.${environment}`
     .toLowerCase();
-  const actual = clientIdToOrgKeyset(input.clientId, environment);
-  const checks: RequestVerificationCheck[] = [];
-  const identityOk = input.clientId.split(".").length >= 3 &&
-    input.clientId.split(".").every(Boolean) && actual === expected;
-  checks.push({
-    label: "Organization and environment",
-    passed: identityOk,
-    message: identityOk
-      ? `Request belongs to ${expected}`
-      : "X-Client-ID does not belong to the selected organization key set. Use <member class>.<member ID>.<subsystem>.",
-  });
-  if (!identityOk) return { verified: false, checks };
+  const checks: ResponseVerificationCheck[] = [];
   if (!input.edgeToken || !input.entitySig) {
     return {
       verified: false,
@@ -103,11 +90,11 @@ export async function verifyOrganizationRequest(
     });
   }
   const [edge, entity] = await Promise.all([
-    verifyEdgeToken(input.edgeToken, "request", allowed),
+    verifyEdgeToken(input.edgeToken, "response", allowed),
     verifyEntitySig(input.entitySig, input.edgeToken, {
-      dotted: input.clientId,
+      dotted: `${environment}.${memberClass}.${memberId}`,
       keysetId: expected,
-    }, "request"),
+    }, "response"),
   ]);
   checks.push({
     label: "Edge token signature",

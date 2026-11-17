@@ -1,4 +1,4 @@
-import { verifyOrganizationRequest } from "./lib/request-verification.ts";
+import { verifyOrganizationResponse } from "./lib/response-verification.ts";
 import { keysForKeyset } from "./lib/keysets.ts";
 import { certificatePayload, certificatesWithoutRuntime, fetchSigningKeyset, planCertificateInstall } from "./lib/org-signing-keyset.ts";
 import { registerOrgCertificate, requestOrgCsr } from "./lib/org-signing.ts";
@@ -548,7 +548,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     return await logout(req);
   }
 
-  if (path === "/api/trust/verify-request") {
+  if (path === "/api/trust/verify-response") {
     if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
     if (req.headers.get("origin") !== url.origin) return new Response("Invalid origin", { status: 403 });
     try {
@@ -559,9 +559,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       if (!org || !env) throw new Error("Select an organization and configured environment");
       const field = (name: string) => String(form.get(name) ?? "").trim();
       clearJwksCache();
-      const result = await verifyOrganizationRequest({
+      const result = await verifyOrganizationResponse({
         environment, memberClass:org.member.memberClass, memberId:org.member.memberId,
-        clientId:field("clientId"), edgeToken:field("edgeToken"), entitySig:field("entitySig"),
+        edgeToken:field("edgeToken"), entitySig:field("entitySig"),
       }, { jwksUrls:env.jwks_urls ?? [], registryBase:env.org_keysets_url });
       return Response.json(result, {headers:{"cache-control":"no-store"}});
     } catch (error) {

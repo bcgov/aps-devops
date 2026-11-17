@@ -1,16 +1,16 @@
 import { Buffer } from "node:buffer";
 import { clearJwksCache } from "./verification.ts";
 import {
-  type RequestVerificationInput,
-  verifyOrganizationRequest,
-} from "./request-verification.ts";
+  type ResponseVerificationInput,
+  verifyOrganizationResponse,
+} from "./response-verification.ts";
 const assert = (value: unknown, message: string) => {
   if (!value) throw new Error(message);
 };
 const encode = (value: unknown) =>
   Buffer.from(JSON.stringify(value)).toString("base64url");
 
-async function request() {
+async function response() {
   const edge = await crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
     true,
@@ -56,18 +56,17 @@ async function request() {
     jwks_uri: "https://edge.example/jwks",
     exp: Math.floor(Date.now() / 1000) + 300,
   });
-  const input: RequestVerificationInput = {
+  const input: ResponseVerificationInput = {
     environment: "apsdev",
     memberClass: "MIN",
     memberId: "TEC",
-    clientId: "MIN.TEC.APP",
     ...signed,
   };
   return { input, edgeJwk, orgJwk, signToken };
 }
 
-Deno.test("request verification checks both signatures and detects tampering, expiry and identity mismatch", async () => {
-  const sample = await request();
+Deno.test("response verification checks both signatures and detects tampering, expiry and wrong organization keys", async () => {
+  const sample = await response();
   const original = globalThis.fetch;
   const seen: string[] = [];
   globalThis.fetch = (url) => {
@@ -77,7 +76,9 @@ Deno.test("request verification checks both signatures and detects tampering, ex
         keys: [
           String(url) === "https://edge.example/jwks"
             ? sample.edgeJwk
-            : sample.orgJwk,
+            : String(url).includes("sdx.org.min.tec.apsdev")
+            ? sample.orgJwk
+            : sample.edgeJwk,
         ],
       }),
     );
@@ -85,7 +86,7 @@ Deno.test("request verification checks both signatures and detects tampering, ex
   const config = { jwksUrls: ["https://edge.example/jwks"] };
   try {
     clearJwksCache();
-    const success = await verifyOrganizationRequest(sample.input, config);
+    const success = await verifyOrganizationResponse(sample.input, config);
     assert(
       success.verified,
       "Valid edge and organization signatures did not verify",
@@ -96,23 +97,23 @@ Deno.test("request verification checks both signatures and detects tampering, ex
       sub: "tampered",
     });
     assert(
-      !(await verifyOrganizationRequest({
+      !(await verifyOrganizationResponse({
         ...sample.input,
         edgeToken: token.join("."),
       }, config)).verified,
       "Tampered JWT accepted",
     );
     assert(
-      !(await verifyOrganizationRequest({
+      !(await verifyOrganizationResponse({
         ...sample.input,
         entitySig: Buffer.from("bad signature").toString("base64url"),
       }, config)).verified,
       "Bad organization signature accepted",
     );
     assert(
-      !(await verifyOrganizationRequest({
+      !(await verifyOrganizationResponse({
         ...sample.input,
-        clientId: "MIN.OTHER.APP",
+        memberId: "OTHER",
       }, config)).verified,
       "Wrong organization accepted",
     );
@@ -121,7 +122,7 @@ Deno.test("request verification checks both signatures and detects tampering, ex
       exp: 1,
     });
     assert(
-      !(await verifyOrganizationRequest(
+      !(await verifyOrganizationResponse(
         { ...sample.input, ...expired },
         config,
       )).verified,
@@ -133,7 +134,7 @@ Deno.test("request verification checks both signatures and detects tampering, ex
       jwks_uri: "http://127.0.0.1/private",
     });
     assert(
-      !(await verifyOrganizationRequest(
+      !(await verifyOrganizationResponse(
         { ...sample.input, ...internal },
         config,
       )).verified,
@@ -150,7 +151,7 @@ Deno.test("request verification checks both signatures and detects tampering, ex
 });
 
 Deno.test("failed certificate chain prevents overall Verified result", async () => {
-  const sample = await request();
+  const sample = await response();
   const original = globalThis.fetch;
   globalThis.fetch = (url) =>
     Promise.resolve(
@@ -164,7 +165,7 @@ Deno.test("failed certificate chain prevents overall Verified result", async () 
     );
   try {
     clearJwksCache();
-    const result = await verifyOrganizationRequest(sample.input, {
+    const result = await verifyOrganizationResponse(sample.input, {
       jwksUrls: ["https://edge.example/jwks"],
     });
     assert(

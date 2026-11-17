@@ -156,10 +156,10 @@ assuming an empty set. Removal also retains certificates for other runtimes.
 The upstream API has no conditional-write support, so concurrent updates after
 the final registry read still require coordination.
 
-Organization trust key sets offer **Verify Request**. Paste `X-Client-ID`
-(without an environment prefix), `X-Edge-Token`, and `X-Entity-Sig`, then select
+Organization trust key sets offer **Verify Response** for consumers checking a provider’s response. Paste
+`X-Edge-Token` and `X-Entity-Sig`, then select
 **Check**. The dialog reuses Traffic’s signature and certificate-chain verifier
 and displays each check plus Verified or Failed verification. The selected key
 set fixes the organization and environment. Edge JWT `jwks_uri` values must
 match that environment’s configured `jwks_urls`, or an edge key-set endpoint
-under its configured `org_keysets_url`. Request header values are not logged.
+under its configured `org_keysets_url`. Response header values are not logged.

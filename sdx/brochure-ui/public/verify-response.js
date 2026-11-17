@@ -1,29 +1,29 @@
 (() => {
   document.addEventListener("click", (event) => {
-    const host = event.target.closest("[data-request-verifier]");
+    const host = event.target.closest("[data-response-verifier]");
     if (!host) return;
     const dialog = host.querySelector("dialog");
-    if (event.target.closest("[data-open-request-verifier]")) {
+    if (event.target.closest("[data-open-response-verifier]")) {
       dialog.showModal();
     }
-    if (event.target.closest("[data-close-request-verifier]")) dialog.close();
+    if (event.target.closest("[data-close-response-verifier]")) dialog.close();
   });
   document.addEventListener("input", (event) => {
-    const form = event.target.closest("[data-request-verifier-form]");
+    const form = event.target.closest("[data-response-verifier-form]");
     if (!form) return;
     const dialog = form.closest("dialog");
-    dialog.querySelector("[data-request-verifier-result]").textContent = "";
-    dialog.querySelector("[data-request-verifier-checks]").replaceChildren();
+    dialog.querySelector("[data-response-verifier-result]").textContent = "";
+    dialog.querySelector("[data-response-verifier-checks]").replaceChildren();
   });
   document.addEventListener("submit", async (event) => {
-    const form = event.target.closest("[data-request-verifier-form]");
+    const form = event.target.closest("[data-response-verifier-form]");
     if (!form) return;
     event.preventDefault();
     const dialog = form.closest("dialog");
     if (dialog.dataset.busy) return;
     dialog.dataset.busy = "true";
-    const result = dialog.querySelector("[data-request-verifier-result]");
-    const checks = dialog.querySelector("[data-request-verifier-checks]");
+    const result = dialog.querySelector("[data-response-verifier-result]");
+    const checks = dialog.querySelector("[data-response-verifier-checks]");
     const button = form.querySelector("button");
     const fields = form.querySelectorAll("input, textarea");
     const data = new FormData(form);

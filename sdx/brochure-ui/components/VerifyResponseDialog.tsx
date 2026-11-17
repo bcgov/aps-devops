@@ -1,59 +1,50 @@
-const verifyRequestScript = await Deno.readTextFile(
-  new URL("../public/verify-request.js", import.meta.url),
+const verifyResponseScript = await Deno.readTextFile(
+  new URL("../public/verify-response.js", import.meta.url),
 );
 
-export function VerifyRequestDialog(
+export function VerifyResponseDialog(
   { org, environment }: { org: string; environment: string },
 ) {
   return (
-    <div data-request-verifier>
+    <div data-response-verifier>
       <button
         type="button"
-        data-open-request-verifier
-        className="rounded border border-border-dark bg-btn-secondary text-ink hover:bg-btn-secondary-hover px-3 py-2 text-sm font-semibold"
+        data-open-response-verifier
+        className="rounded border border-[#003366] bg-white text-[#003366] hover:bg-blue-50 px-3 py-2 text-sm font-semibold"
       >
-        Verify Request
+        Verify Response
       </button>
       <dialog
-        data-request-verifier-dialog
-        aria-label="Verify Request"
+        data-response-verifier-dialog
+        aria-label="Verify Response"
         className="rounded-lg p-0 w-full max-w-2xl backdrop:bg-black/40"
       >
         <div className="p-6 space-y-4">
           <header className="flex items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-[#003366]">
-              Verify Request
+              Verify Response
             </h2>
             <button
               type="button"
-              data-close-request-verifier
+              data-close-response-verifier
               aria-label="Close verification dialog"
             >
               ✕
             </button>
           </header>
           <p className="text-sm text-gray-600">
-            Check the edge token, organization signature and published
-            certificate chains using this organization’s {environment}{" "}
-            trust key set.
+            Verify the provider’s response edge token, organization signature
+            and published certificate chains using this organization’s{" "}
+            {environment} trust key set.
           </p>
           <form
             method="post"
-            action="/api/trust/verify-request"
-            data-request-verifier-form
+            action="/api/trust/verify-response"
+            data-response-verifier-form
             className="space-y-3"
           >
             <input type="hidden" name="org" value={org} />
             <input type="hidden" name="environment" value={environment} />
-            <label className="block text-sm">
-              X-Client-ID<input
-                name="clientId"
-                required
-                placeholder="MIN.TEC.MY-SUBSYSTEM"
-                className="block w-full border rounded p-2 mt-1 font-mono text-sm"
-                autoComplete="off"
-              />
-            </label>
             <label className="block text-sm">
               X-Edge-Token
               <span className="block text-xs text-gray-500 italic">
@@ -85,16 +76,16 @@ export function VerifyRequestDialog(
             </button>
           </form>
           <p
-            data-request-verifier-result
+            data-response-verifier-result
             role="status"
             aria-live="polite"
             className="font-semibold"
           />
-          <ul data-request-verifier-checks className="space-y-2 text-sm" />
+          <ul data-response-verifier-checks className="space-y-2 text-sm" />
           <footer className="flex justify-end border-t pt-3">
             <button
               type="button"
-              data-close-request-verifier
+              data-close-response-verifier
               className="rounded border px-4 py-2"
             >
               Close
@@ -106,6 +97,6 @@ export function VerifyRequestDialog(
   );
 }
 
-export function VerifyRequestScript() {
-  return <script dangerouslySetInnerHTML={{ __html: verifyRequestScript }} />;
+export function VerifyResponseScript() {
+  return <script dangerouslySetInnerHTML={{ __html: verifyResponseScript }} />;
 }
