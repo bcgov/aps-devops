@@ -79,6 +79,10 @@ parameters.
 - `data/origin-signing-key.json`: Edge Runtime signing key.
 - `data/profiles.json`: profiles, saved through atomic file replacement.
 
+Stored profiles are validated at startup, including unique, nonempty IDs. An
+invalid file stops startup with its path and validation error; it is left
+unchanged so it can be corrected and the app restarted.
+
 Preserve the data directory across restarts. Run one instance per data
 directory; the file store is not designed for concurrent writers. Mount a
 writable volume at `/app/data` and local JSON configuration at

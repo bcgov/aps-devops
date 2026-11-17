@@ -2,6 +2,71 @@ import { createApp } from "./app.ts";
 function assert(v: unknown): asserts v {
   if (!v) throw new Error("Assertion failed");
 }
+Deno.test("stored profiles are validated before serving and invalid files are preserved", async () => {
+  const dataDir = await Deno.makeTempDir();
+  const config = {
+    issuer: "http://localhost:8000",
+    clientId: "test-client",
+    dataDir,
+    ttl: 300,
+  };
+  const profile = {
+    id: "saved-profile",
+    initialAzp: "original-client",
+    clientSubsystem: "MIN.TEST.CLIENT",
+    user: "alice",
+    scopes: ["widgets:read"],
+  };
+  const path = `${dataDir}/profiles.json`;
+  try {
+    // A missing store remains a valid first start.
+    const empty = await createApp(config);
+    assert(
+      (await (await empty(new Request(config.issuer + "/api/profiles"))).json())
+        .length === 0,
+    );
+    const invalid = [
+      "{",
+      "null",
+      "{}",
+      JSON.stringify([profile, null]),
+      JSON.stringify([profile, { ...profile, id: "second", user: "" }]),
+      JSON.stringify([{ ...profile, scopes: ["bad scope"] }]),
+      JSON.stringify([{ ...profile, id: undefined }]),
+      JSON.stringify([{ ...profile, id: 42 }]),
+      JSON.stringify([{ ...profile, id: " " }]),
+      JSON.stringify([{ ...profile, id: " padded " }]),
+      JSON.stringify([profile, profile]),
+    ];
+    for (const contents of invalid) {
+      await Deno.writeTextFile(path, contents);
+      let failure: unknown;
+      try {
+        await createApp(config);
+      } catch (err) {
+        failure = err;
+      }
+      assert(failure instanceof Error && failure.message.includes(path));
+      assert(await Deno.readTextFile(path) === contents);
+    }
+    await Deno.writeTextFile(path, JSON.stringify([profile]));
+    const app = await createApp(config);
+    const loaded =
+      await (await app(new Request(config.issuer + "/api/profiles"))).json();
+    assert(loaded[0].id === profile.id && loaded[0].user === profile.user);
+    const token = await app(
+      new Request(config.issuer + "/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId: profile.id }),
+      }),
+    );
+    assert(token.status === 200);
+    assert((await token.json()).claims.sub === profile.user);
+  } finally {
+    await Deno.remove(dataDir, { recursive: true });
+  }
+});
 Deno.test("token verification and persistent profile lifecycle", async () => {
   const dataDir = await Deno.makeTempDir();
   try {

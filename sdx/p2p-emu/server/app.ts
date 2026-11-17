@@ -123,9 +123,34 @@ export async function createApp(
   const profilesPath = `${config.dataDir}/profiles.json`;
   let profiles: Profile[] = [];
   try {
-    profiles = JSON.parse(await Deno.readTextFile(profilesPath));
+    const stored: unknown = JSON.parse(await Deno.readTextFile(profilesPath));
+    if (!Array.isArray(stored)) throw new Error("must be an array");
+    const ids = new Set<string>();
+    profiles = stored.map((entry, index) => {
+      try {
+        const fields = input(entry);
+        const id = entry.id;
+        if (typeof id !== "string" || !id.trim() || id !== id.trim()) {
+          throw new Error(
+            "id must be a nonempty string without surrounding whitespace",
+          );
+        }
+        if (ids.has(id)) throw new Error("id must be unique");
+        ids.add(id);
+        return { ...fields, id };
+      } catch (err) {
+        throw new Error(`entry ${index + 1}: ${(err as Error).message}`);
+      }
+    });
   } catch (err) {
-    if (!(err instanceof Deno.errors.NotFound)) throw err;
+    if (!(err instanceof Deno.errors.NotFound)) {
+      throw new Error(
+        `Unable to load profiles from ${profilesPath}: ${
+          (err as Error).message
+        }`,
+        { cause: err },
+      );
+    }
   }
   let queue = Promise.resolve();
   function mutate(change: (items: Profile[]) => Profile[]) {
