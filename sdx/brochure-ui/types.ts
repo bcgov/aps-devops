@@ -221,6 +221,7 @@ export interface ConnectionRequesterDetails {
   service: {
     clientId: string;
     privacyZone: string;
+    version?: string;
   };
   submissionId: string;
 }
@@ -249,6 +250,26 @@ export interface ConnectionProvisionerStatus {
   spec?: string;
 }
 
+export interface ConnectionProposedConfiguration {
+  policyVersion?: string;
+  environment?: string;
+  requesterDetails?: ConnectionRequesterDetails;
+  clientResources?: ConnectionClientResources;
+  serviceResources?: ConnectionServiceResources;
+}
+
+export interface ConnectionLifecycleIntent {
+  action: "activate" | "deactivate" | "retry" | "revoke";
+  operationId: string;
+  phase: "provision" | "deprovision" | "delete";
+}
+
+export interface ConnectionLifecycleActionAvailability {
+  allowed: boolean;
+  requiresConfirmation?: boolean;
+  message?: string;
+}
+
 export interface ConnectionRequest {
   id?: string;
   slug?: string;
@@ -262,6 +283,12 @@ export interface ConnectionRequest {
   requesterDetails?: ConnectionRequesterDetails;
   clientResources?: ConnectionClientResources;
   serviceResources?: ConnectionServiceResources;
+  proposedConfiguration?: ConnectionProposedConfiguration;
+  lifecycleIntent?: ConnectionLifecycleIntent;
+  lifecycleActions?: Record<
+    "activate" | "deactivate" | "retry" | "revoke",
+    ConnectionLifecycleActionAvailability
+  >;
   provisionerStatus?: ConnectionProvisionerStatus;
 }
 

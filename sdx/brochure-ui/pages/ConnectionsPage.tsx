@@ -118,52 +118,6 @@ function ProvisionerStatusPill({
   );
 }
 
-function revokeGuidance(connection: ConnectionRequest): string | null {
-  if (connection.isActive) {
-    return "Deactivate this connection before revoking access.";
-  }
-
-  const status = connection.provisionerStatus;
-  if (status?.status === "deprovisioned") return null;
-  if (status?.status === "deprovisioning") {
-    return "Wait for access configuration removal to finish before revoking access.";
-  }
-  if (
-    status?.status === "failed" &&
-    status.operation === "deprovision"
-  ) {
-    return "Access configuration removal failed. Open Customize and save the inactive connection to retry.";
-  }
-
-  return "Open Customize and save this connection as inactive to remove its access configuration before revoking access.";
-}
-
-function GuidanceTip({ id, message }: { id: string; message: string }) {
-  return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
-        aria-label="Why revoke access is unavailable"
-        aria-describedby={id}
-        className="cursor-help inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-xs font-bold text-gray-500 hover:border-[#003366] hover:text-[#003366] focus:outline-none focus:ring-2 focus:ring-[#FCBA19]"
-      >
-        <span aria-hidden="true">?</span>
-      </button>
-      <span
-        className="invisible absolute right-0 top-full z-20 w-72 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
-      >
-        <span
-          id={id}
-          role="tooltip"
-          className="block rounded border border-gray-200 bg-white p-3 text-left text-xs font-normal text-gray-700 shadow-lg"
-        >
-          {message}
-        </span>
-      </span>
-    </span>
-  );
-}
-
 const DIALOG_STYLE = `
 dialog.sdx-dialog { border: none; border-radius: var(--layout-border-radius-large); padding: 0; max-width: 560px; width: 92%; box-shadow: var(--surface-shadow-large); }
 dialog.sdx-dialog.sdx-dialog-wide { max-width: 760px; }
@@ -192,7 +146,7 @@ const DIALOG_SCRIPT = `
 
 // Drives the Edit connection dialog(s): show/hide the property panels as
 // include toggles flip, and — on save — walk the form to assemble the
-// clientResources/serviceResources/isActive payload into a hidden input so the
+// clientResources/serviceResources payload into a hidden input so the
 // existing form-POST + flash pattern can carry it to the server.
 const EDIT_SCRIPT = `
 (function(){
@@ -255,7 +209,6 @@ const EDIT_SCRIPT = `
   document.addEventListener('submit', function(ev){
     var f = ev.target;
     if (!(f && f.classList && f.classList.contains('conn-edit-form'))) return;
-    var activeEl = f.querySelector('[data-active-toggle]');
     var subEl = f.querySelector('[data-subsystem-id]');
     var sub = subEl ? (subEl.value||'').trim() : '';
     var clientComment = (f.querySelector('[data-comment-field][data-res="client"]')||{}).value || '';
@@ -270,7 +223,6 @@ const EDIT_SCRIPT = `
     var clientResources = { gatewayPatterns: buildPatterns(f, 'client') };
     if (clientComment.trim()) clientResources.comment = clientComment.trim();
     var payload = {
-      isActive: activeEl ? !!activeEl.checked : undefined,
       clientResources: clientResources,
       serviceResources: serviceResources
     };
@@ -1023,11 +975,6 @@ function EditDialog({
         />
         <input
           type="hidden"
-          name="isApproved"
-          value={conn.isApproved ? "true" : "false"}
-        />
-        <input
-          type="hidden"
           name="payload"
           data-edit-payload
           defaultValue=""
@@ -1049,23 +996,6 @@ function EditDialog({
         </div>
 
         <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-auto">
-          <label className="flex items-center gap-3 border border-border rounded-lg px-3 py-2">
-            <input
-              type="checkbox"
-              data-active-toggle
-              defaultChecked={Boolean(conn.isActive)}
-              className="rounded border-border"
-            />
-            <span>
-              <span className="block text-sm font-semibold text-ink">
-                Active
-              </span>
-              <span className="block text-xs text-ink-secondary">
-                Whether this connection is enabled.
-              </span>
-            </span>
-          </label>
-
           <section className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
               Client resources
@@ -1143,7 +1073,35 @@ function EditDialog({
   );
 }
 
-function ConnectionCard({
+function LifecycleForm({
+  conn,
+  org,
+  action,
+  label,
+}: {
+  conn: ConnectionRequest;
+  org: string;
+  action: "activate" | "deactivate" | "retry";
+  label: string;
+}) {
+  return (
+    <form method="post" action="/connections/lifecycle" className="inline">
+      <input type="hidden" name="org" value={org} />
+      <input type="hidden" name="id" value={conn.id ?? ""} />
+      <input type="hidden" name="clientId" value={conn.clientId} />
+      <input type="hidden" name="serviceId" value={conn.serviceId} />
+      <input type="hidden" name="action" value={action} />
+      <button
+        type="submit"
+        className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+      >
+        {label}
+      </button>
+    </form>
+  );
+}
+
+export function ConnectionCard({
   conn,
   org,
   canApprove,
@@ -1152,50 +1110,92 @@ function ConnectionCard({
   org: string;
   canApprove: boolean;
 }) {
+  const proposal = conn.proposedConfiguration;
+  const hasProposal = Boolean(proposal && Object.keys(proposal).length > 0);
   const destructiveAction = conn.isApproved
     ? {
         path: "/connections/revoke",
         label: "Revoke access",
         title: "Revoke access?",
         message:
-          "This revokes the connection and deletes it. The client will lose access to the service.",
+          "This removes access configuration and permanently deletes the connection. The client will lose access to the service.",
       }
     : {
         path: "/connections/delete",
         label: "Cancel request",
         title: "Cancel request?",
-        message:
-          "This withdraws the pending connection request.",
+        message: "This withdraws the pending connection request.",
       };
-  // The service provider (the org that owns the service) decides on a pending
-  // request via the Approve/Reject review dialog.
-  const isProviderPending = canApprove && !conn.isApproved;
-  // Revoke/cancel deletes by connection id; only offer it when an id is present.
+  const isProviderPending = canApprove && (!conn.isApproved || hasProposal);
   const hasId = Boolean(conn.id);
-  const guidance = conn.isApproved ? revokeGuidance(conn) : null;
-  const canDelete = conn.isApproved ? hasId && guidance === null : hasId;
-  const slug = (
-    conn.clientId +
-    "__" +
-    conn.serviceId
-  ).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const slug = (conn.clientId + "__" + conn.serviceId)
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
   const reviewId = `review-${slug}`;
   const confirmId = `confirm-${slug}`;
+  const abandonId = `abandon-revoke-${slug}`;
   const editId = `edit-${slug}`;
   const rd = conn.requesterDetails;
-  const clientPatterns =
-    conn.clientResources?.gatewayPatterns;
-  const servicePatterns =
-    conn.serviceResources?.gatewayPatterns;
+  const clientPatterns = conn.clientResources?.gatewayPatterns;
+  const servicePatterns = conn.serviceResources?.gatewayPatterns;
   const subsystemId = conn.serviceResources?.subsystemId;
   const provisionerStatus = conn.provisionerStatus;
+  const lifecycleIntent = conn.lifecycleIntent;
+  const busy = provisionerStatus?.status === "pending" ||
+    provisionerStatus?.status === "deprovisioning";
+  const revokePending = lifecycleIntent?.action === "revoke";
+  const backendActions = conn.lifecycleActions;
+  const allowed = (
+    action: "activate" | "deactivate" | "retry" | "revoke",
+    compatibilityFallback: boolean,
+  ) => backendActions
+    ? backendActions[action]?.allowed === true
+    : compatibilityFallback;
+  const canRetry = Boolean(
+    hasId &&
+      allowed(
+        "retry",
+        Boolean(
+          conn.isApproved &&
+            !busy &&
+            (provisionerStatus?.status === "failed" ||
+              (revokePending && provisionerStatus?.status === "deprovisioned")),
+        ),
+      ),
+  );
+  const canActivate = Boolean(
+    hasId &&
+      allowed(
+        "activate",
+        Boolean(conn.isApproved && !conn.isActive && !busy),
+      ),
+  );
+  const activateRequiresConfirmation = Boolean(
+    backendActions?.activate?.requiresConfirmation ?? revokePending,
+  );
+  const canDeactivate = Boolean(
+    hasId &&
+      allowed(
+        "deactivate",
+        Boolean(conn.isApproved && conn.isActive && !busy && !revokePending),
+      ),
+  );
+  const canRevoke = Boolean(
+    hasId &&
+      allowed(
+        "revoke",
+        Boolean(conn.isApproved && !busy && !revokePending),
+      ),
+  );
+  const canCancel = Boolean(!conn.isApproved && hasId);
   const hasDetails = Boolean(
     rd ||
-    clientPatterns ||
-    servicePatterns ||
-    subsystemId ||
-    provisionerStatus ||
-    (conn.scopes && conn.scopes.length > 0),
+      clientPatterns ||
+      servicePatterns ||
+      subsystemId ||
+      provisionerStatus ||
+      hasProposal ||
+      lifecycleIntent ||
+      (conn.scopes && conn.scopes.length > 0),
   );
   return (
     <article className="bg-white border border-border rounded-lg">
@@ -1206,6 +1206,11 @@ function ConnectionCard({
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
             <StatusPill connection={conn} />
+            {hasProposal && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
+                Changes pending approval
+              </span>
+            )}
             {provisionerStatus && (
               <ProvisionerStatusPill
                 status={provisionerStatus}
@@ -1224,7 +1229,7 @@ function ConnectionCard({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
           <button
             type="button"
             data-dialog-open={editId}
@@ -1232,40 +1237,55 @@ function ConnectionCard({
           >
             Customize...
           </button>
-          {isProviderPending ? (
+          {isProviderPending && (
             <button
               type="button"
               data-dialog-open={reviewId}
               className="text-xs font-semibold px-3 py-1 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
             >
-              Approve / Reject
+              {hasProposal ? "Review changes" : "Approve / Reject"}
             </button>
-          ) : (
-            canDelete ? (
-              <button
-                type="button"
-                data-dialog-open={confirmId}
-                className="text-xs font-semibold px-3 py-1 rounded border border-danger text-danger hover:bg-support-danger-bg"
-              >
-                {destructiveAction.label}
-              </button>
-            ) : conn.isApproved && hasId ? (
-              <div className="inline-flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled
-                  className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
-                >
-                  Revoke access
-                </button>
-                {guidance && (
-                  <GuidanceTip
-                    id={`${confirmId}-guidance`}
-                    message={guidance}
-                  />
-                )}
-              </div>
-            ) : null
+          )}
+          {canRetry && (
+            <LifecycleForm
+              conn={conn}
+              org={org}
+              action="retry"
+              label={revokePending ? "Retry revoke" : "Retry"}
+            />
+          )}
+          {canActivate && !activateRequiresConfirmation && (
+            <LifecycleForm conn={conn} org={org} action="activate" label="Activate" />
+          )}
+          {canActivate && activateRequiresConfirmation && (
+            <button
+              type="button"
+              data-dialog-open={abandonId}
+              className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+            >
+              Activate
+            </button>
+          )}
+          {canDeactivate && (
+            <LifecycleForm conn={conn} org={org} action="deactivate" label="Deactivate" />
+          )}
+          {(canRevoke || canCancel) && (
+            <button
+              type="button"
+              data-dialog-open={confirmId}
+              className="text-xs font-semibold px-3 py-1 rounded border border-danger text-danger hover:bg-support-danger-bg"
+            >
+              {destructiveAction.label}
+            </button>
+          )}
+          {busy && conn.isApproved && (
+            <button
+              type="button"
+              disabled
+              className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
+            >
+              Lifecycle action in progress
+            </button>
           )}
         </div>
       </div>
@@ -1278,6 +1298,25 @@ function ConnectionCard({
           <div className="px-4 py-3 bg-surface-muted space-y-4 text-xs">
             {provisionerStatus && (
               <ProvisionerStatusDetails status={provisionerStatus} />
+            )}
+
+            {proposal && (
+              <DetailSection title="Pending proposed changes">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded border border-border bg-white p-3 space-y-2">
+                    <div className="font-semibold text-ink">Currently approved</div>
+                    <FieldRow label="Service version" value={rd?.service?.version} mono />
+                    <div><span className="text-ink-secondary">Scopes </span><ScopeChips scopes={rd?.scopes ?? conn.scopes} /></div>
+                    <pre className="overflow-auto whitespace-pre-wrap break-all text-[11px]">{JSON.stringify({ clientResources: conn.clientResources, serviceResources: conn.serviceResources }, null, 2)}</pre>
+                  </div>
+                  <div className="rounded border border-support-warning-border bg-support-warning-bg p-3 space-y-2">
+                    <div className="font-semibold text-ink">Proposed</div>
+                    <FieldRow label="Service version" value={proposal.requesterDetails?.service?.version} mono />
+                    <div><span className="text-ink-secondary">Scopes </span><ScopeChips scopes={proposal.requesterDetails?.scopes} /></div>
+                    <pre className="overflow-auto whitespace-pre-wrap break-all text-[11px]">{JSON.stringify({ clientResources: proposal.clientResources, serviceResources: proposal.serviceResources }, null, 2)}</pre>
+                  </div>
+                </div>
+              </DetailSection>
             )}
 
             {rd && (
@@ -1390,12 +1429,29 @@ function ConnectionCard({
           dialogId={reviewId}
         />
       )}
-      {!isProviderPending && canDelete && (
+      {(canRevoke || canCancel) && (
         <ConfirmDialog
           conn={conn}
           org={org}
           dialogId={confirmId}
           action={destructiveAction}
+        />
+      )}
+      {canActivate && activateRequiresConfirmation && (
+        <ConfirmDialog
+          conn={conn}
+          org={org}
+          dialogId={abandonId}
+          action={{
+            path: "/connections/lifecycle",
+            label: "Activate",
+            title: "Abandon revoke and activate?",
+            message: backendActions?.activate?.message ??
+              "The failed revoke will be abandoned and the approved connection will be provisioned again.",
+            lifecycleAction: "activate",
+            confirmAbandonRevoke: true,
+            reversible: true,
+          }}
         />
       )}
     </article>
@@ -1416,6 +1472,9 @@ function ConfirmDialog({
     label: string;
     title: string;
     message: string;
+    lifecycleAction?: "activate" | "deactivate" | "retry" | "revoke";
+    confirmAbandonRevoke?: boolean;
+    reversible?: boolean;
   };
 }) {
   return (
@@ -1436,9 +1495,11 @@ function ConfirmDialog({
             {conn.serviceId}
           </span>
         </div>
-        <p className="text-xs text-ink-placeholder">
-          This action cannot be undone.
-        </p>
+        {!action.reversible && (
+          <p className="text-xs text-ink-placeholder">
+            This action cannot be undone.
+          </p>
+        )}
       </div>
       <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
         <button
@@ -1469,7 +1530,13 @@ function ConfirmDialog({
             name="serviceId"
             value={conn.serviceId}
           />
-          <Btn type="submit" danger>{action.label}</Btn>
+          {action.lifecycleAction && (
+            <input type="hidden" name="action" value={action.lifecycleAction} />
+          )}
+          {action.confirmAbandonRevoke && (
+            <input type="hidden" name="confirmAbandonRevoke" value="true" />
+          )}
+          <Btn type="submit" danger={!action.reversible}>{action.label}</Btn>
         </form>
       </div>
     </dialog>
@@ -1485,7 +1552,9 @@ function ReviewDialog({
   org: string;
   dialogId: string;
 }) {
-  const rd = conn.requesterDetails;
+  const proposal = conn.proposedConfiguration;
+  const hasProposal = Boolean(proposal && Object.keys(proposal).length > 0);
+  const rd = proposal?.requesterDetails ?? conn.requesterDetails;
   const scopes = rd?.scopes ?? conn.scopes;
   const hidden = (
     <>
@@ -1505,18 +1574,19 @@ function ReviewDialog({
         name="serviceId"
         value={conn.serviceId}
       />
+      <input type="hidden" name="hasProposal" value={hasProposal ? "true" : "false"} />
     </>
   );
   return (
     <dialog id={dialogId} className="sdx-dialog">
       <div className="px-5 py-4 border-b border-border">
         <h2 className="text-lg font-bold text-bc-blue">
-          Review connection request
+          {hasProposal ? "Review proposed changes" : "Review connection request"}
         </h2>
         <p className="text-xs text-ink-secondary mt-1">
-          A consumer has requested access to a service you
-          provide. Approve to grant access, or reject to
-          remove the request.
+          {hasProposal
+            ? "Approve to replace the current approved configuration. Reject to discard only the proposal and keep existing access unchanged."
+            : "A consumer has requested access to a service you provide. Approve to grant access, or reject to remove the request."}
         </p>
       </div>
       <div className="px-5 py-4 space-y-4 text-sm max-h-[60vh] overflow-auto">
@@ -1540,6 +1610,20 @@ function ReviewDialog({
             />
           )}
         </div>
+        {hasProposal && proposal && (
+          <div className="grid gap-3 md:grid-cols-2 text-xs">
+            <div className="rounded border border-border p-3">
+              <div className="font-semibold mb-2">Currently approved</div>
+              <FieldRow label="Service version" value={conn.requesterDetails?.service?.version} mono />
+              <div className="mt-2"><span className="text-ink-secondary">Scopes </span><ScopeChips scopes={conn.requesterDetails?.scopes ?? conn.scopes} /></div>
+            </div>
+            <div className="rounded border border-support-warning-border bg-support-warning-bg p-3">
+              <div className="font-semibold mb-2">Proposed</div>
+              <FieldRow label="Service version" value={proposal.requesterDetails?.service?.version} mono />
+              <div className="mt-2"><span className="text-ink-secondary">Scopes </span><ScopeChips scopes={proposal.requesterDetails?.scopes} /></div>
+            </div>
+          </div>
+        )}
         {rd && (
           <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1 text-xs">
             <FieldRow
@@ -1603,7 +1687,7 @@ function ReviewDialog({
               type="submit"
               className="text-sm font-semibold px-4 py-2 rounded border border-danger text-danger hover:bg-support-danger-bg"
             >
-              Reject
+              {hasProposal ? "Reject changes" : "Reject"}
             </button>
           </form>
           <form
@@ -1612,7 +1696,7 @@ function ReviewDialog({
             className="inline"
           >
             {hidden}
-            <Btn type="submit">Approve</Btn>
+            <Btn type="submit">{hasProposal ? "Approve changes" : "Approve"}</Btn>
           </form>
         </div>
       </div>

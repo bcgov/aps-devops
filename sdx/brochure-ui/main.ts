@@ -54,6 +54,7 @@ import {
   getClientDetail,
   listConnections,
   listOrgActivity,
+  runConnectionLifecycle,
   SdxApiError,
   setConnectionApproval,
   upsertConnection,
@@ -1031,6 +1032,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   if (path === "/connections/reject") {
     return await handleConnectionsReject(req, user);
   }
+  if (path === "/connections/lifecycle") {
+    return await handleConnectionsLifecycle(req, user);
+  }
   if (path === "/connections/revoke") {
     return await handleConnectionsRevoke(req, user);
   }
@@ -1328,7 +1332,6 @@ async function handleConnectionsEdit(
   const org = String(form.get("org") ?? "");
   const clientId = String(form.get("clientId") ?? "");
   const serviceId = String(form.get("serviceId") ?? "");
-  const isApproved = String(form.get("isApproved") ?? "") === "true";
   const raw = String(form.get("payload") ?? "{}");
 
   if (!org || !clientId || !serviceId) {
@@ -1340,7 +1343,6 @@ async function handleConnectionsEdit(
   }
 
   let payload: {
-    isActive?: boolean;
     clientResources?: Record<string, unknown>;
     serviceResources?: Record<string, unknown>;
   };
@@ -1366,8 +1368,6 @@ async function handleConnectionsEdit(
       {
         clientId,
         serviceId,
-        isApproved,
-        isActive: payload.isActive,
         clientResources: payload.clientResources,
         serviceResources: payload.serviceResources,
       },
@@ -1432,6 +1432,7 @@ async function handleConnectionsApprove(
       clientId,
     );
   }
+  const hasProposal = String(form.get("hasProposal") ?? "") === "true";
   try {
     await setConnectionApproval(
       org,
@@ -1439,7 +1440,7 @@ async function handleConnectionsApprove(
         clientId,
         serviceId,
         isApproved: true,
-        isActive: true,
+        ...(hasProposal ? {} : { isActive: true }),
       },
       { accessToken: user!.accessToken },
     );
@@ -1447,7 +1448,9 @@ async function handleConnectionsApprove(
       org,
       {
         kind: "success",
-        message: `Approved ${clientId} → ${serviceId}`,
+        message: hasProposal
+          ? `Approved proposed changes for ${clientId} → ${serviceId}`
+          : `Approved ${clientId} → ${serviceId}`,
       },
       clientId,
     );
@@ -1507,18 +1510,28 @@ async function handleConnectionsReject(
       clientId,
     );
   }
+  const hasProposal = String(form.get("hasProposal") ?? "") === "true";
   try {
-    // Rejecting a pending request deletes it outright rather than merely
-    // flipping isApproved, so the requester sees it as withdrawn, not denied
-    // and still sitting around.
-    await deleteConnection(org, id, {
-      accessToken: user!.accessToken,
-    });
+    if (hasProposal) {
+      await setConnectionApproval(
+        org,
+        { clientId, serviceId, isApproved: false },
+        { accessToken: user!.accessToken },
+      );
+    } else {
+      // Initial rejection removes the unapproved request. Rejecting proposed
+      // changes clears only the proposal through the approval endpoint above.
+      await deleteConnection(org, id, {
+        accessToken: user!.accessToken,
+      });
+    }
     return connectionsRedirect(
       org,
       {
         kind: "success",
-        message: `Rejected and removed ${clientId} → ${serviceId}`,
+        message: hasProposal
+          ? `Rejected proposed changes for ${clientId} → ${serviceId}; existing access is unchanged`
+          : `Rejected and removed ${clientId} → ${serviceId}`,
       },
       clientId,
     );
@@ -1591,11 +1604,76 @@ async function deleteConnectionAction(
   }
 }
 
+async function lifecycleConnectionAction(
+  req: Request,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  forcedAction?: "activate" | "deactivate" | "retry" | "revoke",
+): Promise<Response> {
+  const gate = requireAuth(req, user);
+  if (gate) return gate;
+  if (req.method !== "POST") {
+    return new Response("method not allowed", { status: 405 });
+  }
+  const form = await req.formData();
+  const org = String(form.get("org") ?? "");
+  const id = String(form.get("id") ?? "");
+  const clientId = String(form.get("clientId") ?? "");
+  const serviceId = String(form.get("serviceId") ?? "");
+  const action = forcedAction ?? (String(form.get("action") ?? "") as
+    | "activate"
+    | "deactivate"
+    | "retry"
+    | "revoke");
+  if (!org || !id || !["activate", "deactivate", "retry", "revoke"].includes(action)) {
+    return connectionsRedirect(
+      org,
+      { kind: "error", message: "Missing organization, connection id, or lifecycle action." },
+      clientId,
+    );
+  }
+  try {
+    await runConnectionLifecycle(
+      org,
+      id,
+      {
+        action,
+        confirmAbandonRevoke:
+          String(form.get("confirmAbandonRevoke") ?? "") === "true",
+      },
+      { accessToken: user!.accessToken },
+    );
+    const past = action === "activate"
+      ? "Activated"
+      : action === "deactivate"
+      ? "Deactivated"
+      : action === "retry"
+      ? "Retried"
+      : "Revoked";
+    return connectionsRedirect(
+      org,
+      { kind: "success", message: `${past} ${clientId} → ${serviceId}` },
+      clientId,
+    );
+  } catch (e) {
+    const msg = e instanceof SdxApiError
+      ? `${action[0].toUpperCase()}${action.slice(1)} failed (${e.status}): ${e.body}`
+      : (e as Error).message;
+    return connectionsRedirect(org, { kind: "error", message: msg }, clientId);
+  }
+}
+
+function handleConnectionsLifecycle(
+  req: Request,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<Response> {
+  return lifecycleConnectionAction(req, user);
+}
+
 function handleConnectionsRevoke(
   req: Request,
   user: Awaited<ReturnType<typeof getCurrentUser>>,
 ): Promise<Response> {
-  return deleteConnectionAction(req, user, "Revoked");
+  return lifecycleConnectionAction(req, user, "revoke");
 }
 
 function handleConnectionsDelete(
