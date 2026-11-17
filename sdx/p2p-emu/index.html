@@ -136,6 +136,9 @@
       #message.error {
         color: #a12622;
       }
+      #tokenIssuers code {
+        overflow-wrap: anywhere;
+      }
       .table {
         overflow: auto;
       }
@@ -180,15 +183,10 @@
         <button type="button" id="cancelAuth" class="secondary">Cancel</button>
       </form>
     </dialog>
-    <main>
+    <main hidden>
       <p>
         Create a signed access token for a subject and optional scopes. Save
         profiles to reuse them later.
-      </p>
-      <p>
-        <a href="/.well-known/openid-configuration">OIDC discovery</a> · <a
-          href="/jwks"
-        >Public signing keys (JWKS)</a>
       </p>
       <p id="message" role="status" aria-live="polite"></p>
       <section>
@@ -239,22 +237,7 @@
         </form>
       </section>
       <section>
-        <h2>P2P Edge Runtime</h2>
-        <p>
-          Edge Runtime tokens use a separate persistent signing key and are
-          returned in <code>X-Edge-Token</code>.
-        </p>
-        <p>
-          <a
-            id="originDiscovery"
-            href="/p2p-origin/.well-known/openid-configuration"
-          >OIDC discovery</a>
-        </p>
-        <p><a id="originJwks" href="/p2p-origin/jwks">JWKS</a></p>
-        <p>Signing key ID: <code id="originKid">Loading…</code></p>
-      </section>
-      <section>
-        <h2>Saved profiles</h2><small>Profiles are stored on the server and
+        <h2>Saved Profiles</h2><small>Profiles are stored on the server and
           survive restarts. Tokens are generated on demand.</small><div
           class="table"
         >
@@ -272,6 +255,33 @@
         </div>
         <p id="empty" hidden>No saved profiles yet.</p>
       </section>
+      <section id="tokenIssuers">
+        <h2>Token Issuers</h2>
+        <div class="fields">
+          <div data-issuer="user">
+            <h3>User tokens</h3>
+            <p>Issuer: <code data-issuer-url>Loading…</code></p>
+            <p>
+              <a data-discovery href="/.well-known/openid-configuration"
+              >OIDC discovery</a> · <a data-jwks href="/jwks">JWKS</a>
+            </p>
+            <p>Signing key ID: <code data-kid>Loading…</code></p>
+          </div>
+          <div data-issuer="origin">
+            <h3>P2P Edge Runtime tokens</h3>
+            <p>Issuer: <code data-issuer-url>Loading…</code></p>
+            <p>
+              <a
+                data-discovery
+                href="/p2p-origin/.well-known/openid-configuration"
+              >OIDC discovery</a> · <a data-jwks href="/p2p-origin/jwks"
+              >JWKS</a>
+            </p>
+            <p>Signing key ID: <code data-kid>Loading…</code></p>
+            <p>Returned in <code>X-Edge-Token</code>.</p>
+          </div>
+        </div>
+      </section>
       <section id="result" hidden>
         <h2>Access token</h2>
         <button type="button" id="copy" class="secondary">Copy token</button>
@@ -279,7 +289,7 @@
         <h2>Request headers</h2>
         <p>Use these headers when making a request.</p>
         <pre id="headers"></pre>
-        <h2>Token claims</h2>
+        <h2>User token claims</h2>
         <pre id="claims"></pre>
         <h2>P2P Edge Runtime token claims</h2>
         <pre id="originClaims"></pre>
@@ -294,6 +304,7 @@
         saveAuthorization,
       } from "/auth.js";
       const form = document.querySelector("#profileForm");
+      const main = document.querySelector("main");
       const message = document.querySelector("#message");
       let token = "";
       let apiToken = "";
@@ -303,6 +314,7 @@
       const authForm = document.querySelector("#authForm");
       function renderAuthorization(clientId = "") {
         const authorized = Boolean(apiToken);
+        main.hidden = !authorized;
         document.querySelector("header").dataset.authorized = String(
           authorized,
         );
@@ -317,14 +329,25 @@
           : "Not authorized";
         document.querySelector("#clearAuth").hidden = !authorized;
       }
-      function clearAuthorization() {
+      function clearAuthorization(status = "Not authorized") {
         clearTimeout(authTimer);
         try {
           clearSavedAuthorization(sessionStorage);
         } catch {}
         apiToken = "";
         authExpiry = 0;
+        token = "";
+        form.reset();
+        document.querySelector("#profiles").replaceChildren();
+        document.querySelector("#empty").hidden = true;
+        const result = document.querySelector("#result");
+        result.hidden = true;
+        for (const output of result.querySelectorAll("pre")) {
+          output.textContent = "";
+        }
+        report("");
         renderAuthorization();
+        document.querySelector("#authStatus").textContent = status;
       }
       function applyAuthorization(session) {
         apiToken = session.accessToken;
@@ -333,8 +356,7 @@
         renderAuthorization(session.clientId);
         if (authExpiry) {
           authTimer = setTimeout(() => {
-            clearAuthorization();
-            report("Authorization expired. Authorize again.", true);
+            clearAuthorization("Authorization expired. Authorize again.");
           }, Math.min(authExpiry - Date.now(), 2147483647));
         }
       }
@@ -368,7 +390,7 @@
       authDialog.addEventListener("close", () => authForm.reset());
       document.querySelector("#clearAuth").addEventListener(
         "click",
-        clearAuthorization,
+        () => clearAuthorization(),
       );
       authForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -396,6 +418,7 @@
             clientId: credentials.clientId.trim(),
           };
           applyAuthorization(session);
+          report("Authorized successfully.");
           try {
             saveAuthorization(sessionStorage, session);
           } catch {
@@ -405,8 +428,7 @@
             );
           }
           authDialog.close();
-          report("Authorized successfully.");
-          await run(load);
+          await run(loadWorkspace);
         } catch (error) {
           document.querySelector("#authError").textContent = error.message;
         } finally {
@@ -426,14 +448,18 @@
       }
       async function api(path, method = "GET", body) {
         if (authExpiry && Date.now() >= authExpiry) {
-          clearAuthorization();
-          throw new Error("Authorization expired. Authorize again.");
+          clearAuthorization("Authorization expired. Authorize again.");
         }
-        const response = await requestApi(path, method, body, apiToken);
+        if (!apiToken) throw new Error("Authorize before continuing.");
+        const requestToken = apiToken;
+        const response = await requestApi(path, method, body, requestToken);
         const data = await response.json();
+        if (requestToken !== apiToken) {
+          throw new Error("Authorization ended. Authorize again.");
+        }
         if (!response.ok) {
           if (response.status === 401) {
-            clearAuthorization();
+            clearAuthorization("Authorization rejected. Authorize again.");
           }
           throw new Error(data.error || "Request failed");
         }
@@ -482,7 +508,9 @@
           null,
           2,
         );
-        document.querySelector("#result").hidden = false;
+        const panel = document.querySelector("#result");
+        panel.hidden = false;
+        panel.scrollIntoView({ block: "start" });
         report(
           "Access token generated. Expires in " + result.expires_in +
             " seconds.",
@@ -553,30 +581,28 @@
             report("Token copied.");
           }),
       );
+      async function loadWorkspace() {
+        await load();
+        const response = await fetch("/api/config", { cache: "no-store" });
+        if (!response.ok) throw new Error("Unable to load token issuers.");
+        const config = await response.json();
+        for (const panel of document.querySelectorAll("[data-issuer]")) {
+          const issuer = config[panel.dataset.issuer];
+          panel.querySelector("[data-issuer-url]").textContent = issuer.issuer;
+          panel.querySelector("[data-discovery]").href = issuer.discoveryUrl;
+          panel.querySelector("[data-jwks]").href = issuer.jwksUrl;
+          panel.querySelector("[data-kid]").textContent = issuer.kid;
+        }
+      }
       try {
         const session = restoreAuthorization(sessionStorage);
-        if (session) applyAuthorization(session);
+        if (session) {
+          applyAuthorization(session);
+          run(loadWorkspace);
+        }
       } catch {
         clearAuthorization();
       }
-      run(async () => {
-        const response = await fetch("/api/config");
-        if (response.ok) {
-          const { origin } = await response.json();
-          for (
-            const [id, url] of [["originDiscovery", origin.discoveryUrl], [
-              "originJwks",
-              origin.jwksUrl,
-            ]]
-          ) {
-            const link = document.querySelector("#" + id);
-            link.href = url;
-            link.textContent = url;
-          }
-          document.querySelector("#originKid").textContent = origin.kid;
-        }
-        await load();
-      });
     </script>
   </body>
 </html>

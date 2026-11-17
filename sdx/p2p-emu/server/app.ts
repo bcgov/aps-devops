@@ -235,6 +235,12 @@ export async function createApp(
       if (req.method === "GET" && url.pathname === "/api/config") {
         return json({
           tokenUrl: config.tokenUrl || "",
+          user: {
+            issuer,
+            discoveryUrl: `${issuer}/.well-known/openid-configuration`,
+            jwksUrl: `${issuer}/jwks`,
+            kid,
+          },
           origin: {
             issuer: originIssuer,
             discoveryUrl: `${originIssuer}/.well-known/openid-configuration`,
