@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -15,9 +15,7 @@
         margin: 0;
         background: #f5f6f8;
         color: #292929;
-        font:
-          16px/1.5 system-ui,
-          sans-serif;
+        font: 16px/1.5 system-ui, sans-serif;
       }
       header {
         background: #003366;
@@ -170,35 +168,30 @@
       <button type="button" id="authorize">
         Authorize
       </button>
-      <span id="authStatus" role="status"
-        >Not authorized</span
-      >
+      <span id="authStatus" role="status">Not authorized</span>
       <button type="button" id="clearAuth" hidden>
         Clear authorization
       </button>
     </header>
     <dialog id="authDialog" aria-labelledby="authTitle">
       <h2 id="authTitle">Authorize</h2>
-      <label
-        >Token URL<input
+      <label>Token URL<input
           id="authTokenUrl"
           type="url"
           readonly
-      /></label>
+        /></label>
       <form id="authForm">
-        <label
-          >Client ID<input
+        <label>Client ID<input
             name="clientId"
             required
             autocomplete="off"
-        /></label>
-        <label
-          >Client Secret<input
+          /></label>
+        <label>Client Secret<input
             name="clientSecret"
             type="password"
             required
             autocomplete="off"
-        /></label>
+          /></label>
         <p id="authError" role="alert"></p>
         <button type="submit">Get token</button>
         <button
@@ -212,8 +205,8 @@
     </dialog>
     <main hidden>
       <p>
-        Create a signed access token for a subject and
-        optional scopes. Save profiles to reuse them later.
+        Create a signed access token for a subject and optional scopes. Save
+        profiles to reuse them later.
       </p>
       <p id="message" role="status" aria-live="polite"></p>
       <section>
@@ -221,37 +214,33 @@
         <form id="profileForm">
           <fieldset>
             <legend>User</legend>
-            <label
-              >Subject identifier<input
+            <label>Subject identifier<input
                 name="user"
                 required
                 maxlength="256"
                 placeholder="Subject identifier / token subject"
-            /></label>
+              /></label>
           </fieldset>
           <fieldset>
             <legend>Client</legend>
             <div class="fields">
-              <label
-                >Initial AZP<input
+              <label>Initial AZP<input
                   name="initialAzp"
                   required
                   maxlength="256"
                   placeholder="Original authorized party"
-              /></label>
-              <label
-                >Client Subsystem<input
+                /></label>
+              <label>Client Subsystem<input
                   name="clientSubsystem"
                   required
                   maxlength="256"
                   placeholder="Client subsystem identifier"
-              /></label>
+                /></label>
             </div>
           </fieldset>
           <fieldset>
             <legend>Service</legend>
-            <label
-              >Scopes<textarea
+            <label>Scopes<textarea
                 name="scopes"
                 rows="4"
                 placeholder="nrs:widgets:read nrs:widgets:create"
@@ -259,9 +248,8 @@
               ></textarea>
             </label>
             <small id="scopeHelp"
-              >Enter scope names separated by spaces or new
-              lines. Leave empty for no scopes.</small
-            >
+            >Enter scope names separated by spaces or new lines. Leave empty for
+              no scopes.</small>
           </fieldset>
           <button type="submit">
             Generate access token
@@ -273,10 +261,8 @@
       </section>
       <section>
         <h2>Saved Profiles</h2>
-        <small
-          >Profiles are stored on the server and survive
-          restarts. Tokens are generated on demand.</small
-        >
+        <small>Profiles are stored on the server and survive restarts. Tokens
+          are generated on demand.</small>
         <div class="table">
           <table>
             <thead>
@@ -304,8 +290,7 @@
               <a
                 data-discovery
                 href="/.well-known/openid-configuration"
-                >OIDC discovery</a
-              >
+              >OIDC discovery</a>
               · <a data-jwks href="/jwks">JWKS</a>
             </p>
             <p>
@@ -321,8 +306,7 @@
               <a
                 data-discovery
                 href="/p2p-origin/.well-known/openid-configuration"
-                >OIDC discovery</a
-              >
+              >OIDC discovery</a>
               ·
               <a data-jwks href="/p2p-origin/jwks">JWKS</a>
             </p>
@@ -363,8 +347,7 @@
       let apiToken = "";
       let authExpiry = 0;
       let authTimer;
-      const authDialog =
-        document.querySelector("#authDialog");
+      const authDialog = document.querySelector("#authDialog");
       const authForm = document.querySelector("#authForm");
       function renderAuthorization(clientId = "") {
         const authorized = Boolean(apiToken);
@@ -372,19 +355,18 @@
         document.querySelector(
           "header",
         ).dataset.authorized = String(authorized);
-        document.querySelector("#authorize").textContent =
-          authorized ? "Authorized" : "Authorize";
-        document.querySelector("#authStatus").textContent =
-          authorized
-            ? "Authorized as " +
-              clientId +
-              (authExpiry
-                ? " · Expires " +
-                  new Date(authExpiry).toLocaleTimeString()
-                : "")
-            : "Not authorized";
-        document.querySelector("#clearAuth").hidden =
-          !authorized;
+        document.querySelector("#authorize").textContent = authorized
+          ? "Authorized"
+          : "Authorize";
+        document.querySelector("#authStatus").textContent = authorized
+          ? "Authorized as " +
+            clientId +
+            (authExpiry
+              ? " · Expires " +
+                new Date(authExpiry).toLocaleTimeString()
+              : "")
+          : "Not authorized";
+        document.querySelector("#clearAuth").hidden = !authorized;
       }
       function clearAuthorization(
         status = "Not authorized",
@@ -403,15 +385,16 @@
         document.querySelector("#empty").hidden = true;
         const result = document.querySelector("#result");
         result.hidden = true;
-        for (const output of result.querySelectorAll(
-          "pre",
-        )) {
+        for (
+          const output of result.querySelectorAll(
+            "pre",
+          )
+        ) {
           output.textContent = "";
         }
         report("");
         renderAuthorization();
-        document.querySelector("#authStatus").textContent =
-          status;
+        document.querySelector("#authStatus").textContent = status;
       }
       function applyAuthorization(session) {
         apiToken = session.accessToken;
@@ -432,10 +415,8 @@
       document
         .querySelector("#authorize")
         .addEventListener("click", async () => {
-          document.querySelector("#authError").textContent =
-            "";
-          const endpoint =
-            document.querySelector("#authTokenUrl");
+          document.querySelector("#authError").textContent = "";
+          const endpoint = document.querySelector("#authTokenUrl");
           endpoint.value = "";
           endpoint.placeholder = "Loading…";
           authDialog.showModal();
@@ -451,8 +432,7 @@
             endpoint.value = (
               await response.json()
             ).tokenUrl;
-            endpoint.placeholder =
-              "P2P_TOKEN_URL is not configured";
+            endpoint.placeholder = "P2P_TOKEN_URL is not configured";
           } catch (error) {
             endpoint.placeholder = "Unavailable";
             document.querySelector(
@@ -462,25 +442,18 @@
         });
       document
         .querySelector("#cancelAuth")
-        .addEventListener("click", () =>
-          authDialog.close(),
-        );
-      authDialog.addEventListener("close", () =>
-        authForm.reset(),
-      );
+        .addEventListener("click", () => authDialog.close());
+      authDialog.addEventListener("close", () => authForm.reset());
       document
         .querySelector("#clearAuth")
-        .addEventListener("click", () =>
-          clearAuthorization(),
-        );
+        .addEventListener("click", () => clearAuthorization());
       authForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         const button = authForm.querySelector(
           '[type="submit"]',
         );
         button.disabled = true;
-        document.querySelector("#authError").textContent =
-          "";
+        document.querySelector("#authError").textContent = "";
         try {
           const configResponse = await fetch("/api/config");
           if (!configResponse.ok) {
@@ -489,8 +462,7 @@
             );
           }
           const { tokenUrl } = await configResponse.json();
-          document.querySelector("#authTokenUrl").value =
-            tokenUrl;
+          document.querySelector("#authTokenUrl").value = tokenUrl;
           const credentials = Object.fromEntries(
             new FormData(authForm),
           );
@@ -519,8 +491,7 @@
           authDialog.close();
           await run(loadWorkspace);
         } catch (error) {
-          document.querySelector("#authError").textContent =
-            error.message;
+          document.querySelector("#authError").textContent = error.message;
         } finally {
           authForm.elements.clientSecret.value = "";
           button.disabled = false;
@@ -531,10 +502,8 @@
           profile.scopes || []
         ).join("\n");
         form.elements.user.value = profile.user;
-        form.elements.initialAzp.value =
-          profile.initialAzp || "";
-        form.elements.clientSubsystem.value =
-          profile.clientSubsystem || "";
+        form.elements.initialAzp.value = profile.initialAzp || "";
+        form.elements.clientSubsystem.value = profile.clientSubsystem || "";
       }
       function report(text, error = false) {
         message.textContent = text;
@@ -546,8 +515,9 @@
             "Authorization expired. Authorize again.",
           );
         }
-        if (!apiToken)
+        if (!apiToken) {
           throw new Error("Authorize before continuing.");
+        }
         const requestToken = apiToken;
         const response = await requestApi(
           path,
@@ -600,12 +570,17 @@
       async function generate(body) {
         const result = await api("/token", "POST", body);
         token = result.access_token;
-        document.querySelector("#token").textContent =
-          token;
-        document.querySelector("#headers").textContent =
-          JSON.stringify(result.headers, null, 2);
-        document.querySelector("#claims").textContent =
-          JSON.stringify(result.claims, null, 2);
+        document.querySelector("#token").textContent = token;
+        document.querySelector("#headers").textContent = JSON.stringify(
+          result.headers,
+          null,
+          2,
+        );
+        document.querySelector("#claims").textContent = JSON.stringify(
+          result.claims,
+          null,
+          2,
+        );
         document.querySelector(
           "#originClaims",
         ).textContent = JSON.stringify(
@@ -626,51 +601,52 @@
         const profiles = await api("/api/profiles");
         const tbody = document.querySelector("#profiles");
         tbody.replaceChildren();
-        document.querySelector("#empty").hidden =
-          profiles.length > 0;
+        document.querySelector("#empty").hidden = profiles.length > 0;
         for (const profile of profiles) {
           const row = document.createElement("tr");
-          for (const field of [
-            "initialAzp",
-            "clientSubsystem",
-            "user",
-          ]) {
+          for (
+            const field of [
+              "initialAzp",
+              "clientSubsystem",
+              "user",
+            ]
+          ) {
             const cell = document.createElement("td");
             cell.textContent = profile[field];
             row.append(cell);
           }
           const actions = document.createElement("td");
-          for (const [label, action] of [
-            [
-              "Load",
-              async () => {
-                loadProfile(profile);
-                report("Profile loaded.");
-              },
-            ],
-            [
-              "Generate",
-              () => generate({ profileId: profile.id }),
-            ],
-            [
-              "Delete",
-              async () => {
-                await api(
-                  "/api/profiles/" + profile.id,
-                  "DELETE",
-                );
-                await load();
-                report("Profile deleted.");
-              },
-            ],
-          ]) {
+          for (
+            const [label, action] of [
+              [
+                "Load",
+                async () => {
+                  loadProfile(profile);
+                  report("Profile loaded.");
+                },
+              ],
+              [
+                "Generate",
+                () => generate({ profileId: profile.id }),
+              ],
+              [
+                "Delete",
+                async () => {
+                  await api(
+                    "/api/profiles/" + profile.id,
+                    "DELETE",
+                  );
+                  await load();
+                  report("Profile deleted.");
+                },
+              ],
+            ]
+          ) {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "secondary";
             button.textContent = label;
-            button.addEventListener("click", () =>
-              run(action),
-            );
+            button.addEventListener("click", () => run(action));
             actions.append(button);
           }
           row.append(actions);
@@ -698,34 +674,32 @@
           run(async () => {
             await navigator.clipboard.writeText(token);
             report("Token copied.");
-          }),
-        );
+          }));
       async function loadWorkspace() {
         await load();
         const response = await fetch("/api/config", {
           cache: "no-store",
         });
-        if (!response.ok)
+        if (!response.ok) {
           throw new Error("Unable to load token issuers.");
+        }
         const config = await response.json();
-        for (const panel of document.querySelectorAll(
-          "[data-issuer]",
-        )) {
+        for (
+          const panel of document.querySelectorAll(
+            "[data-issuer]",
+          )
+        ) {
           const issuer = config[panel.dataset.issuer];
           panel.querySelector(
             "[data-issuer-url]",
           ).textContent = issuer.issuer;
-          panel.querySelector("[data-discovery]").href =
-            issuer.discoveryUrl;
-          panel.querySelector("[data-jwks]").href =
-            issuer.jwksUrl;
-          panel.querySelector("[data-kid]").textContent =
-            issuer.kid;
+          panel.querySelector("[data-discovery]").href = issuer.discoveryUrl;
+          panel.querySelector("[data-jwks]").href = issuer.jwksUrl;
+          panel.querySelector("[data-kid]").textContent = issuer.kid;
         }
       }
       try {
-        const session =
-          restoreAuthorization(sessionStorage);
+        const session = restoreAuthorization(sessionStorage);
         if (session) {
           applyAuthorization(session);
           run(loadWorkspace);
