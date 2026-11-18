@@ -45,6 +45,11 @@ import {
   startLogin,
 } from "./lib/auth.ts";
 import {
+  loginReturnTo,
+  redirectStrayConnectionAction,
+  safeReturnTo,
+} from "./lib/auth-redirect.ts";
+import {
   deleteConnection,
   getClientDetail,
   listConnections,
@@ -514,8 +519,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       return new Response("auth not configured", {
         status: 503,
       });
-    const returnTo =
-      url.searchParams.get("returnTo") ?? "/";
+    const returnTo = safeReturnTo(
+      url.searchParams.get("returnTo"),
+    );
     return await startLogin(req, returnTo);
   }
   if (path === "/auth/callback") {
@@ -1014,6 +1020,8 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   if (path === "/connections") {
     return await handleConnections(req, url, user);
   }
+  const strayAction = redirectStrayConnectionAction(req);
+  if (strayAction) return strayAction;
   if (path === "/connections/edit") {
     return await handleConnectionsEdit(req, user);
   }
@@ -1044,12 +1052,11 @@ function requireAuth(
     });
   }
   if (!user) {
-    const url = new URL(req.url);
     const returnTo = encodeURIComponent(
-      url.pathname + url.search,
+      loginReturnTo(req),
     );
     return new Response(null, {
-      status: 302,
+      status: req.method === "GET" || req.method === "HEAD" ? 302 : 303,
       headers: {
         location: `/auth/login?returnTo=${returnTo}`,
       },

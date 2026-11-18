@@ -14,8 +14,13 @@ on:
       image-digest:
         type: string
         default: ''
+permissions:
+  contents: read
 jobs:
   chart:
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
