@@ -110,6 +110,21 @@ Deno.test("GET on a connection action redirects to /connections instead of 405",
   }
 });
 
+Deno.test("lifecycle actions use the connection action redirects", () => {
+  const { path, params } = split(
+    loginReturnTo(post("/connections/lifecycle")),
+  );
+  assertEquals(path, "/connections");
+  assertEquals(params.flash, "error");
+  assertEquals(params.msg, SESSION_EXPIRED_MESSAGE);
+
+  const res = redirectStrayConnectionAction(
+    new Request(BASE + "/connections/lifecycle?org=a"),
+  );
+  assertEquals(res?.status, 303);
+  assertEquals(res?.headers.get("location"), "/connections?org=a");
+});
+
 Deno.test("POST to a connection action and other paths are not intercepted", () => {
   assertEquals(redirectStrayConnectionAction(post("/connections/edit")), null);
   assertEquals(
