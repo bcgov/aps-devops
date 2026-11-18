@@ -1,10 +1,13 @@
 # P2P Emulator
 
-A Deno development app for generating signed subject and P2P Edge Runtime
-tokens. The UI manages reusable profiles containing a subject identifier,
-Initial AZP, Client Subsystem, and optional scopes. Each generation returns both
-tokens and request headers for a downstream API; the app does not forward
-requests.
+A Deno development app for service providers building APIs for the BC Government
+[Secure Data Exchange (SDX)](https://sdx-api-gov-bc-ca.dev.api.gov.bc.ca/). It
+simulates the peer-to-peer calls your API would receive by generating signed
+access and P2P Edge Runtime tokens, plus the matching request headers, so you
+can test without a real consumer. The UI manages reusable profiles containing a
+subject identifier, Initial AZP, Client Subsystem, and optional scopes. Each
+generation returns both tokens and request headers for a downstream API; the app
+does not forward requests.
 
 See [Getting started](docs/GETTING-STARTED.md) for the default curl journey,
 authorization, API payloads, token claims, discovery/JWKS URLs, and optional
