@@ -5,13 +5,13 @@ for the default journey. Profile management is optional. Replace the example
 client credentials and profile values with your own. The examples use the
 deployed development app. Keep `P2P_BASE_URL` without a trailing slash.
 
-There are two separate access tokens:
+Each token has a specific use.
 
-- **OAuth access token**: obtained from LoginProxy and sent when calling the
+- **Emulator authorization** uses an OAuth token from LoginProxy to call the
   emulator API.
-- **Generated subject token**: minted by the emulator for a profile and returned
-  with headers for a downstream request. It expires after 300 seconds by
-  default.
+- **Access token** refers to the token the emulator generates for a downstream
+  API. The emulator returns it with the request headers, including the P2P Edge
+  Runtime token. The generated tokens expire after 300 seconds by default.
 
 ## 1. Configure the URLs
 
@@ -29,14 +29,14 @@ The emulator publishes these verification endpoints:
 `TOKEN_URL` above is the LoginProxy endpoint used for client-credentials
 authorization; it is separate from the emulator's discovery and JWKS endpoints.
 
-## 2. Authorize with client credentials
+## 2. Authorize the emulator with client credentials
 
 Enter the Client ID and Client Secret used to access the emulator API. To get
 them, open the
 [APS P2P Emulator](https://api.gov.bc.ca/devportal/api-directory/4443?preview=false)
 listing in the API Directory, choose **Request Access** for the P2P Emulator
 Service product, and generate credentials for the development environment.
-Access is granted once the request is approved. 
+Access is granted once the request is approved.
 
 The secret prompt does not echo input or put the value in shell history.
 
@@ -53,15 +53,16 @@ OAUTH_RESPONSE=$(curl --fail-with-body --silent --show-error \
   --data-urlencode "client_id=$CLIENT_ID" \
   --data-urlencode "client_secret=$CLIENT_SECRET")
 
-OAUTH_ACCESS_TOKEN=$(printf '%s' "$OAUTH_RESPONSE" | jq -er '.access_token')
+EMULATOR_AUTHORIZATION_TOKEN=$(printf '%s' "$OAUTH_RESPONSE" | jq -er '.access_token')
 printf '%s' "$OAUTH_RESPONSE" | jq '{token_type, expires_in}'
 unset CLIENT_SECRET OAUTH_RESPONSE
 ```
 
 This calls LoginProxy directly, just like the browser Authorize dialog. There is
-no server-side `/api/authorize` endpoint. Repeat this step when the OAuth token
-expires. Its lifetime is controlled by LoginProxy, independently of generated
-subject tokens. Browser CORS rules do not apply to curl.
+no server-side `/api/authorize` endpoint. Repeat this step when emulator
+authorization expires. LoginProxy controls the OAuth token lifetime. The
+emulator controls the lifetime of the access tokens it generates. Browser CORS
+rules do not apply to curl.
 
 ## 3. Generate a token without saving a profile
 
@@ -76,7 +77,7 @@ Service, environment, and privacy zone are not required.
 ```bash
 TOKEN_RESPONSE=$(curl --fail-with-body --silent --show-error \
   --request POST "$P2P_BASE_URL/token" \
-  --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" \
+  --header "Authorization: Bearer $EMULATOR_AUTHORIZATION_TOKEN" \
   --header 'Content-Type: application/json' \
   --data-binary @- <<'JSON'
 {
@@ -89,7 +90,7 @@ JSON
 )
 
 printf '%s' "$TOKEN_RESPONSE" | jq '{token_type, expires_in, claims, headers}'
-SUBJECT_ACCESS_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.access_token')
+ACCESS_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.access_token')
 ```
 
 The response includes `access_token`, `token_type: "Bearer"`, `expires_in: 300`
@@ -117,12 +118,12 @@ curl --fail-with-body --silent --show-error \
   --header "X-SDX-Client-Subsystem-Id: $CLIENT_SUBSYSTEM" \
   --header "Correlation-Id: $CORRELATION_ID" \
   --header "X-Edge-Token: $EDGE_TOKEN" \
-  --header "Authorization: Bearer $SUBJECT_ACCESS_TOKEN"
+  --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-Each token generation produces a fresh correlation UUID. Continue using
-`OAUTH_ACCESS_TOKEN`, rather than `SUBJECT_ACCESS_TOKEN`, for emulator API
-calls.
+Each token generation produces a fresh correlation UUID. Use
+`EMULATOR_AUTHORIZATION_TOKEN` for emulator API calls and `ACCESS_TOKEN` for
+downstream API calls.
 
 ## 5. Discovery and public signing keys
 
@@ -150,8 +151,8 @@ curl --fail-with-body --silent --show-error \
 
 Each token response includes `headers["X-Edge-Token"]`, whose signed payload
 contains only `jwks_uri`, `client_id`, `jti`, `request_id`, `iat`, and `exp`.
-Validate this token against the origin JWKS rather than the subject-token JWKS.
-Its default lifetime is 300 seconds.
+Validate this token against the P2P Edge Runtime JWKS. Its default lifetime is
+300 seconds.
 
 ## Optional: save and reuse profiles
 
@@ -163,7 +164,7 @@ later reuse.
 ```bash
 PROFILE_RESPONSE=$(curl --fail-with-body --silent --show-error \
   --request POST "$P2P_BASE_URL/api/profiles" \
-  --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" \
+  --header "Authorization: Bearer $EMULATOR_AUTHORIZATION_TOKEN" \
   --header 'Content-Type: application/json' \
   --data-binary @- <<'JSON'
 {
@@ -187,7 +188,7 @@ A successful create returns HTTP 201 with the saved profile and its generated
 ```bash
 curl --fail-with-body --silent --show-error \
   "$P2P_BASE_URL/api/profiles" \
-  --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" | jq .
+  --header "Authorization: Bearer $EMULATOR_AUTHORIZATION_TOKEN" | jq .
 ```
 
 The API returns the complete profiles. To select a single profile from the list:
@@ -195,7 +196,7 @@ The API returns the complete profiles. To select a single profile from the list:
 ```bash
 curl --fail-with-body --silent --show-error \
   "$P2P_BASE_URL/api/profiles" \
-  --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" \
+  --header "Authorization: Bearer $EMULATOR_AUTHORIZATION_TOKEN" \
   | jq --arg id "$PROFILE_ID" '.[] | select(.id == $id)'
 ```
 
@@ -208,12 +209,12 @@ from the profile list.
 TOKEN_RESPONSE=$(jq -n --arg id "$PROFILE_ID" '{profileId: $id}' \
   | curl --fail-with-body --silent --show-error \
     --request POST "$P2P_BASE_URL/token" \
-    --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" \
+    --header "Authorization: Bearer $EMULATOR_AUTHORIZATION_TOKEN" \
     --header 'Content-Type: application/json' \
     --data-binary @-)
 
 printf '%s' "$TOKEN_RESPONSE" | jq '{token_type, expires_in, claims, headers}'
-SUBJECT_ACCESS_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.access_token')
+ACCESS_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.access_token')
 ```
 
 ### Delete the example profile
@@ -221,7 +222,7 @@ SUBJECT_ACCESS_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -er '.access_token')
 ```bash
 curl --fail-with-body --silent --show-error \
   --request DELETE "$P2P_BASE_URL/api/profiles/$PROFILE_ID" \
-  --header "Authorization: Bearer $OAUTH_ACCESS_TOKEN" | jq .
+  --header "Authorization: Bearer $EMULATOR_AUTHORIZATION_TOKEN" | jq .
 ```
 
 Success returns `{"ok":true}`. A missing profile returns HTTP 404.
@@ -232,7 +233,8 @@ Success returns `{"ok":true}`. A missing profile returns HTTP 404.
   individual scope names, without whitespace inside a name.
 - **HTTP 401/403 from the deployment gateway**: authorize again and confirm the
   OAuth client has the required API permissions. The standalone emulator does
-  not itself validate OAuth access tokens; gateway enforcement is separate.
+  not itself validate OAuth tokens for emulator authorization; gateway
+  enforcement is separate.
 - **“Cross-origin writes are not allowed.”**: if sending an `Origin` header, it
   must exactly match the public origin configured as the emulator's `issuer`.
   These curl examples omit `Origin`. Behind TLS termination, configure `issuer`
@@ -243,11 +245,11 @@ Success returns `{"ok":true}`. A missing profile returns HTTP 404.
 Clear shell variables after finishing:
 
 ```bash
-unset OAUTH_ACCESS_TOKEN SUBJECT_ACCESS_TOKEN EDGE_TOKEN TOKEN_RESPONSE PROFILE_RESPONSE
+unset EMULATOR_AUTHORIZATION_TOKEN ACCESS_TOKEN EDGE_TOKEN TOKEN_RESPONSE PROFILE_RESPONSE
 ```
 
-The main JWT’s `azp` is the app’s `P2P_CLIENT_ID`, such as `sdx-edge-gw`, rather
-than the profile’s `initialAzp`.
+The generated access token’s `azp` is the app’s `P2P_CLIENT_ID`, such as
+`sdx-edge-gw`, rather than the profile’s `initialAzp`.
 
 Each edge token has a fresh UUID `request_id`, generated independently of both
 its `jti` and the `Correlation-Id` header.
