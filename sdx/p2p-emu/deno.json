@@ -1,0 +1,7 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-read --allow-write --allow-env=P2P_CLIENT_ID,P2P_TOKEN_URL main.ts",
+    "dev": "deno run --watch --allow-net --allow-read --allow-write --allow-env=P2P_CLIENT_ID,P2P_TOKEN_URL main.ts",
+    "test": "deno test --allow-read --allow-write"
+  }
+}

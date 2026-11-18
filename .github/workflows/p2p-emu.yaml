@@ -1,0 +1,47 @@
+name: P2P Emulator
+
+on:
+  push:
+    branches: ['feature/**', dev]
+    paths:
+      - 'sdx/p2p-emu/**'
+      - '.github/workflows/p2p-emu.yaml'
+      - '.github/workflows/.build.yml'
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'sdx/p2p-emu/**'
+      - '.github/workflows/p2p-emu.yaml'
+      - '.github/workflows/.build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.8.0
+      - name: Check and test
+        working-directory: sdx/p2p-emu
+        run: |
+          deno fmt --check
+          deno check main.ts
+          deno task test
+
+  build-p2p-emu:
+    needs: check
+    uses: ./.github/workflows/.build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      name: p2p-emu
+      publish: ${{ github.event_name != 'pull_request' }}
+      context: ./sdx/p2p-emu
