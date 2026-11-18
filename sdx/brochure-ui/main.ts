@@ -10,6 +10,8 @@ import type {
   Service,
 } from "./types.ts";
 import { HomePage } from "./pages/HomePage.tsx";
+import { AboutPage } from "./pages/AboutPage.tsx";
+import { HelpPage } from "./pages/HelpPage.tsx";
 import { SubsystemsPage } from "./pages/SubsystemsPage.tsx";
 import { OrganizationsPage } from "./pages/OrganizationsPage.tsx";
 import { OrgDetailPage } from "./pages/OrgDetailPage.tsx";
@@ -25,7 +27,7 @@ import { TrafficPage } from "./pages/TrafficPage.tsx";
 import { TrustPage } from "./pages/TrustPage.tsx";
 import { ConnectionsPage } from "./pages/ConnectionsPage.tsx";
 import { OnboardingInvitePage } from "./pages/OnboardingInvitePage.tsx";
-import { VerificationBadge } from "./components/VerificationBadge.tsx";
+import { VerificationBadge } from "./components/custom/VerificationBadge.tsx";
 import { loadJwks } from "./lib/jwks.ts";
 import {
   MetricsQueryNotFoundError,
@@ -42,6 +44,11 @@ import {
   logout,
   startLogin,
 } from "./lib/auth.ts";
+import {
+  loginReturnTo,
+  redirectStrayConnectionAction,
+  safeReturnTo,
+} from "./lib/auth-redirect.ts";
 import {
   deleteConnection,
   getClientDetail,
@@ -512,8 +519,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       return new Response("auth not configured", {
         status: 503,
       });
-    const returnTo =
-      url.searchParams.get("returnTo") ?? "/";
+    const returnTo = safeReturnTo(
+      url.searchParams.get("returnTo"),
+    );
     return await startLogin(req, returnTo);
   }
   if (path === "/auth/callback") {
@@ -556,6 +564,24 @@ Deno.serve({ port: PORT }, async (req: Request) => {
         services,
         config,
         currentPath: "/",
+        user,
+      }),
+    );
+  }
+
+  if (path === "/about") {
+    return htmlResponse(
+      React.createElement(AboutPage, {
+        currentPath: "/about",
+        user,
+      }),
+    );
+  }
+
+  if (path === "/help") {
+    return htmlResponse(
+      React.createElement(HelpPage, {
+        currentPath: "/help",
         user,
       }),
     );
@@ -994,12 +1020,8 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   if (path === "/connections") {
     return await handleConnections(req, url, user);
   }
-  if (path === "/connections/add") {
-    return await handleConnectionsAdd(req, user);
-  }
-  if (path === "/connections/add-multi") {
-    return await handleConnectionsAddMulti(req, user);
-  }
+  const strayAction = redirectStrayConnectionAction(req);
+  if (strayAction) return strayAction;
   if (path === "/connections/edit") {
     return await handleConnectionsEdit(req, user);
   }
@@ -1030,12 +1052,11 @@ function requireAuth(
     });
   }
   if (!user) {
-    const url = new URL(req.url);
     const returnTo = encodeURIComponent(
-      url.pathname + url.search,
+      loginReturnTo(req),
     );
     return new Response(null, {
-      status: 302,
+      status: req.method === "GET" || req.method === "HEAD" ? 302 : 303,
       headers: {
         location: `/auth/login?returnTo=${returnTo}`,
       },
@@ -1254,9 +1275,6 @@ async function handleConnections(
 
   const selectedOrg =
     organizations.find((o) => o.name === orgName) ?? null;
-  const orgSubsystems = selectedOrg
-    ? (subsystemsByOrg.get(selectedOrg.name) ?? [])
-    : [];
 
   let connections: Awaited<
     ReturnType<typeof listConnections>
@@ -1283,7 +1301,6 @@ async function handleConnections(
       organizations,
       selectedOrg,
       connections,
-      orgSubsystems,
       allSubsystems: subsystems,
       services,
       config,
@@ -1292,209 +1309,6 @@ async function handleConnections(
       flash,
       error,
     }),
-  );
-}
-
-async function handleConnectionsAdd(
-  req: Request,
-  user: Awaited<ReturnType<typeof getCurrentUser>>,
-): Promise<Response> {
-  const gate = requireAuth(req, user);
-  if (gate) return gate;
-  if (req.method !== "POST")
-    return new Response("method not allowed", {
-      status: 405,
-    });
-
-  const form = await req.formData();
-  const org = String(form.get("org") ?? "");
-  const clientId = String(form.get("clientId") ?? "");
-  const serviceId = String(form.get("serviceId") ?? "");
-  const scopes = form
-    .getAll("scopes")
-    .map((v) => String(v))
-    .filter(Boolean);
-  if (!org || !clientId || !serviceId) {
-    return connectionsRedirect(
-      org,
-      { kind: "error", message: "Missing required fields" },
-      clientId,
-    );
-  }
-  try {
-    await upsertConnection(
-      org,
-      {
-        clientId,
-        serviceId,
-        scopes,
-        policyVersion: "SDX.R0.00",
-      },
-      { accessToken: user!.accessToken },
-    );
-    return connectionsRedirect(
-      org,
-      {
-        kind: "success",
-        message: `Requested connection ${clientId} → ${serviceId}${
-          scopes.length ? ` (${scopes.join(", ")})` : ""
-        }`,
-      },
-      clientId,
-    );
-  } catch (e) {
-    const msg =
-      e instanceof SdxApiError
-        ? `Add failed (${e.status}): ${e.body}`
-        : (e as Error).message;
-    return connectionsRedirect(
-      org,
-      { kind: "error", message: msg },
-      clientId,
-    );
-  }
-}
-
-interface MultiAddItem {
-  serviceId: string;
-  scopes: string[];
-}
-
-async function handleConnectionsAddMulti(
-  req: Request,
-  user: Awaited<ReturnType<typeof getCurrentUser>>,
-): Promise<Response> {
-  const gate = requireAuth(req, user);
-  if (gate) return gate;
-  if (req.method !== "POST") {
-    return new Response("method not allowed", {
-      status: 405,
-    });
-  }
-
-  const form = await req.formData();
-  const org = String(form.get("org") ?? "");
-  const clientId = String(form.get("clientId") ?? "");
-  const raw = String(form.get("selections") ?? "[]");
-  const rawPolicyVersion = String(
-    form.get("policyVersion") ?? "",
-  );
-  const KNOWN_POLICY_VERSIONS: string[] = [
-    "SDX.R0.00",
-    "SDX.R1.00",
-    "SDX.R2.00",
-  ];
-  const policyVersion = KNOWN_POLICY_VERSIONS.includes(
-      rawPolicyVersion,
-    )
-    ? rawPolicyVersion
-    : "SDX.R0.00";
-
-  let items: MultiAddItem[];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed))
-      throw new Error("expected array");
-    items = parsed.map((entry) => {
-      const serviceId = String(entry?.serviceId ?? "");
-      const scopes = Array.isArray(entry?.scopes)
-        ? entry.scopes
-            .map((s: unknown) => String(s))
-            .filter(Boolean)
-        : [];
-      return { serviceId, scopes };
-    });
-  } catch (e) {
-    return connectionsRedirect(
-      org,
-      {
-        kind: "error",
-        message: `Invalid selections payload: ${(e as Error).message}`,
-      },
-      clientId,
-    );
-  }
-
-  if (!org || !clientId) {
-    return connectionsRedirect(
-      org,
-      {
-        kind: "error",
-        message: "Missing organization or client subsystem",
-      },
-      clientId,
-    );
-  }
-  const validItems = items.filter((i) => i.serviceId);
-  if (validItems.length === 0) {
-    return connectionsRedirect(
-      org,
-      {
-        kind: "error",
-        message:
-          "Select at least one service to request access to",
-      },
-      clientId,
-    );
-  }
-
-  const successes: string[] = [];
-  const failures: string[] = [];
-  for (const item of validItems) {
-    try {
-      await upsertConnection(
-        org,
-        {
-          clientId,
-          serviceId: item.serviceId,
-          scopes: item.scopes,
-          policyVersion,
-        },
-        { accessToken: user!.accessToken },
-      );
-      successes.push(
-        item.scopes.length
-          ? `${item.serviceId} (${item.scopes.join(", ")})`
-          : item.serviceId,
-      );
-    } catch (e) {
-      const msg =
-        e instanceof SdxApiError
-          ? `${item.serviceId}: HTTP ${e.status} ${e.body}`
-          : `${item.serviceId}: ${(e as Error).message}`;
-      failures.push(msg);
-    }
-  }
-
-  if (failures.length === 0) {
-    return connectionsRedirect(
-      org,
-      {
-        kind: "success",
-        message: `Requested ${successes.length} connection${
-          successes.length === 1 ? "" : "s"
-        } for ${clientId}: ${successes.join("; ")}`,
-      },
-      clientId,
-    );
-  }
-  if (successes.length === 0) {
-    return connectionsRedirect(
-      org,
-      {
-        kind: "error",
-        message: `All ${failures.length} requests failed: ${failures.join("; ")}`,
-      },
-      clientId,
-    );
-  }
-  return connectionsRedirect(
-    org,
-    {
-      kind: "error",
-      message: `Partial success — added ${successes.length}, ${failures.length} failed: ${failures.join("; ")}`,
-    },
-    clientId,
   );
 }
 
@@ -1625,6 +1439,7 @@ async function handleConnectionsApprove(
         clientId,
         serviceId,
         isApproved: true,
+        isActive: true,
       },
       { accessToken: user!.accessToken },
     );

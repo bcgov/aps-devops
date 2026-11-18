@@ -1,3 +1,8 @@
+# Caller permissions: GITHUB_TOKEN is read-only by default from 2026-11-30, so the
+# calling job must grant the token it passes in `token`:
+#   contents: read
+#   pull-requests: write
+
 name: "Remind Pending PR Reviewers"
 description: "Reminds pending reviewers on GitHub pull requests by tagging them in comments."
 inputs:

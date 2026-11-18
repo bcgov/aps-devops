@@ -28,23 +28,30 @@ function CrumbChevron() {
 /** Standard page breadcrumb bar. Items without an href render as the current page. */
 export function Breadcrumb({ items }: { items: Crumb[] }) {
   return (
-    <div className="bg-gray-50 border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 text-sm text-gray-500">
+    <nav
+      aria-label="Breadcrumb"
+      className="bg-surface-muted border-b border-border"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 text-sm text-ink-secondary">
         {items.map((item, i) => (
           <span key={`${item.label}:${i}`}>
-            {i > 0 && <span className="mx-2">›</span>}
+            {i > 0 && (
+              <span className="mx-2" aria-hidden="true">
+                ›
+              </span>
+            )}
             {item.menu ? (
               <details className="relative inline-block">
-                <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-gray-800 font-medium hover:text-[#003366]">
+                <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-ink font-medium hover:text-bc-blue">
                   {item.label}
                   <CrumbChevron />
                 </summary>
-                <div className="absolute left-0 top-full mt-1 bg-white shadow-lg rounded border border-gray-200 min-w-[200px] z-50 py-1">
+                <div className="absolute left-0 top-full mt-1 bg-white shadow-lg rounded border border-border min-w-[200px] z-50 py-1">
                   {item.menu.map((m) => (
                     <a
                       key={m.href}
                       href={m.href}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#003366] no-underline"
+                      className="block px-4 py-2 text-sm text-ink-secondary hover:bg-surface-muted hover:text-bc-blue no-underline"
                     >
                       {m.label}
                     </a>
@@ -54,16 +61,18 @@ export function Breadcrumb({ items }: { items: Crumb[] }) {
             ) : item.href ? (
               <a
                 href={item.href}
-                className="hover:text-[#003366] hover:underline"
+                className="hover:text-bc-blue hover:underline"
               >
                 {item.label}
               </a>
             ) : (
-              <span className="text-gray-800 font-medium">{item.label}</span>
+              <span aria-current="page" className="text-ink font-medium">
+                {item.label}
+              </span>
             )}
           </span>
         ))}
       </div>
-    </div>
+    </nav>
   );
 }

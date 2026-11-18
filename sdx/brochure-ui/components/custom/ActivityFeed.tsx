@@ -1,4 +1,4 @@
-import type { ActivityRecord } from "../types.ts";
+import type { ActivityRecord } from "../../types.ts";
 
 interface ActivityFeedProps {
   activity: ActivityRecord[];
@@ -8,8 +8,63 @@ interface ActivityFeedProps {
 }
 
 const DIALOG_STYLE = `
-dialog.sdx-activity-dialog { border: none; border-radius: 8px; padding: 0; max-width: 720px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+dialog.sdx-activity-dialog { border: none; border-radius: 8px; padding: 0; max-width: 720px; width: min(92vw, 720px); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+dialog.sdx-activity-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100dvh - 2rem);
+}
+dialog.sdx-activity-dialog .sdx-activity-head,
+dialog.sdx-activity-dialog .sdx-activity-foot { flex: 0 0 auto; }
+dialog.sdx-activity-dialog .sdx-activity-head {
+  max-height: 35%;
+  overflow: auto;
+}
+dialog.sdx-activity-dialog .sdx-activity-head h2 {
+  overflow-wrap: anywhere;
+}
+dialog.sdx-activity-dialog .sdx-activity-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
 dialog.sdx-activity-dialog::backdrop { background: rgba(0,0,0,0.45); }
+@media (max-width: 799px) {
+  dialog.sdx-activity-dialog[open] {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-head,
+  dialog.sdx-activity-dialog .sdx-activity-body,
+  dialog.sdx-activity-dialog .sdx-activity-foot {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-head { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  dialog.sdx-activity-dialog .sdx-activity-head h2 {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-foot { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+}
+/* 400% zoom shrinks the CSS viewport height. Keep the title readable
+   without letting a long title consume the details area. */
+@media (max-height: 480px) {
+  dialog.sdx-activity-dialog .sdx-activity-head h2 {
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+  dialog.sdx-activity-dialog .sdx-activity-head {
+    max-height: 28%;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+}
 `;
 
 // Rendered client-side so dates/times reflect the viewer's local timezone (the
@@ -30,7 +85,8 @@ const FEED_SCRIPT = `
   var dlgBlob = document.getElementById('activity-detail-blob');
   var dlgParams = document.getElementById('activity-detail-params');
   var dlgTitle = document.getElementById('activity-detail-title');
-  var skip = 0, lastKey = null, currentUl = null;
+  var skip = 0, lastKey = null, currentUl = null, lastFocus = null;
+  dlg.setAttribute('tabindex', '-1');
 
   var WARN_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" fill="currentColor"></path><line x1="12" y1="9" x2="12" y2="13.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"></line><line x1="12" y1="17" x2="12.01" y2="17" stroke="#fff" stroke-width="2.2" stroke-linecap="round"></line></svg>';
   function isErrorResult(result){
@@ -102,29 +158,71 @@ const FEED_SCRIPT = `
     var dps = detailParams(params);
     if(dps.length){
       for(var i=0;i<dps.length;i++){
-        var dt = document.createElement('dt'); dt.className = 'text-gray-500 break-all'; dt.textContent = dps[i][0];
-        var dd = document.createElement('dd'); dd.className = 'text-gray-800 break-all font-mono'; dd.textContent = dps[i][1];
+        var dt = document.createElement('dt'); dt.className = 'text-ink-secondary break-all'; dt.textContent = dps[i][0];
+        var dd = document.createElement('dd'); dd.className = 'text-ink break-all font-mono'; dd.textContent = dps[i][1];
         dlgParams.appendChild(dt); dlgParams.appendChild(dd);
       }
       dlgParams.style.display = '';
     } else { dlgParams.style.display = 'none'; }
-    if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','');
+    lastFocus = document.activeElement;
+    if(typeof dlg.showModal === 'function'){
+      if(!dlg.open) dlg.showModal();
+    } else dlg.setAttribute('open','');
+    dlg.focus();
   }
+  function dialogFocusable(){
+    var nodes = dlg.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+    var out = [];
+    for(var i=0;i<nodes.length;i++){
+      var el = nodes[i], hidden = false, p = el;
+      while(p && p !== dlg){
+        if(p.style && p.style.display === 'none'){ hidden = true; break; }
+        p = p.parentElement;
+      }
+      if(!hidden) out.push(el);
+    }
+    return out;
+  }
+  function restoreFocus(){
+    var back = lastFocus;
+    lastFocus = null;
+    if(back && typeof back.focus === 'function') back.focus();
+  }
+  dlg.addEventListener('close', restoreFocus);
+  dlg.addEventListener('keydown', function(e){
+    if(e.key !== 'Tab' || !dlg.open) return;
+    var items = dialogFocusable();
+    if(!items.length){ e.preventDefault(); dlg.focus(); return; }
+    var first = items[0], last = items[items.length - 1];
+    var active = document.activeElement;
+    if(!dlg.contains(active)){
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+      return;
+    }
+    if(e.shiftKey && active === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && active === last){ e.preventDefault(); first.focus(); }
+  });
+  document.addEventListener('focusin', function(e){
+    if(!dlg.open || dlg.contains(e.target)) return;
+    var items = dialogFocusable();
+    (items[0] || dlg).focus();
+  });
   function renderItem(record){
     var params = record.params || {};
     var li = document.createElement('li'); li.className = 'flex items-start gap-3 py-4';
     var isError = isErrorResult(record.result);
     var av = document.createElement('span');
-    av.className = 'shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#b8732a] text-white text-xs font-semibold';
+    av.className = 'shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bc-blue text-white text-xs font-semibold';
     av.title = params.actor || ''; av.textContent = initials(params.actor || '?');
     li.appendChild(av);
     var body = document.createElement('div'); body.className = 'min-w-0 flex-1';
     var top = document.createElement('div'); top.className = 'flex flex-wrap items-baseline gap-x-3 gap-y-1';
-    var p = document.createElement('p'); p.className = 'text-sm text-gray-800';
-    // Show a red warning icon inline before the message when the activity failed.
+    var p = document.createElement('p'); p.className = 'text-sm text-ink';
+    // Show a warning icon inline before the message when the activity failed.
     if(isError){
       var warn = document.createElement('span');
-      warn.className = 'shrink-0 text-red-600 mr-1.5 inline-flex align-text-bottom';
+      warn.className = 'shrink-0 text-danger mr-1.5 inline-flex align-text-bottom';
       warn.setAttribute('role', 'img');
       warn.setAttribute('aria-label', 'Failure');
       warn.title = 'This activity failed';
@@ -143,13 +241,13 @@ const FEED_SCRIPT = `
     var hasBlob = record.blob !== undefined && record.blob !== null;
     if(hasBlob || detailParams(params).length){
       var btn = document.createElement('button'); btn.type = 'button';
-      btn.className = 'text-xs text-[#003366] font-semibold hover:underline';
+      btn.className = 'text-xs text-link font-semibold hover:underline';
       btn.textContent = 'More details';
       (function(rec){ btn.addEventListener('click', function(){ openDialog(rec); }); })(record);
       top.appendChild(btn);
     }
     body.appendChild(top);
-    var tm = document.createElement('p'); tm.className = 'text-sm text-gray-500 mt-0.5 tabular-nums';
+    var tm = document.createElement('p'); tm.className = 'text-sm text-ink-secondary mt-0.5 tabular-nums';
     tm.textContent = timeLabel(new Date(record.activityAt));
     body.appendChild(tm);
     li.appendChild(body);
@@ -162,8 +260,8 @@ const FEED_SCRIPT = `
       var key = dateKey(d);
       if(key !== lastKey){
         var sec = document.createElement('section');
-        var h = document.createElement('h2'); h.className = 'text-base font-bold text-gray-900 mb-1'; h.textContent = dateHeader(d);
-        var ul = document.createElement('ul'); ul.className = 'divide-y divide-gray-100';
+        var h = document.createElement('h2'); h.className = 'text-lg font-bold text-ink mb-1'; h.textContent = dateHeader(d);
+        var ul = document.createElement('ul'); ul.className = 'divide-y divide-border';
         sec.appendChild(h); sec.appendChild(ul);
         listEl.appendChild(sec);
         currentUl = ul; lastKey = key;
@@ -195,7 +293,7 @@ const FEED_SCRIPT = `
   }
   document.addEventListener('click', function(e){
     var c = e.target.closest && e.target.closest('[data-close-activity]');
-    if(c){ e.preventDefault(); if(typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
+    if(c){ e.preventDefault(); if(typeof dlg.close === 'function') dlg.close(); else { dlg.removeAttribute('open'); restoreFocus(); } }
   });
 })();
 `;
@@ -237,25 +335,32 @@ export function ActivityFeed({
 
       <div
         id="activity-error"
+        role="alert"
+        aria-live="polite"
         style={{ display: "none" }}
-        className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm"
+        className="mb-4 rounded-lg border border-support-danger-border bg-support-danger-bg text-ink px-4 py-3 text-sm"
       />
 
       <div
         id="activity-empty"
         style={{ display: "none" }}
-        className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200 text-gray-600"
+        className="text-center py-16 bg-surface-muted rounded-lg border border-border text-ink-secondary"
       >
         No recent activity to show.
       </div>
 
       <noscript>
-        <div className="rounded border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+        <div className="rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm text-ink-secondary">
           JavaScript is required to view the activity feed.
         </div>
       </noscript>
 
-      <div id="activity-list" className="space-y-8" />
+      <div
+        id="activity-list"
+        className="space-y-8"
+        aria-live="polite"
+        aria-label="Activity feed"
+      />
 
       <div
         id="activity-more-wrap"
@@ -265,7 +370,7 @@ export function ActivityFeed({
         <button
           type="button"
           id="activity-more"
-          className="text-sm font-semibold px-5 py-2 rounded border border-gray-300 text-[#003366] hover:bg-gray-50"
+          className="inline-flex items-center justify-center gap-2 text-sm font-semibold px-5 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Load more
         </button>
@@ -275,22 +380,24 @@ export function ActivityFeed({
       <dialog
         id="activity-detail"
         className="sdx-activity-dialog"
+        aria-labelledby="activity-detail-title"
+        aria-modal="true"
       >
-        <div className="px-5 py-4 border-b border-gray-200">
+        <div className="sdx-activity-head px-5 py-3 border-b border-border">
           <h2
             id="activity-detail-title"
-            className="text-base font-bold text-[#003366]"
+            className="text-lg font-bold text-bc-blue"
           />
         </div>
-        <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-auto">
+        <div className="sdx-activity-body px-5 py-3 space-y-4">
           <div
             id="activity-detail-blob-wrap"
             style={{ display: "none" }}
           >
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary mb-1.5">
               Details
             </h3>
-            <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 overflow-auto">
+            <pre className="text-xs bg-surface-muted border border-border rounded p-3 whitespace-pre-wrap break-all">
               <code
                 id="activity-detail-blob"
                 className="language-yaml whitespace-pre-wrap break-all"
@@ -299,15 +406,15 @@ export function ActivityFeed({
           </div>
           <dl
             id="activity-detail-params"
-            className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1 text-xs"
+            className="grid grid-cols-1 sm:grid-cols-[9rem_1fr] gap-x-3 gap-y-1 text-xs"
             style={{ display: "none" }}
           />
         </div>
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div className="sdx-activity-foot px-5 py-3 bg-surface-muted border-t border-border flex justify-end">
           <button
             type="button"
             data-close-activity
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+            className="inline-flex items-center justify-center gap-2 text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Close
           </button>

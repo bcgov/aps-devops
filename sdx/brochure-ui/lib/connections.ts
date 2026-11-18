@@ -97,6 +97,9 @@ function normalizeConnection(c: ConnectionRequest): ConnectionRequest {
   return {
     ...c,
     scopes: normalizeScopes(c.scopes) ?? c.scopes,
+    provisionerStatus: c.provisionerStatus?.status
+      ? c.provisionerStatus
+      : undefined,
     requesterDetails: rd
       ? {
           ...rd,
@@ -148,7 +151,7 @@ export async function deleteConnection(
  */
 export async function setConnectionApproval(
   org: string,
-  input: { clientId: string; serviceId: string; isApproved: boolean },
+  input: { clientId: string; serviceId: string; isApproved: boolean; isActive?: boolean },
   opts: SdxCallOpts = {},
 ): Promise<unknown> {
   const url =

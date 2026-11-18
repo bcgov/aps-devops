@@ -17,8 +17,13 @@ on:
       publish:
         type: boolean
         default: true
+permissions:
+  contents: read
 jobs:
   image:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/.build.yml
     with:
       name: sdx-access-point
@@ -29,6 +34,9 @@ jobs:
       publish: ${{ inputs.publish }}
       plugins-ref: ${{ inputs.plugins-ref }}
   chart:
+    permissions:
+      contents: read
+      packages: write
     needs: image
     if: inputs.publish
     uses: ./.github/workflows/.chart.yml

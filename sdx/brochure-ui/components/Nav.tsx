@@ -1,8 +1,9 @@
 import type { SessionUser } from "../lib/auth.ts";
-import { isConsolePath } from "./ConsoleNav.tsx";
+import { CONSOLE_PAGES, isConsolePath } from "./custom/ConsoleNav.tsx";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
   { label: "Subsystems", href: "/subsystems" },
   { label: "Organizations", href: "/organizations" },
   { label: "Trust Services", href: "/trust" },
@@ -12,9 +13,6 @@ const NAV_ITEMS = [
     authRequired: true,
   },
 ];
-
-const HELP_URL =
-  "https://developer.gov.bc.ca/docs/default/component/aps-infra-platform-docs/concepts/secure-data-exchange/";
 
 function Chevron() {
   return (
@@ -59,118 +57,174 @@ export function Nav({
     user?.sub ||
     "Account";
 
+  // Passed to the real Header/Subheader components (client/AppChrome.tsx),
+  // which take over this element once public/js/client.js loads - see the
+  // comment on <header> below.
+  const islandProps = {
+    currentPath,
+    bannerTitle,
+    bannerHref,
+    helpUrl: "/help",
+    hideMainNav,
+    authEnabled,
+    loginHref: `/auth/login?returnTo=${encodeURIComponent(currentPath)}`,
+    logoutHref: "/auth/logout",
+    userDisplayName: authEnabled && user ? displayName : undefined,
+    userEmail: authEnabled && user ? user.email : undefined,
+    navItems: NAV_ITEMS.filter((item) => !item.authRequired || user).map(
+      ({ label, href }) => ({ label, href }),
+    ),
+    consolePages: user ? CONSOLE_PAGES : [],
+  };
+
   return (
-    <header className="sticky top-0 z-50 shadow-sm">
-      {/* BC Gov blue banner: logo + title + help/login */}
-      <div className="bg-[#003366] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[65px] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-5 min-w-0">
-            <a
-              href="https://sdx.gov.bc.ca"
-              className="flex items-center shrink-0 hover:opacity-90 transition-opacity"
-            >
-              <img
-                src="/public/bc_logo_header.svg"
-                alt="Government of British Columbia"
-                className="h-10 w-auto"
-              />
-            </a>
-            <a
-              href={bannerHref}
-              className="text-white font-bold text-xl sm:text-2xl truncate hover:text-blue-200 transition-colors"
-            >
-              {bannerTitle}
-            </a>
-          </div>
-
-          <nav
-            className="flex items-center gap-1 text-sm shrink-0"
-            aria-label="Account"
+    // A plain, non-landmark <div> mount point - NOT a <header> itself. The
+    // real client-rendered <Header>/<Subheader> (client/AppChrome.tsx) each
+    // render their own <header>/nav landmark, same as the static fallback
+    // below; mounting onto a <header> here would nest one <header> inside
+    // another once the island replaces this element's children.
+    <div
+      className="sdx-chrome"
+      data-bcds-island="AppChrome"
+      data-bcds-props={JSON.stringify(islandProps)}
+    >
+      {/* Server-rendered fallback, matching the B.C. Design System Header/
+          Subheader anatomy (solid white background, solid grey bottom
+          border, hyperlinked logo left, title beside it, nav container
+          right; subheader items as a horizontal list with vertical
+          dividers). Visible until public/js/client.js mounts the real
+          <Header>/<Subheader> components here (see client/AppChrome.tsx) -
+          the library ships no CSS of its own until its React tree actually
+          runs in the browser, so this fallback is what no-JS users, and
+          everyone else before that script loads, will see. */}
+      <header className="sdx-header">
+        <div className="sdx-brand">
+          <a
+            href={bannerHref}
+            aria-label="Government of British Columbia"
+            className="sdx-logo"
           >
-            <a
-              href={HELP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-4 hover:bg-white/10 transition-colors"
-            >
-              Help <Chevron />
-            </a>
-
-            {authEnabled && user ? (
-              <details className="relative group">
-                <summary className="list-none cursor-pointer inline-flex items-center gap-1 px-3 py-4 hover:bg-white/10 transition-colors">
-                  <span className="truncate max-w-[160px]">
-                    {displayName}
-                  </span>
-                  <Chevron />
-                </summary>
-                <div className="absolute right-0 top-full bg-white text-gray-800 shadow-lg rounded border border-gray-200 min-w-[200px] z-50 py-1">
-                  {user.email && (
-                    <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 truncate">
-                      {user.email}
-                    </div>
-                  )}
-                  <a
-                    href="/auth/logout"
-                    className="block px-4 py-2 text-sm hover:bg-gray-50"
-                  >
-                    Logout
-                  </a>
-                </div>
-              </details>
-            ) : (
-              <a
-                href={`/auth/login?returnTo=${encodeURIComponent(currentPath)}`}
-                className="inline-flex items-center gap-1 px-3 py-4 hover:bg-white/10 transition-colors"
-              >
-                Login <Chevron />
-              </a>
-            )}
-          </nav>
+            <img src="/public/bcid-logo-positive.png" alt="" />
+          </a>
+          <span className="sdx-brand-rule" aria-hidden="true" />
+          <a href={bannerHref} className="sdx-title">
+            {bannerTitle}
+          </a>
         </div>
-      </div>
-
-      {/* Gold accent line */}
-      <div className="h-[3px] bg-[#FCBA19]" />
-
-      {/* Secondary white nav bar */}
-      {!hideMainNav && (
-        <div className="bg-white border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <nav
-              className="flex flex-wrap gap-0"
-              aria-label="Main navigation"
+        <div className="sdx-tools">
+          <a
+            href="/help"
+            aria-current={currentPath === "/help" ? "page" : undefined}
+            className="sdx-tool-link"
+          >
+            Help
+          </a>
+          {authEnabled && user ? (
+            <details className="sdx-account">
+              <summary className="sdx-account-summary">
+                Account <Chevron />
+              </summary>
+              <div className="sdx-account-menu">
+                {user.email && (
+                  <p className="sdx-account-email">{user.email}</p>
+                )}
+                <a href="/auth/logout">Logout</a>
+              </div>
+            </details>
+          ) : (
+            <a
+              href={`/auth/login?returnTo=${encodeURIComponent(currentPath)}`}
+              className="sdx-tool-link"
             >
-              {NAV_ITEMS.filter(
-                (item) => !item.authRequired || user,
-              ).map((item) => {
-                const isActive =
-                  item.href === "/console"
+              Login
+            </a>
+          )}
+          {!hideMainNav && (
+            <button
+              type="button"
+              className="sdx-menu-btn"
+              aria-expanded="false"
+              aria-controls="sdx-main-menu"
+            >
+              <span className="sdx-menu-label">Menu</span>
+              <svg className="sdx-menu-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </header>
+      {!hideMainNav && (
+        <nav id="sdx-main-menu" className="sdx-main-nav" aria-label="Main navigation">
+          <div className="sdx-main-nav-inner">
+            <ul>
+              {NAV_ITEMS.filter((item) => !item.authRequired || user).map(
+                (item) => {
+                  const isActive = item.href === "/console"
                     ? isConsolePath(currentPath)
                     : currentPath === item.href ||
                       (item.href !== "/" &&
-                        currentPath.startsWith(
-                          item.href + "/",
-                        ));
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      "px-4 py-4 text-sm font-medium border-b-[3px] transition-colors",
-                      isActive
-                        ? "border-[#FCBA19] text-[#003366]"
-                        : "border-transparent text-gray-600 hover:text-[#003366] hover:border-gray-300",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </a>
-                );
-              })}
-            </nav>
+                        currentPath.startsWith(item.href + "/"));
+                  if (item.href !== "/console") {
+                    return (
+                      <li key={item.href}>
+                        <a
+                          href={item.href}
+                          className="sdx-nav-link"
+                          aria-current={isActive ? "page" : undefined}
+                        >
+                          {item.label}
+                        </a>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={item.href}>
+                      <div
+                        className="sdx-console"
+                        data-active={isActive ? "true" : "false"}
+                      >
+                        <a
+                          href="/console"
+                          className="sdx-nav-link"
+                          aria-current={
+                            currentPath === "/console" ? "page" : undefined
+                          }
+                        >
+                          {item.label}
+                        </a>
+                        <details>
+                          <summary
+                            className="sdx-console-summary"
+                            aria-label="Member Console sections"
+                          >
+                            <Chevron />
+                          </summary>
+                          <div className="sdx-console-menu">
+                            {CONSOLE_PAGES.map((page) => {
+                              const current = currentPath === page.href ||
+                                currentPath.startsWith(page.href + "/");
+                              return (
+                                <a
+                                  key={page.href}
+                                  href={page.href}
+                                  aria-current={current ? "page" : undefined}
+                                >
+                                  {page.label}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      </div>
+                    </li>
+                  );
+                },
+              )}
+            </ul>
           </div>
-        </div>
+        </nav>
       )}
-    </header>
+    </div>
   );
 }

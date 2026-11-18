@@ -1,31 +1,26 @@
+import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
+import { Btn } from "../components/Btn.tsx";
 import {
   Breadcrumb,
   type Crumb,
-} from "../components/Breadcrumb.tsx";
-import { OrgPicker } from "../components/OrgPicker.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
+} from "../components/custom/Breadcrumb.tsx";
+import { OrgPicker } from "../components/custom/OrgPicker.tsx";
 import type {
   ConnectionGatewayPattern,
   ConnectionProvisionerStatus,
   ConnectionRequest,
   Organization,
-  Scope,
   Service,
   SiteConfig,
   Subsystem,
 } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
-import {
-  ENVIRONMENTS,
-  normalizeEnv,
-} from "../lib/environments.ts";
 
 interface ConnectionsPageProps {
   organizations: Organization[];
   selectedOrg: Organization | null;
   connections: ConnectionRequest[];
-  orgSubsystems: Subsystem[];
   allSubsystems: Subsystem[];
   services: Service[];
   config: SiteConfig;
@@ -45,23 +40,23 @@ function StatusPill({
 }) {
   if (connection.isApproved && connection.isActive) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
         Active
       </span>
     );
   }
   if (connection.isApproved) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-info-bg text-support-info-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-info-border" />
         Approved
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-      <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
+      <span className="w-1.5 h-1.5 rounded-full bg-support-warning-border" />
       Pending
     </span>
   );
@@ -74,315 +69,105 @@ function ProvisionerStatusPill({
 }) {
   if (status.status === "provisioned") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
         Provisioned
       </span>
     );
   }
-  if (status.status === "failed") {
+  if (status.status === "deprovisioning") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-        Provisioning failed
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
+        Removing access configuration
+      </span>
+    );
+  }
+  if (status.status === "deprovisioned") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+        Access configuration removed
+      </span>
+    );
+  }
+  if (status.status === "failed") {
+    const label = status.operation === "deprovision"
+      ? "Couldn't remove access configuration"
+      : "Provisioning failed";
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-danger-bg text-support-danger-border">
+        <span className="w-1.5 h-1.5 rounded-full bg-support-danger-border" />
+        {label}
+      </span>
+    );
+  }
+  if (status.status === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
+        <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
+        Provisioning
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-      <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
+      <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
       {status.status}
     </span>
   );
 }
 
-const WIZARD_SCRIPT = `
-(function(){
-  var dlg = document.getElementById('add-dialog');
-  if (!dlg) return;
-  var form = document.getElementById('wiz-form');
-  if (!form) return;
-  var clientInput = document.getElementById('wiz-client-id');
-  var policyInput = document.getElementById('wiz-policy');
-  var selectionsInput = document.getElementById('wiz-selections');
-  var reviewEl = document.getElementById('wiz-review');
-  var reviewClientEl = document.getElementById('wiz-review-client');
-  var backBtn = document.getElementById('wiz-back');
-  var nextBtn = document.getElementById('wiz-next');
-  var submitBtn = document.getElementById('wiz-submit');
-  var current = 1;
-
-  function setStep(n) {
-    current = n;
-    var steps = form.querySelectorAll('[data-step]');
-    for (var i = 0; i < steps.length; i++) {
-      if (steps[i].getAttribute('data-step') === String(n)) steps[i].classList.remove('hidden');
-      else steps[i].classList.add('hidden');
-    }
-    var pills = form.querySelectorAll('[data-step-pill]');
-    for (var j = 0; j < pills.length; j++) {
-      var pn = parseInt(pills[j].getAttribute('data-step-pill'), 10);
-      var num = pills[j].querySelector('.wiz-pill-num');
-      if (pn < n) {
-        if (num) { num.style.backgroundColor = '#003366'; num.style.color = 'white'; }
-        pills[j].style.color = '#003366';
-      } else if (pn === n) {
-        if (num) { num.style.backgroundColor = '#FCBA19'; num.style.color = '#003366'; }
-        pills[j].style.color = '#003366';
-      } else {
-        if (num) { num.style.backgroundColor = '#e5e7eb'; num.style.color = '#4b5563'; }
-        pills[j].style.color = '#6b7280';
-      }
-    }
-    var step1Hidden = (form.querySelector('[data-step="1"]') || {}).classList && form.querySelector('[data-step="1"]').classList.contains('hidden');
-    var minStep = step1Hidden ? 2 : 1;
-    backBtn.style.visibility = n === minStep ? 'hidden' : 'visible';
-    if (n === 4) {
-      nextBtn.classList.add('hidden');
-      submitBtn.classList.remove('hidden');
-      renderReview();
-    } else {
-      nextBtn.classList.remove('hidden');
-      submitBtn.classList.add('hidden');
-    }
+function revokeGuidance(connection: ConnectionRequest): string | null {
+  if (connection.isActive) {
+    return "Deactivate this connection before revoking access.";
   }
 
-  function applyPolicyMode(policy) {
-    var tree = form.querySelector('.wiz-tree');
-    if (!tree) return;
-    tree.classList.toggle('policy-hide-scopes', policy !== 'SDX.R2.00');
+  const status = connection.provisionerStatus;
+  if (status?.status === "deprovisioned") return null;
+  if (status?.status === "deprovisioning") {
+    return "Wait for access configuration removal to finish before revoking access.";
+  }
+  if (
+    status?.status === "failed" &&
+    status.operation === "deprovision"
+  ) {
+    return "Access configuration removal failed. Open Customize and save the inactive connection to retry.";
   }
 
-  function ownCheckbox(li) {
-    return li.querySelector(':scope > .wz-label > .wz-cb');
-  }
-  function directChildLis(li) {
-    var ul = li.querySelector(':scope > ul');
-    if (!ul) return [];
-    var out = [];
-    for (var i = 0; i < ul.children.length; i++) {
-      var c = ul.children[i];
-      if (c.classList && c.classList.contains('wz-node')) out.push(c);
-    }
-    return out;
-  }
-  function parentLi(li) {
-    var p = li.parentElement;
-    while (p && !(p.classList && p.classList.contains('wz-node'))) p = p.parentElement;
-    return p;
-  }
-  function descendantCheckboxes(li) {
-    return li.querySelectorAll(':scope > ul .wz-cb');
-  }
-  function updateSelf(li) {
-    var cb = ownCheckbox(li);
-    var children = directChildLis(li);
-    if (!cb || children.length === 0) return;
-    var checked = 0, indet = 0;
-    for (var i = 0; i < children.length; i++) {
-      var ch = ownCheckbox(children[i]);
-      if (!ch) continue;
-      if (ch.indeterminate) indet++;
-      else if (ch.checked) checked++;
-    }
-    if (indet > 0) { cb.indeterminate = true; cb.checked = false; }
-    else if (checked === children.length) { cb.indeterminate = false; cb.checked = true; }
-    else if (checked === 0) { cb.indeterminate = false; cb.checked = false; }
-    else { cb.indeterminate = true; cb.checked = false; }
-  }
+  return "Open Customize and save this connection as inactive to remove its access configuration before revoking access.";
+}
 
-  document.addEventListener('change', function(ev) {
-    var t = ev.target;
-    if (!(t && t.classList && t.classList.contains('wz-cb'))) return;
-    var li = t.closest('.wz-node');
-    if (!li) return;
-    var desc = descendantCheckboxes(li);
-    for (var i = 0; i < desc.length; i++) {
-      desc[i].checked = t.checked;
-      desc[i].indeterminate = false;
-    }
-    var p = parentLi(li);
-    while (p) { updateSelf(p); p = parentLi(p); }
-  });
-
-  function buildSelections() {
-    var out = [];
-    var serviceNodes = form.querySelectorAll('.wz-node[data-node-type="service"]');
-    for (var i = 0; i < serviceNodes.length; i++) {
-      var n = serviceNodes[i];
-      var cb = ownCheckbox(n);
-      if (!cb) continue;
-      if (!cb.checked && !cb.indeterminate) continue;
-      var scopes = [];
-      var scopeCbs = n.querySelectorAll('.wz-cb[data-node-type="scope"]');
-      for (var j = 0; j < scopeCbs.length; j++) {
-        if (scopeCbs[j].checked) scopes.push(scopeCbs[j].getAttribute('data-scope'));
-      }
-      out.push({
-        serviceId: n.getAttribute('data-service'),
-        subsystem: n.getAttribute('data-subsystem'),
-        scopes: scopes
-      });
-    }
-    return out;
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function renderReview() {
-    var sel;
-    try { sel = JSON.parse(selectionsInput.value || '[]'); } catch(_) { sel = []; }
-    reviewClientEl.textContent = clientInput.value || '(client)';
-    if (!sel.length) {
-      reviewEl.innerHTML = '<p class="text-sm text-gray-500 italic">No services selected.</p>';
-      return;
-    }
-    var html = '<ul class="space-y-2">';
-    for (var i = 0; i < sel.length; i++) {
-      var s = sel[i];
-      html += '<li class="border border-gray-200 rounded p-3">';
-      html += '<div class="font-mono text-xs text-[#003366]">' + escHtml(s.serviceId) + '</div>';
-      if (s.scopes && s.scopes.length) {
-        html += '<div class="mt-1 flex flex-wrap gap-1">';
-        for (var j = 0; j < s.scopes.length; j++) {
-          html += '<span class="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono">' + escHtml(s.scopes[j]) + '</span>';
-        }
-        html += '</div>';
-      } else {
-        html += '<div class="mt-1 text-xs text-gray-500 italic">No scopes &mdash; request access to all operations</div>';
-      }
-      html += '</li>';
-    }
-    html += '</ul>';
-    reviewEl.innerHTML = html;
-  }
-
-  backBtn.addEventListener('click', function() {
-    var step1Hidden = form.querySelector('[data-step="1"]').classList.contains('hidden');
-    var minStep = step1Hidden ? 2 : 1;
-    if (current > minStep) setStep(current - 1);
-  });
-  nextBtn.addEventListener('click', function() {
-    if (current === 1) {
-      var picked = form.querySelector('input[name="wiz-client-radio"]:checked');
-      if (!picked) { alert('Choose a client subsystem first.'); return; }
-      clientInput.value = picked.value;
-      setStep(2);
-    } else if (current === 2) {
-      var pickedPolicy = form.querySelector('input[name="wiz-policy-radio"]:checked');
-      if (!pickedPolicy) { alert('Choose an auth policy first.'); return; }
-      policyInput.value = pickedPolicy.value;
-      applyPolicyMode(pickedPolicy.value);
-      setStep(3);
-    } else if (current === 3) {
-      var sel = buildSelections();
-      if (sel.length === 0) { alert('Select at least one API to request.'); return; }
-      selectionsInput.value = JSON.stringify(sel);
-      setStep(4);
-    }
-  });
-
-  function applyEnvFilter(env) {
-    var opts = form.querySelectorAll('[data-wiz-env-opt]');
-    for (var i = 0; i < opts.length; i++) {
-      var b = opts[i], on = b.getAttribute('data-wiz-env-opt') === env;
-      b.classList.toggle('bg-white', on);
-      b.classList.toggle('text-gray-900', on);
-      b.classList.toggle('shadow-sm', on);
-      b.classList.toggle('text-gray-500', !on);
-      b.classList.toggle('hover:text-gray-700', !on);
-      b.setAttribute('aria-selected', on ? 'true' : 'false');
-    }
-    var svcNodes = form.querySelectorAll('.wz-node[data-node-type="service"]');
-    for (var j = 0; j < svcNodes.length; j++) {
-      var se = svcNodes[j].getAttribute('data-env') || '';
-      var show = !env || se === '' || se === env;
-      svcNodes[j].style.display = show ? '' : 'none';
-    }
-    // Hide subsystem / org rows that have no service visible under the filter.
-    var subNodes = form.querySelectorAll('.wz-node[data-node-type="subsystem"]');
-    for (var k = 0; k < subNodes.length; k++) {
-      var svcs = subNodes[k].querySelectorAll('.wz-node[data-node-type="service"]');
-      var anySvc = false;
-      for (var m = 0; m < svcs.length; m++) { if (svcs[m].style.display !== 'none') { anySvc = true; break; } }
-      subNodes[k].style.display = anySvc ? '' : 'none';
-    }
-    var orgNodes = form.querySelectorAll('.wz-node[data-node-type="org"]');
-    for (var p = 0; p < orgNodes.length; p++) {
-      var subs = orgNodes[p].querySelectorAll('.wz-node[data-node-type="subsystem"]');
-      var anySub = false;
-      for (var q = 0; q < subs.length; q++) { if (subs[q].style.display !== 'none') { anySub = true; break; } }
-      orgNodes[p].style.display = anySub ? '' : 'none';
-    }
-  }
-
-  form.addEventListener('click', function(ev) {
-    var opt = ev.target.closest('[data-wiz-env-opt]');
-    if (!opt) return;
-    ev.preventDefault();
-    applyEnvFilter(opt.getAttribute('data-wiz-env-opt') || '');
-  });
-
-  document.addEventListener('click', function(e) {
-    var openBtn = e.target.closest('[data-open-dialog]');
-    if (openBtn) {
-      e.preventDefault();
-      var target = document.getElementById(openBtn.dataset.openDialog);
-      if (!target) return;
-      var defaultClient = target.getAttribute('data-default-client-id') || '';
-      var step1 = form.querySelector('[data-step="1"]');
-      var pill1 = form.querySelector('[data-step-pill="1"]');
-      if (defaultClient) {
-        if (step1) step1.classList.add('hidden');
-        if (pill1) pill1.classList.add('hidden');
-      } else {
-        if (step1) step1.classList.remove('hidden');
-        if (pill1) pill1.classList.remove('hidden');
-      }
-      var radios = form.querySelectorAll('input[name="wiz-client-radio"]');
-      for (var i = 0; i < radios.length; i++) radios[i].checked = false;
-      var policyRadios = form.querySelectorAll('input[name="wiz-policy-radio"]');
-      for (var k = 0; k < policyRadios.length; k++) policyRadios[k].checked = false;
-      var cbs = form.querySelectorAll('.wz-cb');
-      for (var j = 0; j < cbs.length; j++) { cbs[j].checked = false; cbs[j].indeterminate = false; }
-      clientInput.value = defaultClient;
-      policyInput.value = '';
-      selectionsInput.value = '[]';
-      applyEnvFilter('');
-      applyPolicyMode('');
-      setStep(defaultClient ? 2 : 1);
-      if (typeof target.showModal === 'function') target.showModal();
-      else target.setAttribute('open', '');
-      return;
-    }
-    var closeBtn = e.target.closest('[data-close-dialog]');
-    if (closeBtn) {
-      e.preventDefault();
-      var d = closeBtn.closest('dialog');
-      if (d) {
-        if (typeof d.close === 'function') d.close();
-        else d.removeAttribute('open');
-      }
-    }
-  });
-
-  applyEnvFilter('');
-  setStep(1);
-})();
-`;
+function GuidanceTip({ id, message }: { id: string; message: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label="Why revoke access is unavailable"
+        aria-describedby={id}
+        className="cursor-help inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-xs font-bold text-gray-500 hover:border-[#003366] hover:text-[#003366] focus:outline-none focus:ring-2 focus:ring-[#FCBA19]"
+      >
+        <span aria-hidden="true">?</span>
+      </button>
+      <span
+        className="invisible absolute right-0 top-full z-20 w-72 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+      >
+        <span
+          id={id}
+          role="tooltip"
+          className="block rounded border border-gray-200 bg-white p-3 text-left text-xs font-normal text-gray-700 shadow-lg"
+        >
+          {message}
+        </span>
+      </span>
+    </span>
+  );
+}
 
 const DIALOG_STYLE = `
-dialog.sdx-dialog { border: none; border-radius: 8px; padding: 0; max-width: 560px; width: 92%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+dialog.sdx-dialog { border: none; border-radius: var(--layout-border-radius-large); padding: 0; max-width: 560px; width: 92%; box-shadow: var(--surface-shadow-large); }
 dialog.sdx-dialog.sdx-dialog-wide { max-width: 760px; }
-dialog.sdx-dialog::backdrop { background: rgba(0,0,0,0.45); }
-.wiz-tree ul { list-style: none; padding: 0; margin: 0; }
-.wiz-tree > ul > li { margin-bottom: 0.5rem; }
-.wiz-tree li > ul { margin-left: 1.25rem; border-left: 1px dashed #e5e7eb; padding-left: 0.5rem; }
-.wiz-tree .wz-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
-.wiz-tree .wz-label:hover { background-color: #f9fafb; }
-.wiz-tree.policy-hide-scopes .wz-node[data-node-type="scope"] { display: none; }
+dialog.sdx-dialog::backdrop { background: var(--surface-color-overlay-default); }
 `;
 
 const DIALOG_SCRIPT = `
@@ -501,55 +286,8 @@ function fmtBool(v?: boolean): string | undefined {
 
 function MetaBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-mono">
+    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-surface-muted text-ink-secondary font-mono">
       {label}
-    </span>
-  );
-}
-
-function FieldRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value?: string | null;
-  mono?: boolean;
-}) {
-  if (value === undefined || value === null || value === "")
-    return null;
-  return (
-    <>
-      <dt className="text-gray-500">{label}</dt>
-      <dd
-        className={
-          mono
-            ? "font-mono text-gray-800 break-all"
-            : "text-gray-800 break-all"
-        }
-      >
-        {value}
-      </dd>
-    </>
-  );
-}
-
-function ScopeChips({ scopes }: { scopes?: string[] }) {
-  if (!scopes || scopes.length === 0) {
-    return (
-      <span className="text-gray-400 italic">none</span>
-    );
-  }
-  return (
-    <span className="inline-flex flex-wrap gap-1 align-middle">
-      {scopes.map((s) => (
-        <span
-          key={s}
-          className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono"
-        >
-          {s}
-        </span>
-      ))}
     </span>
   );
 }
@@ -574,7 +312,7 @@ function UpgradesView({
           {flags.map((f) => (
             <span
               key={f}
-              className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-mono"
+              className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
             >
               {f}
             </span>
@@ -582,8 +320,8 @@ function UpgradesView({
         </div>
       )}
       {token && (
-        <div className="border border-gray-100 rounded p-2 bg-gray-50/60">
-          <div className="text-xs font-semibold text-gray-600 mb-1">
+        <div className="border border-border rounded p-2 bg-surface-muted">
+          <div className="text-xs font-semibold text-ink-secondary mb-1">
             token
           </div>
           <dl className="grid grid-cols-[200px,1fr] gap-x-3 gap-y-0.5">
@@ -630,8 +368,8 @@ function UpgradesView({
         </div>
       )}
       {tx && (
-        <div className="border border-gray-100 rounded p-2 bg-gray-50/60">
-          <div className="text-xs font-semibold text-gray-600 mb-1">
+        <div className="border border-border rounded p-2 bg-surface-muted">
+          <div className="text-xs font-semibold text-ink-secondary mb-1">
             token_exchange
           </div>
           <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-0.5">
@@ -652,7 +390,7 @@ function UpgradesView({
             />
           </dl>
           <div className="mt-1">
-            <span className="text-gray-500">scopes </span>
+            <span className="text-ink-secondary">scopes </span>
             <ScopeChips scopes={tx.scopes} />
           </div>
         </div>
@@ -669,7 +407,7 @@ function GatewayPatterns({
   const entries = patterns ? Object.entries(patterns) : [];
   if (entries.length === 0) {
     return (
-      <p className="text-gray-400 italic">
+      <p className="text-ink-placeholder italic">
         No gateway patterns.
       </p>
     );
@@ -679,9 +417,9 @@ function GatewayPatterns({
       {entries.map(([name, p]) => (
         <div
           key={name}
-          className="border border-gray-200 rounded bg-white"
+          className="border border-border rounded bg-white"
         >
-          <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100 font-mono text-xs text-[#003366]">
+          <div className="px-3 py-1.5 bg-surface-muted border-b border-border font-mono text-xs text-bc-blue">
             {name}
           </div>
           <div className="px-3 py-2">
@@ -732,23 +470,6 @@ function GatewayPatterns({
   );
 }
 
-function DetailSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
-        {title}
-      </h4>
-      {children}
-    </section>
-  );
-}
-
 /** policyVersion identifies the submission channel ("Submitted by"). */
 function submittedByLabel(policyVersion?: string): {
   label: string;
@@ -758,16 +479,16 @@ function submittedByLabel(policyVersion?: string): {
   if (policyVersion === "SDX.R0.00")
     return {
       label: "SDX",
-      cls: "bg-blue-100 text-blue-800 border-blue-200",
+      cls: "bg-surface-blue-tint text-bc-blue border-border",
     };
   if (policyVersion === "SDX.R1.00")
     return {
       label: "Common SSO",
-      cls: "bg-purple-100 text-purple-800 border-purple-200",
+      cls: "bg-white text-ink border-border-dark",
     };
   return {
     label: policyVersion,
-    cls: "bg-gray-100 text-gray-700 border-gray-200",
+    cls: "bg-surface-muted text-ink-secondary border-border",
   };
 }
 
@@ -1005,6 +726,11 @@ const SERVICE_PATTERNS: PatternSpec[] = [
       "Provider-side routing to the upstream service with optional upgrades.",
     fields: [
       {
+        key: "clientRuntimeOverride",
+        label: "Client runtime override",
+        type: "string"
+      },
+      {
         key: "upstreamUrl",
         label: "Upstream URL",
         type: "string",
@@ -1075,9 +801,9 @@ function EditFieldInput({
           defaultChecked={Boolean(
             pickKey(source, field.key),
           )}
-          className="rounded border-gray-300"
+          className="rounded border-border"
         />
-        <span className="text-xs text-gray-700">
+        <span className="text-xs text-ink-secondary">
           {field.label}
         </span>
       </label>
@@ -1086,7 +812,7 @@ function EditFieldInput({
   const value = fieldDefaultString(source, field);
   return (
     <label className="block py-0.5">
-      <span className="block text-xs font-medium text-gray-600 mb-0.5">
+      <span className="block text-xs font-medium text-ink-secondary mb-0.5">
         {field.label}
       </span>
       {field.type === "set" ? (
@@ -1096,7 +822,7 @@ function EditFieldInput({
           defaultValue={value}
           rows={2}
           placeholder={field.placeholder}
-          className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+          className="w-full text-xs font-mono border border-border rounded px-2 py-1"
         />
       ) : (
         <input
@@ -1105,11 +831,11 @@ function EditFieldInput({
           data-field-type="string"
           defaultValue={value}
           placeholder={field.placeholder}
-          className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+          className="w-full text-xs font-mono border border-border rounded px-2 py-1"
         />
       )}
       {field.hint && (
-        <span className="block text-[11px] text-gray-400 mt-0.5">
+        <span className="block text-[11px] text-ink-placeholder mt-0.5">
           {field.hint}
         </span>
       )}
@@ -1132,23 +858,23 @@ function UpgradeCard({
     <div
       data-upgrade
       data-upgrade-key={upgrade.key}
-      className="border border-gray-200 rounded-lg bg-white"
+      className="border border-border rounded-lg bg-white"
     >
       <label className="flex items-start gap-3 px-3 py-2 cursor-pointer">
         <input
           type="checkbox"
           data-upgrade-include
           defaultChecked={included}
-          className="mt-0.5 rounded border-gray-300"
+          className="mt-0.5 rounded border-border"
         />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-[#003366]">
+          <span className="block text-sm font-semibold text-bc-blue">
             {upgrade.label}{" "}
-            <span className="font-mono text-xs text-gray-400">
+            <span className="font-mono text-xs text-ink-placeholder">
               {upgrade.key}
             </span>
           </span>
-          <span className="block text-xs text-gray-500">
+          <span className="block text-xs text-ink-secondary">
             {upgrade.description}
           </span>
         </span>
@@ -1157,7 +883,7 @@ function UpgradeCard({
         <div
           data-upgrade-body
           className={[
-            "px-3 pb-3 pt-1 border-t border-gray-100 space-y-1",
+            "px-3 pb-3 pt-1 border-t border-border space-y-1",
             included ? "" : "hidden",
           ].join(" ")}
         >
@@ -1192,23 +918,23 @@ function PatternBlock({
       data-pattern
       data-res={res}
       data-pattern-key={pattern.key}
-      className="border border-gray-200 rounded-lg overflow-hidden"
+      className="border border-border rounded-lg overflow-hidden"
     >
-      <label className="flex items-start gap-3 px-3 py-2 bg-gray-50 cursor-pointer">
+      <label className="flex items-start gap-3 px-3 py-2 bg-surface-muted cursor-pointer">
         <input
           type="checkbox"
           data-pattern-include
           defaultChecked={included}
-          className="mt-0.5 rounded border-gray-300"
+          className="mt-0.5 rounded border-border"
         />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-[#003366]">
+          <span className="block text-sm font-semibold text-bc-blue">
             {pattern.label}{" "}
-            <span className="font-mono text-xs text-gray-400">
+            <span className="font-mono text-xs text-ink-placeholder">
               {pattern.key}
             </span>
           </span>
-          <span className="block text-xs text-gray-500">
+          <span className="block text-xs text-ink-secondary">
             {pattern.description}
           </span>
         </span>
@@ -1235,7 +961,7 @@ function PatternBlock({
           )}
           {pattern.upgrades.length > 0 && (
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <div className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
                 Upgrades
               </div>
               {pattern.upgrades.map((u) => (
@@ -1307,15 +1033,15 @@ function EditDialog({
           defaultValue=""
         />
 
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-[#003366]">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="text-lg font-bold text-bc-blue">
             Customize connection
           </h2>
-          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-[#003366] break-all">
+          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-bc-blue break-all">
             <span className="font-semibold">
               {conn.clientId}
             </span>
-            <span className="text-gray-400">→</span>
+            <span className="text-ink-placeholder">→</span>
             <span className="font-semibold">
               {conn.serviceId}
             </span>
@@ -1323,29 +1049,29 @@ function EditDialog({
         </div>
 
         <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-auto">
-          <label className="flex items-center gap-3 border border-gray-200 rounded-lg px-3 py-2">
+          <label className="flex items-center gap-3 border border-border rounded-lg px-3 py-2">
             <input
               type="checkbox"
               data-active-toggle
               defaultChecked={Boolean(conn.isActive)}
-              className="rounded border-gray-300"
+              className="rounded border-border"
             />
             <span>
-              <span className="block text-sm font-semibold text-gray-800">
+              <span className="block text-sm font-semibold text-ink">
                 Active
               </span>
-              <span className="block text-xs text-gray-500">
+              <span className="block text-xs text-ink-secondary">
                 Whether this connection is enabled.
               </span>
             </span>
           </label>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
               Client resources
             </h3>
             <label className="block py-0.5">
-              <span className="block text-xs font-medium text-gray-600 mb-0.5">
+              <span className="block text-xs font-medium text-ink-secondary mb-0.5">
                 Comment
               </span>
               <input
@@ -1355,7 +1081,7 @@ function EditDialog({
                 defaultValue={
                   conn.clientResources?.comment ?? ""
                 }
-                className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+                className="w-full text-xs font-mono border border-border rounded px-2 py-1"
               />
             </label>
             {CLIENT_PATTERNS.map((p) => (
@@ -1369,11 +1095,11 @@ function EditDialog({
           </section>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-secondary">
               Service resources
             </h3>
             <label className="block py-0.5">
-              <span className="block text-xs font-medium text-gray-600 mb-0.5">
+              <span className="block text-xs font-medium text-ink-secondary mb-0.5">
                 Comment
               </span>
               <input
@@ -1383,7 +1109,7 @@ function EditDialog({
                 defaultValue={
                   conn.serviceResources?.comment ?? ""
                 }
-                className="w-full text-xs font-mono border border-gray-300 rounded px-2 py-1"
+                className="w-full text-xs font-mono border border-border rounded px-2 py-1"
               />
             </label>
             {SERVICE_PATTERNS.map((p) => (
@@ -1397,17 +1123,17 @@ function EditDialog({
           </section>
         </div>
 
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+        <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
           <button
             type="button"
             data-dialog-close
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+            className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-[#003366] text-white hover:bg-[#1a5276]"
+            className="text-sm font-semibold px-4 py-2 rounded bg-bc-blue text-white hover:bg-bc-blue-hover"
           >
             Save
           </button>
@@ -1445,7 +1171,9 @@ function ConnectionCard({
   // request via the Approve/Reject review dialog.
   const isProviderPending = canApprove && !conn.isApproved;
   // Revoke/cancel deletes by connection id; only offer it when an id is present.
-  const canDelete = Boolean(conn.id);
+  const hasId = Boolean(conn.id);
+  const guidance = conn.isApproved ? revokeGuidance(conn) : null;
+  const canDelete = conn.isApproved ? hasId && guidance === null : hasId;
   const slug = (
     conn.clientId +
     "__" +
@@ -1470,10 +1198,10 @@ function ConnectionCard({
     (conn.scopes && conn.scopes.length > 0),
   );
   return (
-    <article className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <article className="bg-white border border-border rounded-lg">
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <div className="font-mono text-sm text-gray-800 break-all">
+          <div className="font-mono text-sm text-ink break-all">
             {conn.serviceId}
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -1487,9 +1215,9 @@ function ConnectionCard({
               policyVersion={conn.policyVersion}
             />
             {rd?.requester && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-ink-secondary">
                 Requested by{" "}
-                <span className="text-gray-700 font-medium">
+                <span className="text-ink-secondary font-medium">
                   {rd.requester}
                 </span>
               </span>
@@ -1500,7 +1228,7 @@ function ConnectionCard({
           <button
             type="button"
             data-dialog-open={editId}
-            className="text-xs font-semibold px-3 py-1 rounded border border-[#003366] text-[#003366] hover:bg-blue-50"
+            className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
           >
             Customize...
           </button>
@@ -1508,66 +1236,48 @@ function ConnectionCard({
             <button
               type="button"
               data-dialog-open={reviewId}
-              className="text-xs font-semibold px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+              className="text-xs font-semibold px-3 py-1 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
             >
               Approve / Reject
             </button>
           ) : (
-            canDelete && (
+            canDelete ? (
               <button
                 type="button"
                 data-dialog-open={confirmId}
-                className="text-xs font-semibold px-3 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                className="text-xs font-semibold px-3 py-1 rounded border border-danger text-danger hover:bg-support-danger-bg"
               >
                 {destructiveAction.label}
               </button>
-            )
+            ) : conn.isApproved && hasId ? (
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled
+                  className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
+                >
+                  Revoke access
+                </button>
+                {guidance && (
+                  <GuidanceTip
+                    id={`${confirmId}-guidance`}
+                    message={guidance}
+                  />
+                )}
+              </div>
+            ) : null
           )}
         </div>
       </div>
 
       {hasDetails && (
-        <details className="border-t border-gray-100">
-          <summary className="cursor-pointer list-none px-4 py-2 text-xs font-medium text-[#003366] hover:bg-gray-50 select-none">
+        <details className="border-t border-border">
+          <summary className="cursor-pointer list-none px-4 py-2 text-xs font-medium text-bc-blue hover:bg-surface-muted select-none">
             ▸ Connection details
           </summary>
-          <div className="px-4 py-3 bg-gray-50/50 space-y-4 text-xs">
+          <div className="px-4 py-3 bg-surface-muted space-y-4 text-xs">
             {provisionerStatus && (
-              <DetailSection title="Provisioner status">
-                <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-1">
-                  <FieldRow
-                    label="Status"
-                    value={provisionerStatus.status}
-                    mono
-                  />
-                  <FieldRow
-                    label="Message"
-                    value={provisionerStatus.message}
-                  />
-                  {provisionerStatus.endpoint && (
-                    <>
-                      <dt className="text-gray-500">
-                        Endpoint
-                      </dt>
-                      <dd className="font-mono text-gray-800 break-all">
-                        <a
-                          href={provisionerStatus.endpoint}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#003366] underline hover:no-underline"
-                        >
-                          {provisionerStatus.endpoint}
-                        </a>
-                      </dd>
-                    </>
-                  )}
-                  <FieldRow
-                    label="Spec"
-                    value={provisionerStatus.spec}
-                    mono
-                  />
-                </dl>
-              </DetailSection>
+              <ProvisionerStatusDetails status={provisionerStatus} />
             )}
 
             {rd && (
@@ -1613,7 +1323,7 @@ function ConnectionCard({
                   />
                 </dl>
                 <div className="mt-2">
-                  <span className="text-gray-500">
+                  <span className="text-ink-secondary">
                     Scopes{" "}
                   </span>
                   <ScopeChips scopes={rd.scopes} />
@@ -1710,31 +1420,31 @@ function ConfirmDialog({
 }) {
   return (
     <dialog id={dialogId} className="sdx-dialog">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-[#003366]">
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-lg font-bold text-bc-blue">
           {action.title}
         </h2>
       </div>
       <div className="px-5 py-4 space-y-3 text-sm">
-        <p className="text-gray-600">{action.message}</p>
+        <p className="text-ink-secondary">{action.message}</p>
         <div className="flex flex-wrap items-center gap-2 font-mono text-sm break-all">
-          <span className="text-[#003366] font-semibold">
+          <span className="text-bc-blue font-semibold">
             {conn.clientId}
           </span>
-          <span className="text-gray-400">→</span>
-          <span className="text-[#003366] font-semibold">
+          <span className="text-ink-placeholder">→</span>
+          <span className="text-bc-blue font-semibold">
             {conn.serviceId}
           </span>
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-ink-placeholder">
           This action cannot be undone.
         </p>
       </div>
-      <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
         <button
           type="button"
           data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
         >
           Cancel
         </button>
@@ -1759,12 +1469,7 @@ function ConfirmDialog({
             name="serviceId"
             value={conn.serviceId}
           />
-          <button
-            type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-          >
-            {action.label}
-          </button>
+          <Btn type="submit" danger>{action.label}</Btn>
         </form>
       </div>
     </dialog>
@@ -1804,11 +1509,11 @@ function ReviewDialog({
   );
   return (
     <dialog id={dialogId} className="sdx-dialog">
-      <div className="px-5 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-[#003366]">
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-lg font-bold text-bc-blue">
           Review connection request
         </h2>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-ink-secondary mt-1">
           A consumer has requested access to a service you
           provide. Approve to grant access, or reject to
           remove the request.
@@ -1816,11 +1521,11 @@ function ReviewDialog({
       </div>
       <div className="px-5 py-4 space-y-4 text-sm max-h-[60vh] overflow-auto">
         <div className="flex flex-wrap items-center gap-2 font-mono text-sm break-all">
-          <span className="text-[#003366] font-semibold">
+          <span className="text-bc-blue font-semibold">
             {conn.clientId}
           </span>
-          <span className="text-gray-400">→</span>
-          <span className="text-[#003366] font-semibold">
+          <span className="text-ink-placeholder">→</span>
+          <span className="text-bc-blue font-semibold">
             {conn.serviceId}
           </span>
         </div>
@@ -1873,17 +1578,17 @@ function ReviewDialog({
           </dl>
         )}
         <div className="text-xs">
-          <span className="text-gray-500">
+          <span className="text-ink-secondary">
             Scopes requested{" "}
           </span>
           <ScopeChips scopes={scopes} />
         </div>
       </div>
-      <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
+      <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
         <button
           type="button"
           data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
+          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
         >
           Cancel
         </button>
@@ -1896,7 +1601,7 @@ function ReviewDialog({
             {hidden}
             <button
               type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded border border-red-300 text-red-700 hover:bg-red-50"
+              className="text-sm font-semibold px-4 py-2 rounded border border-danger text-danger hover:bg-support-danger-bg"
             >
               Reject
             </button>
@@ -1907,629 +1612,10 @@ function ReviewDialog({
             className="inline"
           >
             {hidden}
-            <button
-              type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700"
-            >
-              Approve
-            </button>
+            <Btn type="submit">Approve</Btn>
           </form>
         </div>
       </div>
-    </dialog>
-  );
-}
-
-function uniqueScopes(svc: Service): Scope[] {
-  const byName = new Map<string, Scope>();
-  for (const op of svc.operations) {
-    for (const s of op.scopes ?? []) {
-      if (!s || !s.name) continue;
-      const existing = byName.get(s.name);
-      // Keep the first description we encounter for a given scope name.
-      if (!existing) byName.set(s.name, s);
-      else if (!existing.description && s.description)
-        byName.set(s.name, s);
-    }
-  }
-  return [...byName.values()].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
-}
-
-interface TreeServiceNode {
-  serviceId: string;
-  serviceTitle: string;
-  serviceVersion: string;
-  /** Best-effort SDX environment ("dev" | "test" | "prod"), or "" when unknown. */
-  env: string;
-  scopes: Scope[];
-}
-
-// Every service is published in exactly one environment. The catalog reports it
-// explicitly; we keep that value (lower-cased) so environments without a
-// dedicated filter tab — e.g. "lab", "sbx" — stay distinct tokens and get
-// filtered out under the dev/test/prod tabs, while known synonyms ("uat",
-// "sandbox", …) are normalised onto the canonical ids. We fall back to the
-// identifiers embedded in the service (client id, name) only for payloads that
-// predate the field.
-function serviceEnv(svc: Service): string {
-  if (svc.environment) {
-    return (
-      normalizeEnv(svc.environment) ??
-      svc.environment.toLowerCase()
-    );
-  }
-  return (
-    normalizeEnv(svc.subsystem?.clientId) ??
-    normalizeEnv(svc.name) ??
-    ""
-  );
-}
-interface TreeSubsystemNode {
-  clientId: string;
-  name: string;
-  description?: string;
-  services: TreeServiceNode[];
-}
-interface TreeOrgNode {
-  orgName: string;
-  orgTitle: string;
-  subsystems: TreeSubsystemNode[];
-}
-
-function buildConnectionTree(
-  services: Service[],
-  subsystems: Subsystem[],
-  organizations: Organization[],
-): TreeOrgNode[] {
-  const servicesByClient = new Map<string, Service[]>();
-  for (const s of services) {
-    const list =
-      servicesByClient.get(s.subsystem.clientId) ?? [];
-    list.push(s);
-    servicesByClient.set(s.subsystem.clientId, list);
-  }
-  const subsystemsByOrgName = new Map<
-    string,
-    Subsystem[]
-  >();
-  for (const sub of subsystems) {
-    const list =
-      subsystemsByOrgName.get(sub.organization.name) ?? [];
-    list.push(sub);
-    subsystemsByOrgName.set(sub.organization.name, list);
-  }
-  const out: TreeOrgNode[] = [];
-  for (const org of organizations) {
-    const subs = subsystemsByOrgName.get(org.name) ?? [];
-    const subNodes: TreeSubsystemNode[] = [];
-    for (const sub of subs) {
-      const svcs = servicesByClient.get(sub.clientId) ?? [];
-      if (svcs.length === 0) continue;
-      subNodes.push({
-        clientId: sub.clientId,
-        name: sub.name,
-        description: sub.description,
-        services: svcs
-          .map((s) => ({
-            serviceId: s.name,
-            serviceTitle: s.title,
-            serviceVersion: s.version,
-            env: serviceEnv(s),
-            scopes: uniqueScopes(s),
-          }))
-          .sort((a, b) =>
-            a.serviceId.localeCompare(b.serviceId),
-          ),
-      });
-    }
-    if (subNodes.length === 0) continue;
-    subNodes.sort((a, b) =>
-      a.clientId.localeCompare(b.clientId),
-    );
-    out.push({
-      orgName: org.name,
-      orgTitle: org.title,
-      subsystems: subNodes,
-    });
-  }
-  out.sort((a, b) => a.orgTitle.localeCompare(b.orgTitle));
-  return out;
-}
-
-function StepPill({
-  stepId,
-  displayNum,
-  label,
-  last,
-}: {
-  stepId: number;
-  displayNum: number;
-  label: string;
-  last?: boolean;
-}) {
-  return (
-    <li
-      data-step-pill={String(stepId)}
-      className="wiz-pill flex items-center gap-2 text-gray-500"
-    >
-      <span className="wiz-pill-num inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-gray-600 font-semibold">
-        {displayNum}
-      </span>
-      <span className="wiz-pill-label">{label}</span>
-      {!last && (
-        <span className="text-gray-300 ml-1">›</span>
-      )}
-    </li>
-  );
-}
-
-function AddConnectionWizard({
-  selectedOrg,
-  orgSubsystems,
-  tree,
-  defaultClientId,
-}: {
-  selectedOrg: Organization;
-  orgSubsystems: Subsystem[];
-  tree: TreeOrgNode[];
-  defaultClientId?: string;
-}) {
-  const clientIds = orgSubsystems
-    .slice()
-    .sort((a, b) => a.clientId.localeCompare(b.clientId));
-  const defaultSubsystem = defaultClientId
-    ? orgSubsystems.find(
-        (s) => s.clientId === defaultClientId,
-      )
-    : undefined;
-  const hasDefault = !!defaultClientId;
-
-  return (
-    <dialog
-      id="add-dialog"
-      className="sdx-dialog sdx-dialog-wide"
-      data-default-client-id={defaultClientId ?? ""}
-    >
-      <form
-        method="post"
-        action="/connections/add-multi"
-        id="wiz-form"
-      >
-        <input
-          type="hidden"
-          name="org"
-          value={selectedOrg.name}
-        />
-        <input
-          type="hidden"
-          name="clientId"
-          id="wiz-client-id"
-          value={defaultClientId ?? ""}
-        />
-        <input
-          type="hidden"
-          name="policyVersion"
-          id="wiz-policy"
-          value=""
-        />
-        <input
-          type="hidden"
-          name="selections"
-          id="wiz-selections"
-          value="[]"
-        />
-
-        <div className="px-5 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-[#003366]">
-            Request connections
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            <span className="text-gray-500">
-              Organization:
-            </span>{" "}
-            <span className="text-gray-800 font-medium">
-              {selectedOrg.title}
-            </span>
-            {defaultSubsystem && (
-              <>
-                <span className="mx-2 text-gray-300">
-                  •
-                </span>
-                <span className="text-gray-500">
-                  Subsystem:
-                </span>{" "}
-                <span className="text-gray-800 font-medium">
-                  {defaultSubsystem.name}
-                </span>
-              </>
-            )}
-          </p>
-          <ol className="mt-3 flex gap-2 text-xs">
-            {!hasDefault && (
-              <StepPill
-                stepId={1}
-                displayNum={1}
-                label="Client"
-              />
-            )}
-            <StepPill
-              stepId={2}
-              displayNum={hasDefault ? 1 : 2}
-              label="Auth policy"
-            />
-            <StepPill
-              stepId={3}
-              displayNum={hasDefault ? 2 : 3}
-              label="APIs & scopes"
-            />
-            <StepPill
-              stepId={4}
-              displayNum={hasDefault ? 3 : 4}
-              label="Review"
-              last
-            />
-          </ol>
-        </div>
-
-        {/* Step 1: client picker */}
-        <div data-step="1" className="wiz-step px-5 py-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
-            Choose the client system requesting access
-          </h3>
-          {clientIds.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">
-              No subsystems registered for{" "}
-              {selectedOrg.title}.
-            </p>
-          ) : (
-            <ul className="max-h-[50vh] overflow-auto border border-gray-200 rounded divide-y divide-gray-100">
-              {clientIds.map((s) => (
-                <li key={s.clientId}>
-                  <label className="flex items-start gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="wiz-client-radio"
-                      value={s.clientId}
-                      className="mt-1"
-                    />
-                    <span>
-                      <span className="block font-mono text-sm text-[#003366]">
-                        {s.clientId}
-                      </span>
-                      <span className="block text-xs text-gray-500">
-                        {s.name}
-                      </span>
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Step 2: auth policy */}
-        <div
-          data-step="2"
-          className="wiz-step hidden px-5 py-4"
-        >
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
-            Choose the auth policy for this connection
-          </h3>
-          <p className="text-xs text-gray-500 mb-3">
-            SDX and Common SSO grant access to all
-            operations on the selected service(s). Scoped
-            access lets you request specific OAuth scopes.
-          </p>
-          <ul className="border border-gray-200 rounded divide-y divide-gray-100">
-            <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="wiz-policy-radio"
-                  value="SDX.R0.00"
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-gray-800">
-                    SDX{" "}
-                    <span className="font-mono text-xs text-gray-400 font-normal">
-                      SDX.R0.00
-                    </span>
-                  </span>
-                  <span className="block text-xs text-gray-500">
-                    Service-level access, no scopes.
-                  </span>
-                </span>
-              </label>
-            </li>
-            <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="wiz-policy-radio"
-                  value="SDX.R1.00"
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-gray-800">
-                    Common SSO{" "}
-                    <span className="font-mono text-xs text-gray-400 font-normal">
-                      SDX.R1.00
-                    </span>
-                  </span>
-                  <span className="block text-xs text-gray-500">
-                    Service-level access, no scopes.
-                  </span>
-                </span>
-              </label>
-            </li>
-            <li>
-              <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="wiz-policy-radio"
-                  value="SDX.R2.00"
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-gray-800">
-                    Scoped access{" "}
-                    <span className="font-mono text-xs text-gray-400 font-normal">
-                      SDX.R2.00
-                    </span>
-                  </span>
-                  <span className="block text-xs text-gray-500">
-                    Request specific OAuth scopes for the
-                    selected service(s).
-                  </span>
-                </span>
-              </label>
-            </li>
-          </ul>
-        </div>
-
-        {/* Step 3: tree of APIs & scopes */}
-        <div
-          data-step="3"
-          className="wiz-step hidden px-5 py-4"
-        >
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
-            Choose the APIs and scopes to request
-          </h3>
-          <p className="text-xs text-gray-500 mb-3">
-            Checking an organization or subsystem selects
-            everything beneath it. Uncheck individual scopes
-            to narrow a request.
-          </p>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">
-              Environment
-            </span>
-            <div
-              role="tablist"
-              aria-label="Environment"
-              className="inline-flex items-center gap-1 rounded-xl bg-gray-100 p-1"
-            >
-              <button
-                type="button"
-                role="tab"
-                data-wiz-env-opt=""
-                aria-selected="true"
-                className="wiz-env-opt px-3 py-1 rounded-lg text-xs font-semibold transition-colors bg-white text-gray-900 shadow-sm"
-              >
-                All
-              </button>
-              {ENVIRONMENTS.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  role="tab"
-                  data-wiz-env-opt={e.id}
-                  aria-selected="false"
-                  className="wiz-env-opt px-3 py-1 rounded-lg text-xs font-semibold transition-colors text-gray-500 hover:text-gray-700"
-                >
-                  {e.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="wiz-tree border border-gray-200 rounded p-3 max-h-[55vh] overflow-auto">
-            {tree.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                No services available to request access to.
-              </p>
-            ) : (
-              <ul>
-                {tree.map((o) => (
-                  <li
-                    key={o.orgName}
-                    className="wz-node"
-                    data-node-type="org"
-                    data-org={o.orgName}
-                  >
-                    <label className="wz-label">
-                      <input
-                        type="checkbox"
-                        className="wz-cb"
-                        data-node-type="org"
-                        data-org={o.orgName}
-                      />
-                      <span className="font-semibold text-[#003366]">
-                        {o.orgTitle}
-                      </span>
-                    </label>
-                    <ul>
-                      {o.subsystems.map((sub) => (
-                        <li
-                          key={sub.clientId}
-                          className="wz-node"
-                          data-node-type="subsystem"
-                          data-subsystem={sub.clientId}
-                        >
-                          <label className="wz-label">
-                            <input
-                              type="checkbox"
-                              className="wz-cb"
-                              data-node-type="subsystem"
-                              data-subsystem={sub.clientId}
-                            />
-                            <span className="text-sm text-gray-800">
-                              {sub.name}
-                            </span>
-                          </label>
-                          <ul>
-                            {sub.services.map((svc) => (
-                              <li
-                                key={svc.serviceId}
-                                className="wz-node"
-                                data-node-type="service"
-                                data-service={svc.serviceId}
-                                data-subsystem={
-                                  sub.clientId
-                                }
-                                data-env={svc.env}
-                              >
-                                <label className="wz-label">
-                                  <input
-                                    type="checkbox"
-                                    className="wz-cb"
-                                    data-node-type="service"
-                                    data-service={
-                                      svc.serviceId
-                                    }
-                                    data-subsystem={
-                                      sub.clientId
-                                    }
-                                  />
-                                  <span className="text-sm text-gray-800">
-                                    {svc.serviceTitle} v
-                                    {svc.serviceVersion}
-                                  </span>
-                                  {svc.env && (
-                                    <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                                      {svc.env}
-                                    </span>
-                                  )}
-                                </label>
-                                {svc.scopes.length > 0 && (
-                                  <ul>
-                                    {svc.scopes.map(
-                                      (scope) => (
-                                        <li
-                                          key={scope.name}
-                                          className="wz-node"
-                                          data-node-type="scope"
-                                          data-service={
-                                            svc.serviceId
-                                          }
-                                          data-scope={
-                                            scope.name
-                                          }
-                                        >
-                                          <label className="wz-label">
-                                            <input
-                                              type="checkbox"
-                                              className="wz-cb"
-                                              data-node-type="scope"
-                                              data-service={
-                                                svc.serviceId
-                                              }
-                                              data-scope={
-                                                scope.name
-                                              }
-                                            />
-                                            <span className="font-mono text-xs text-purple-700">
-                                              {scope.name}
-                                            </span>
-                                            {scope.description && (
-                                              <span className="text-xs text-gray-500">
-                                                {
-                                                  scope.description
-                                                }
-                                              </span>
-                                            )}
-                                          </label>
-                                        </li>
-                                      ),
-                                    )}
-                                  </ul>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        {/* Step 4: review */}
-        <div
-          data-step="4"
-          className="wiz-step hidden px-5 py-4"
-        >
-          <h3 className="text-sm font-semibold text-gray-800 mb-2">
-            Review the connection requests
-          </h3>
-          <p className="text-xs text-gray-500 mb-3">
-            The following connection requests will be
-            created for{" "}
-            <span
-              id="wiz-review-client"
-              className="font-mono text-[#003366]"
-            >
-              (client)
-            </span>
-            .
-          </p>
-          <div
-            id="wiz-review"
-            className="border border-gray-200 rounded p-3 max-h-[55vh] overflow-auto text-sm text-gray-500"
-          >
-            (Selections will appear here.)
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-between gap-2">
-          <button
-            type="button"
-            data-close-dialog
-            className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
-          >
-            Cancel
-          </button>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              id="wiz-back"
-              className="text-sm font-semibold px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-white"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              id="wiz-next"
-              className="text-sm font-semibold px-4 py-2 rounded bg-[#003366] text-white hover:bg-[#1a5276]"
-            >
-              Next
-            </button>
-            <button
-              type="submit"
-              id="wiz-submit"
-              className="text-sm font-semibold px-4 py-2 rounded bg-[#003366] text-white hover:bg-[#1a5276] hidden"
-            >
-              Submit
-            </button>
-          </div>
-        </div>
-      </form>
     </dialog>
   );
 }
@@ -2551,20 +1637,13 @@ function ClientGroupSection({
 }) {
   const { clientId, subsystem, items } = group;
   return (
-    <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <header className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-        <h3 className="font-semibold text-[#003366] break-all">
-          <a
-            href={`/subsystems/${encodeURIComponent(clientId)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            {clientId}
-          </a>
+    <section className="bg-white border border-border rounded-lg overflow-hidden">
+      <header className="bg-surface-muted border-b border-border px-4 py-3">
+        <h3 className="font-semibold text-bc-blue break-all">
+          <ClientSubsystemLink clientId={clientId} />
         </h3>
         {subsystem?.name && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-secondary">
             {subsystem.name}
           </p>
         )}
@@ -2587,10 +1666,9 @@ export function ConnectionsPage({
   organizations,
   selectedOrg,
   connections,
-  orgSubsystems,
   allSubsystems,
   services,
-  config: _config,
+  config,
   currentPath,
   user,
   flash,
@@ -2607,13 +1685,7 @@ export function ConnectionsPage({
           .map((s) => s.name)
       : [],
   );
-  const connectionTree = selectedOrg
-    ? buildConnectionTree(
-        services,
-        allSubsystems,
-        organizations,
-      )
-    : [];
+  const r1RequestUrl = config.connections?.r1RequestUrl;
 
   // Group every connection by its client (always), regardless of whether the
   // client subsystem belongs to the selected organization.
@@ -2642,12 +1714,7 @@ export function ConnectionsPage({
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
     { label: "Member Console", href: "/console" },
-    {
-      label: "Connection Requests",
-      menu: CONSOLE_PAGES.filter(
-        (p) => p.href !== "/connections",
-      ),
-    },
+    { label: "Connection Requests" },
   ];
   if (selectedOrg)
     breadcrumbItems.push({ label: selectedOrg.title });
@@ -2665,22 +1732,22 @@ export function ConnectionsPage({
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-5xl font-bold mb-2">
             Connection Requests
           </h1>
-          <p className="text-blue-200">
+          <p className="text-ink-invert-secondary">
             Connection requests for an organization member,
             grouped by subsystem — each subsystem appears
             where it is the client or the service provider.
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
           <OrgPicker
             organizations={organizations}
@@ -2695,25 +1762,29 @@ export function ConnectionsPage({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {flash && (
           <div
+            role="status"
             className={[
-              "mb-4 rounded border px-4 py-3 text-sm",
+              "mb-4 rounded-md border-l-4 px-4 py-3 text-sm text-ink",
               flash.kind === "success"
-                ? "border-green-200 bg-green-50 text-green-800"
-                : "border-red-200 bg-red-50 text-red-800",
+                ? "border-support-success-border bg-support-success-bg"
+                : "border-support-danger-border bg-support-danger-bg",
             ].join(" ")}
           >
             {flash.message}
           </div>
         )}
         {error && !flash && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div
+            role="alert"
+            className="mb-4 rounded-md border-l-4 border-support-danger-border bg-support-danger-bg text-ink px-4 py-3 text-sm"
+          >
             {error}
           </div>
         )}
 
         {!selectedOrg ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">
               Select an organization member above to view
               its connections.
             </p>
@@ -2722,34 +1793,38 @@ export function ConnectionsPage({
           <>
             <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
               <div>
-                <h2 className="text-2xl font-bold text-[#003366]">
+                <h2 className="text-2xl font-bold text-bc-blue">
                   {selectedOrg.title}
                 </h2>
-                <p className="text-xs text-gray-500 font-mono">
+                <p className="text-xs text-ink-secondary font-mono">
                   {selectedOrg.member.memberClass}/
                   {selectedOrg.member.memberId}
                 </p>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-ink-secondary text-sm mt-1">
                   {connections.length} connection
                   {connections.length === 1 ? "" : "s"}{" "}
                   across {groups.length} client
                   {groups.length === 1 ? "" : "s"}.
                 </p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  data-open-dialog="add-dialog"
-                  className="bg-[#003366] text-white text-sm font-semibold px-4 py-2 rounded hover:bg-[#1a5276]"
-                >
-                  + Add connection
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {r1RequestUrl && (
+                  <Btn
+                    href={r1RequestUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="primary"
+                    ariaLabel="Request a connection through Common SSO (opens in a new tab)"
+                  >
+                    Request Connection through Common SSO
+                  </Btn>
+                )}
               </div>
             </div>
 
             {connections.length === 0 ? (
-              <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-gray-600">
+              <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+                <p className="text-ink-secondary">
                   No connections yet for this organization.
                 </p>
               </div>
@@ -2766,20 +1841,12 @@ export function ConnectionsPage({
               </div>
             )}
 
-            <AddConnectionWizard
-              selectedOrg={selectedOrg}
-              orgSubsystems={orgSubsystems}
-              tree={connectionTree}
-            />
           </>
         )}
       </div>
 
       <script
         dangerouslySetInnerHTML={{ __html: DIALOG_SCRIPT }}
-      />
-      <script
-        dangerouslySetInnerHTML={{ __html: WIZARD_SCRIPT }}
       />
       <script
         dangerouslySetInnerHTML={{ __html: EDIT_SCRIPT }}

@@ -2,10 +2,9 @@ import { Layout } from "../components/Layout.tsx";
 import {
   Breadcrumb,
   type Crumb,
-} from "../components/Breadcrumb.tsx";
-import { OrgPicker } from "../components/OrgPicker.tsx";
-import { CONSOLE_PAGES } from "../components/ConsoleNav.tsx";
-import { ActivityFeed } from "../components/ActivityFeed.tsx";
+} from "../components/custom/Breadcrumb.tsx";
+import { OrgPicker } from "../components/custom/OrgPicker.tsx";
+import { ActivityFeed } from "../components/custom/ActivityFeed.tsx";
 import type {
   ActivityRecord,
   Organization,
@@ -37,12 +36,7 @@ export function ActivityConsolePage({
   const breadcrumbItems: Crumb[] = [
     { label: "Home", href: "/" },
     { label: "Member Console", href: "/console" },
-    {
-      label: "Activity",
-      menu: CONSOLE_PAGES.filter(
-        (p) => p.href !== "/org-activity",
-      ),
-    },
+    { label: "Activity" },
   ];
   if (selectedOrg)
     breadcrumbItems.push({ label: selectedOrg.title });
@@ -60,12 +54,12 @@ export function ActivityConsolePage({
       <Breadcrumb items={breadcrumbItems} />
 
       {/* Header */}
-      <div className="bg-[#003366] text-white">
+      <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-5xl font-bold mb-2">
             Activity
           </h1>
-          <p className="text-blue-200">
+          <p className="text-ink-invert-secondary">
             Recent activity for an organization member —
             includes admin access changes, connection
             request lifecycle, subsystem and service
@@ -73,10 +67,10 @@ export function ActivityConsolePage({
           </p>
         </div>
       </div>
-      <div className="h-1 bg-[#FCBA19]" />
+      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
           <OrgPicker
             organizations={organizations}
@@ -90,14 +84,17 @@ export function ActivityConsolePage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+          <div
+            role="alert"
+            className="mb-4 rounded border border-support-danger-border bg-support-danger-bg text-danger px-4 py-3 text-sm"
+          >
             {error}
           </div>
         )}
 
         {!selectedOrg ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
+            <p className="text-ink-secondary">
               Select an organization member above to view
               its activity.
             </p>
