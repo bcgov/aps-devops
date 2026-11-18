@@ -31,8 +31,14 @@ authorization; it is separate from the emulator's discovery and JWKS endpoints.
 
 ## 2. Authorize with client credentials
 
-Enter the Client ID and Client Secret used to access the emulator API. The
-secret prompt does not echo input or put the value in shell history.
+Enter the Client ID and Client Secret used to access the emulator API. To get
+them, open the
+[APS P2P Emulator](https://api.gov.bc.ca/devportal/api-directory/4443?preview=false)
+listing in the API Directory, choose **Request Access** for the P2P Emulator
+Service product, and generate credentials for the development environment.
+Access is granted once the request is approved. 
+
+The secret prompt does not echo input or put the value in shell history.
 
 ```bash
 read -r -p 'Client ID: ' CLIENT_ID
