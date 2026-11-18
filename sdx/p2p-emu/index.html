@@ -165,6 +165,12 @@
     </header>
     <dialog id="authDialog" aria-labelledby="authTitle">
       <h2 id="authTitle">Authorize</h2>
+      <p>
+        Don't have credentials?
+        <a
+          href="https://api.gov.bc.ca/devportal/api-directory/4443?preview=false"
+        >Request access in the API Directory</a>.
+      </p>
       <label>Token URL<input id="authTokenUrl" type="url" readonly></label>
       <form id="authForm">
         <label>Client ID<input
@@ -183,7 +189,30 @@
         <button type="button" id="cancelAuth" class="secondary">Cancel</button>
       </form>
     </dialog>
-    <main hidden>
+    <main id="signedOutIntro">
+      <section>
+        <h2>About the emulator</h2>
+        <p>
+          The P2P Emulator helps developers integrating with the
+          <a href="https://sdx-api-gov-bc-ca.dev.api.gov.bc.ca/"
+          >SDX catalogue</a>
+          generate access tokens for testing.
+        </p>
+        <p>
+          To get a Client ID and Client Secret, select <strong>Request
+            Access</strong>
+          on the <a
+            href="https://api.gov.bc.ca/devportal/api-directory/4443?preview=false"
+          >APS P2P Emulator</a> listing in the API Directory.
+        </p>
+        <p>
+          <a
+            href="https://github.com/bcgov/aps-devops/blob/44e24edfe3aa50ea1b3c0a294b09071f880d63c3/sdx/p2p-emu/docs/GETTING-STARTED.md"
+          >Getting started with the P2P Emulator API</a>
+        </p>
+      </section>
+    </main>
+    <main id="emulator" hidden>
       <p>
         Create a signed access token for a subject and optional scopes. Save
         profiles to reuse them later.
@@ -304,7 +333,8 @@
         saveAuthorization,
       } from "/auth.js";
       const form = document.querySelector("#profileForm");
-      const main = document.querySelector("main");
+      const signedOutIntro = document.querySelector("#signedOutIntro");
+      const emulator = document.querySelector("#emulator");
       const message = document.querySelector("#message");
       let token = "";
       let apiToken = "";
@@ -314,7 +344,8 @@
       const authForm = document.querySelector("#authForm");
       function renderAuthorization(clientId = "") {
         const authorized = Boolean(apiToken);
-        main.hidden = !authorized;
+        signedOutIntro.hidden = authorized;
+        emulator.hidden = !authorized;
         document.querySelector("header").dataset.authorized = String(
           authorized,
         );
