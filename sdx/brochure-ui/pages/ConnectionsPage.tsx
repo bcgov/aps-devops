@@ -1302,6 +1302,10 @@ export function ConnectionCard({
 
             {proposal && (
               <DetailSection title="Pending proposed changes">
+                <p className="mb-3 text-ink-secondary">
+                  Consumer-revoked scopes are applied immediately. Only added
+                  scopes and other proposed changes await provider approval.
+                </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded border border-border bg-white p-3 space-y-2">
                     <div className="font-semibold text-ink">Currently approved</div>
@@ -1585,7 +1589,7 @@ function ReviewDialog({
         </h2>
         <p className="text-xs text-ink-secondary mt-1">
           {hasProposal
-            ? "Approve to replace the current approved configuration. Reject to discard only the proposal and keep existing access unchanged."
+            ? "Consumer-revoked scopes have already been applied. Approve to apply the remaining proposal. Reject to discard it and keep the current access shown below."
             : "A consumer has requested access to a service you provide. Approve to grant access, or reject to remove the request."}
         </p>
       </div>

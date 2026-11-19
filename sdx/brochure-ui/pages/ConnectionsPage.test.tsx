@@ -115,6 +115,8 @@ Deno.test("proposal review distinguishes approved and proposed configuration", (
   for (const text of [
     "Changes pending approval",
     "Review changes",
+    "Consumer-revoked scopes are applied immediately",
+    "Consumer-revoked scopes have already been applied",
     "Currently approved",
     "Proposed",
     "Reject changes",
