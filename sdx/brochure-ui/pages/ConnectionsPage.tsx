@@ -126,6 +126,7 @@ dialog.sdx-dialog::backdrop { background: var(--surface-color-overlay-default); 
 
 const DIALOG_SCRIPT = `
 (function(){
+  // Handle the click before the hydrated design-system button handles the press.
   document.addEventListener('click', function(e){
     var o = e.target.closest && e.target.closest('[data-dialog-open]');
     if (o) {
@@ -140,7 +141,7 @@ const DIALOG_SCRIPT = `
       var dd = c.closest('dialog');
       if (dd) { if (typeof dd.close === 'function') dd.close(); else dd.removeAttribute('open'); }
     }
-  });
+  }, true);
 })();
 `;
 
@@ -1054,19 +1055,10 @@ function EditDialog({
         </div>
 
         <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
-          <button
-            type="button"
-            data-dialog-close
-            className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-          >
+          <Btn variant="secondary" data={{ "dialog-close": "" }}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-bc-blue text-white hover:bg-bc-blue-hover"
-          >
-            Save
-          </button>
+          </Btn>
+          <Btn type="submit">Save</Btn>
         </div>
       </form>
     </dialog>
@@ -1506,13 +1498,9 @@ function ConfirmDialog({
         )}
       </div>
       <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
-        <button
-          type="button"
-          data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-        >
+        <Btn variant="secondary" data={{ "dialog-close": "" }}>
           Cancel
-        </button>
+        </Btn>
         <form
           method="post"
           action={action.path}
@@ -1673,13 +1661,9 @@ function ReviewDialog({
         </div>
       </div>
       <div className="px-5 py-3 bg-surface-muted border-t border-border flex justify-end gap-2">
-        <button
-          type="button"
-          data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-        >
+        <Btn variant="secondary" data={{ "dialog-close": "" }}>
           Cancel
-        </button>
+        </Btn>
         <div className="flex gap-2">
           <form
             method="post"
@@ -1687,12 +1671,9 @@ function ReviewDialog({
             className="inline"
           >
             {hidden}
-            <button
-              type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded border border-danger text-danger hover:bg-support-danger-bg"
-            >
+            <Btn type="submit" danger>
               {hasProposal ? "Reject changes" : "Reject"}
-            </button>
+            </Btn>
           </form>
           <form
             method="post"
