@@ -1,7 +1,6 @@
 import { parse } from "@std/yaml";
 
-const PROMETHEUS_URL =
-  Deno.env.get("PROMETHEUS_URL") ??
+const PROMETHEUS_URL = Deno.env.get("PROMETHEUS_URL") ??
   "https://thanos-prom.apps.gold.devops.gov.bc.ca";
 
 export interface MetricsQuery {
@@ -56,12 +55,27 @@ export async function runQuery(name: string, dateRange = "1h"): Promise<any> {
   if (!q) throw new MetricsQueryNotFoundError(name);
 
   const rangeSeconds = parseRangeSeconds(dateRange);
+  return await queryRange(q.query, rangeSeconds, getStep(rangeSeconds));
+}
+
+export async function connectionTraffic(clientId: string, serviceId: string) {
+  const selector = `consumer=${JSON.stringify(clientId)},service=${
+    JSON.stringify(serviceId)
+  }`;
+  const result = await queryRange(
+    `sum(increase(konglog_service_consumer_counter{${selector}}[1d]))`,
+    29 * 86400,
+    "86400",
+  );
+  if (result.status !== "success") throw new Error("Traffic query failed");
+  return result;
+}
+
+async function queryRange(query: string, rangeSeconds: number, step: string) {
   const now = Math.floor(Date.now() / 1000);
   const start = now - rangeSeconds;
-  const step = getStep(rangeSeconds);
-
   const promUrl = new URL(`${PROMETHEUS_URL}/api/v1/query_range`);
-  promUrl.searchParams.set("query", q.query);
+  promUrl.searchParams.set("query", query);
   promUrl.searchParams.set("start", String(start));
   promUrl.searchParams.set("end", String(now));
   promUrl.searchParams.set("step", step);

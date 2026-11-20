@@ -1,3 +1,5 @@
+import { CHART_JS_URL } from "../components/custom/TimeSeriesChart.tsx";
+import { ConnectionAgreement } from "../components/ConnectionAgreement.tsx";
 import { OverflowActions } from "../components/OverflowActions.tsx";
 import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
@@ -11,6 +13,7 @@ import type {
   ConnectionGatewayPattern,
   ConnectionRequest,
   Organization,
+  ResourceScope,
   Service,
   SiteConfig,
   Subsystem,
@@ -22,6 +25,7 @@ interface ConnectionsPageProps {
   selectedOrg: Organization | null;
   connections: ConnectionRequest[];
   allSubsystems: Subsystem[];
+  resourceScopes: ResourceScope[];
   services: Service[];
   config: SiteConfig;
   currentPath: string;
@@ -169,6 +173,10 @@ dialog.sdx-dialog.sdx-dialog-wide { max-width: 760px; }
 dialog.sdx-dialog::backdrop { background: var(--surface-color-overlay-default); }
 `;
 
+const AGREEMENT_TRAFFIC_SCRIPT = await Deno.readTextFile(
+  new URL("../public/agreement-traffic.js", import.meta.url),
+);
+
 const DIALOG_SCRIPT = `
 (function(){
   // Handle the click before the hydrated design-system button handles the press.
@@ -181,7 +189,11 @@ const DIALOG_SCRIPT = `
     if (o) {
       e.preventDefault();
       var d = document.getElementById(o.getAttribute('data-dialog-open'));
-      if (d) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open',''); }
+      if (d && !d.open) {
+        if (typeof d.showModal === 'function') d.showModal();
+        else d.setAttribute('open','');
+        startAgreementTraffic(d);
+      }
       return;
     }
     var c = e.target.closest && e.target.closest('[data-dialog-close]');
@@ -1160,10 +1172,12 @@ export function ConnectionCard({
   conn,
   org,
   canApprove,
+  agreementCatalog,
 }: {
   conn: ConnectionRequest;
   org: string;
   canApprove: boolean;
+  agreementCatalog?: Parameters<typeof ConnectionAgreement>[0]["catalog"];
 }) {
   const proposal = conn.proposedConfiguration;
   const hasProposal = Boolean(proposal && Object.keys(proposal).length > 0);
@@ -1185,6 +1199,7 @@ export function ConnectionCard({
   const hasId = Boolean(conn.id);
   const slug = (conn.clientId + "__" + conn.serviceId)
     .replace(/[^a-zA-Z0-9_-]/g, "_");
+  const agreementId = `isa-${slug}`;
   const reviewId = `review-${slug}`;
   const confirmId = `confirm-${slug}`;
   const abandonId = `abandon-revoke-${slug}`;
@@ -1316,6 +1331,10 @@ export function ConnectionCard({
         </button>
       ),
     },
+    {
+      label: "ISA",
+      control: <Btn size="small" variant="secondary" data={{ "dialog-open": agreementId }}>ISA</Btn>,
+    },
   ].filter((action) => action !== false);
   return (
     <article className="bg-white border border-border rounded-lg">
@@ -1354,6 +1373,8 @@ export function ConnectionCard({
           <OverflowActions id={`actions-${editId}`} actions={additionalActions} />
         </div>
       </div>
+
+      <ConnectionAgreement id={agreementId} org={org} connection={conn} catalog={agreementCatalog} />
 
       {hasDetails && (
         <details className="border-t border-border">
@@ -1772,10 +1793,16 @@ function ClientGroupSection({
   group,
   org,
   ownedServiceIds,
+  services,
+  subsystems,
+  scopeCatalog,
 }: {
   group: ClientGroup;
   org: string;
   ownedServiceIds: Set<string>;
+  services: Service[];
+  subsystems: ReadonlyMap<string, Subsystem>;
+  scopeCatalog: ReadonlyMap<string, ResourceScope>;
 }) {
   const { clientId, subsystem, items } = group;
   return (
@@ -1791,14 +1818,26 @@ function ClientGroupSection({
         )}
       </header>
       <div className="p-4 space-y-3">
-        {items.map((conn) => (
-          <ConnectionCard
-            key={`${conn.clientId}:${conn.serviceId}`}
-            conn={conn}
-            org={org}
-            canApprove={ownedServiceIds.has(conn.serviceId)}
-          />
-        ))}
+        {items.map((conn) => {
+          const service = services.find((item) =>
+            item.name === conn.serviceId && item.environment === conn.environment
+          ) ?? services.find((item) => item.name === conn.serviceId);
+          const providerId = service?.subsystem.clientId ?? conn.serviceResources?.subsystemId;
+          return (
+            <ConnectionCard
+              key={`${conn.clientId}:${conn.serviceId}`}
+              conn={conn}
+              org={org}
+              canApprove={ownedServiceIds.has(conn.serviceId)}
+              agreementCatalog={{
+                client: subsystem ?? undefined,
+                provider: providerId ? subsystems.get(providerId) : undefined,
+                service,
+                scopes: scopeCatalog,
+              }}
+            />
+          );
+        })}
       </div>
     </section>
   );
@@ -1809,6 +1848,7 @@ export function ConnectionsPage({
   selectedOrg,
   connections,
   allSubsystems,
+  resourceScopes,
   services,
   config,
   currentPath,
@@ -1827,6 +1867,7 @@ export function ConnectionsPage({
           .map((s) => s.name)
       : [],
   );
+  const scopeCatalog = new Map(resourceScopes.map((scope) => [scope.name, scope]));
   const r1RequestUrl = config.connections?.r1RequestUrl;
 
   // Group every connection by its client (always), regardless of whether the
@@ -1867,6 +1908,9 @@ export function ConnectionsPage({
       currentPath={currentPath}
       user={user}
     >
+      {connections.some((connection) => connection.isApproved) && (
+        <script src={CHART_JS_URL} />
+      )}
       <style
         dangerouslySetInnerHTML={{ __html: DIALOG_STYLE }}
       />
@@ -1979,6 +2023,9 @@ export function ConnectionsPage({
                     group={group}
                     org={selectedOrg.name}
                     ownedServiceIds={ownedServiceIds}
+                    services={services}
+                    subsystems={subByClientId}
+                    scopeCatalog={scopeCatalog}
                   />
                 ))}
               </div>
@@ -1989,7 +2036,7 @@ export function ConnectionsPage({
       </div>
 
       <script
-        dangerouslySetInnerHTML={{ __html: DIALOG_SCRIPT }}
+        dangerouslySetInnerHTML={{ __html: AGREEMENT_TRAFFIC_SCRIPT + DIALOG_SCRIPT }}
       />
       <script
         dangerouslySetInnerHTML={{ __html: EDIT_SCRIPT }}

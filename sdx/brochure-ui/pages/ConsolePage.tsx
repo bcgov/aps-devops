@@ -115,7 +115,7 @@ const RESOURCE_CARDS: ConsoleCard[] = [
     icon: <ConnectionsIcon />,
   },
   {
-    label: "Runtime Groups",
+    label: "Edge Runtime Groups",
     href: "/runtimes",
     description:
       "Runtime groups owned by, and available to, an organization member.",
@@ -135,8 +135,7 @@ const TELEMETRY_CARDS: ConsoleCard[] = [
   {
     label: "Activity",
     href: "/org-activity",
-    description:
-      "Choose an organization to view its public and private activity.",
+    description: "View public and private activity for an organization",
     icon: <ActivityIcon />,
   },
   {

@@ -32,7 +32,7 @@ export function LogsPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <h1 className="text-5xl font-bold mb-2">Logs</h1>
           <p className="text-ink-invert-secondary">
-            Real time request logs of traffic going through SDX Runtime Groups.
+            Real time request logs of traffic going through SDX Edge Runtime Groups.
           </p>
         </div>
       </div>

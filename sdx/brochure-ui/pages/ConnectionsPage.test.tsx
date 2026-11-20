@@ -211,3 +211,49 @@ Deno.test("readiness requires approval, activation, and provisioning", () => {
     throw new Error("Expected both independent reasons");
   }
 });
+
+Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
+  const html = renderToStaticMarkup(
+    <ConnectionCard
+      org="provider"
+      canApprove={false}
+      conn={{
+        clientId: "MIN.CLIENT.APP",
+        serviceId: "API.v1",
+        isApproved: true,
+        requesterDetails: { scopes: ["api:read"] },
+        proposedConfiguration: { requesterDetails: { scopes: ["api:write"] } },
+      }}
+      agreementCatalog={{
+        client: {
+          clientId: "MIN.CLIENT.APP",
+          name: "Client App",
+          organization: { name: "client", title: "Client Organization" },
+          member: { memberClass: "MIN", memberId: "CLIENT" },
+          access: [
+            { member: { name: "Client Owner" }, roles: ["subsystem-owner"] },
+            { member: { name: "Other User" }, roles: ["subsystem-reader"] },
+          ],
+        },
+        scopes: new Map([
+          ["api:read", { name: "api:read", description: "Read records", services: [] }],
+        ]),
+      }}
+    />,
+  );
+  const agreement = html.match(/<dialog id="isa-[^>]+>[\s\S]*?<\/dialog>/)?.[0] ?? "";
+  for (const text of [
+    "Information Sharing Agreement",
+    "Client Party",
+    "Service Party",
+    "Read records",
+    "Client Owner",
+    "Last 30 days",
+    "/api/connections/traffic?",
+    ">Close</button>",
+  ]) {
+    if (!agreement.includes(text)) throw new Error(`Missing ISA content: ${text}`);
+  }
+  if (agreement.includes("Other User")) throw new Error("Non-owner appeared in the ISA");
+  if (agreement.includes("api:write")) throw new Error("Proposed scope appeared as granted");
+});

@@ -36,6 +36,7 @@ import { OnboardingInvitePage } from "./pages/OnboardingInvitePage.tsx";
 import { VerificationBadge } from "./components/custom/VerificationBadge.tsx";
 import { loadJwks } from "./lib/jwks.ts";
 import {
+  connectionTraffic,
   MetricsQueryNotFoundError,
   runQuery,
 } from "./lib/metrics.ts";
@@ -1071,6 +1072,33 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     );
   }
 
+  if (path === "/api/connections/traffic" && req.method === "GET") {
+    const headers = { "cache-control": "no-store" };
+    if (!user?.accessToken) {
+      return Response.json({ error: "Sign in to view connection traffic." }, { status: 401, headers });
+    }
+    const org = url.searchParams.get("org");
+    const clientId = url.searchParams.get("clientId");
+    const serviceId = url.searchParams.get("serviceId");
+    if (!org || !clientId || !serviceId) {
+      return Response.json({ error: "Missing connection identifiers." }, { status: 400, headers });
+    }
+    try {
+      const connections = await listConnections(org, { accessToken: user.accessToken });
+      if (!connections.some((conn) =>
+        conn.isApproved && conn.clientId === clientId && conn.serviceId === serviceId
+      )) {
+        return Response.json({ error: "Traffic is available for approved connections." }, { status: 404, headers });
+      }
+      return Response.json(await connectionTraffic(clientId, serviceId), { headers });
+    } catch (error) {
+      const status = error instanceof SdxApiError && [401, 403, 404].includes(error.status)
+        ? error.status
+        : 502;
+      return Response.json({ error: "Connection traffic is unavailable." }, { status, headers });
+    }
+  }
+
   if (path === "/connections") {
     return await handleConnections(req, url, user);
   }
@@ -1420,12 +1448,43 @@ async function handleConnections(
     }
   }
 
+  // The catalog summaries omit access. Fetch each party's details once,
+  // limiting concurrency for organizations with many connection requests.
+  const partyIds = new Set<string>();
+  for (const connection of connections) {
+    partyIds.add(connection.clientId);
+    const service = services.find((item) =>
+      item.name === connection.serviceId &&
+      item.environment === connection.environment
+    ) ?? services.find((item) => item.name === connection.serviceId);
+    const providerId = service?.subsystem.clientId ??
+      connection.serviceResources?.subsystemId;
+    if (providerId) partyIds.add(providerId);
+  }
+
+  const parties = subsystems.filter((subsystem) =>
+    partyIds.has(subsystem.clientId) && subsystem.access === undefined
+  );
+  const accessByClientId = new Map<string, NonNullable<Subsystem["access"]>>();
+  for (let offset = 0; offset < parties.length; offset += 8) {
+    await Promise.all(parties.slice(offset, offset + 8).map(async (party) => {
+      const detail = await fetchSubsystemDetail(party.clientId);
+      if (Array.isArray(detail?.access)) {
+        accessByClientId.set(party.clientId, detail.access);
+      }
+    }));
+  }
+
   return htmlResponse(
     React.createElement(ConnectionsPage, {
       organizations,
       selectedOrg,
       connections,
-      allSubsystems: subsystems,
+      allSubsystems: subsystems.map((subsystem) => {
+        const access = accessByClientId.get(subsystem.clientId);
+        return access ? { ...subsystem, access } : subsystem;
+      }),
+      resourceScopes,
       services,
       config,
       currentPath: "/connections",

@@ -422,7 +422,7 @@ export function RuntimesPage({
 }: RuntimesPageProps) {
   return (
     <Layout
-      title="Runtime Groups"
+      title="Edge Runtime Groups"
       currentPath={currentPath}
       user={user}
     >
@@ -430,7 +430,7 @@ export function RuntimesPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Member Console", href: "/console" },
-          { label: "Runtime Groups" },
+          { label: "Edge Runtime Groups" },
         ]}
       />
 
@@ -438,7 +438,7 @@ export function RuntimesPage({
       <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <h1 className="text-4xl font-bold mb-2">
-            Runtime Groups
+            Edge Runtime Groups
           </h1>
           <p className="text-ink-invert-secondary max-w-2xl">
             Runtime groups owned by, and available to, an
