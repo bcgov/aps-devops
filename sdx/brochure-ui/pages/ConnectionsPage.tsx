@@ -17,6 +17,8 @@ import type {
 } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
 
+const dialogButtonClass = "text-sm font-semibold px-4 py-2 rounded border";
+
 interface ConnectionsPageProps {
   organizations: Organization[];
   selectedOrg: Organization | null;
@@ -251,103 +253,92 @@ function UpgradesView({
     ConnectionGatewayPattern["upgrades"]
   >;
 }) {
-  const flags: string[] = [];
-  if (upgrades.sign) flags.push("sign");
-  if (upgrades.verify) flags.push("verify");
-  if (upgrades.counter_sign) flags.push("counter_sign");
+  const labels = Object.entries(upgrades)
+    .filter(([, upgrade]) => upgrade)
+    .map(([label]) => label)
+    .sort((a, b) => a.localeCompare(b));
+  if (labels.length === 0) return null;
+
   const token = upgrades.token;
   const tx = upgrades.token_exchange;
   return (
-    <div className="mt-2 space-y-2">
-      {flags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {flags.map((f) => (
-            <span
-              key={f}
-              className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
-            >
-              {f}
-            </span>
-          ))}
-        </div>
-      )}
-      {token && (
-        <div className="border border-border rounded p-2 bg-surface-muted">
-          <div className="text-xs font-semibold text-ink-secondary mb-1">
-            token
+    <ul className="mt-2 grid grid-cols-1 items-start gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      {labels.map((label) => (
+        <li key={label} className="min-w-0 rounded border border-border bg-surface-muted p-2 text-xs">
+          <div className="break-all font-mono font-semibold text-bc-blue">
+            {label}
           </div>
-          <dl className="grid grid-cols-[200px,1fr] gap-x-3 gap-y-0.5">
-            <FieldRow
-              label="allowed_aud"
-              value={token.allowed_aud}
-              mono
-            />
-            <FieldRow
-              label="allowed_iss"
-              value={token.allowed_iss}
-              mono
-            />
-            <FieldRow
-              label="scope"
-              value={token.scope}
-              mono
-            />
-            <FieldRow
-              label="consumer_match"
-              value={fmtBool(token.consumer_match)}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_claim"
-              value={token.consumer_match_claim}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_claim_custom_id"
-              value={fmtBool(
-                token.consumer_match_claim_custom_id,
-              )}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_ignore_not_found"
-              value={fmtBool(
-                token.consumer_match_ignore_not_found,
-              )}
-              mono
-            />
-          </dl>
-        </div>
-      )}
-      {tx && (
-        <div className="border border-border rounded p-2 bg-surface-muted">
-          <div className="text-xs font-semibold text-ink-secondary mb-1">
-            token_exchange
-          </div>
-          <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-0.5">
-            <FieldRow
-              label="client_id"
-              value={tx.client_id}
-              mono
-            />
-            <FieldRow
-              label="token_endpoint"
-              value={tx.token_endpoint}
-              mono
-            />
-            <FieldRow
-              label="audience"
-              value={tx.audience}
-              mono
-            />
-          </dl>
-          <div className="mt-1">
-            <span className="text-ink-secondary">scopes </span>
-            <ScopeChips scopes={tx.scopes} />
-          </div>
-        </div>
-      )}
-    </div>
+          {label === "token" && token && (
+            <dl className="grid gap-y-0.5 break-all">
+              <FieldRow
+                label="allowed_aud"
+                value={token.allowed_aud}
+                mono
+              />
+              <FieldRow
+                label="allowed_iss"
+                value={token.allowed_iss}
+                mono
+              />
+              <FieldRow
+                label="scope"
+                value={token.scope}
+                mono
+              />
+              <FieldRow
+                label="consumer_match"
+                value={fmtBool(token.consumer_match)}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_claim"
+                value={token.consumer_match_claim}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_claim_custom_id"
+                value={fmtBool(
+                  token.consumer_match_claim_custom_id,
+                )}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_ignore_not_found"
+                value={fmtBool(
+                  token.consumer_match_ignore_not_found,
+                )}
+                mono
+              />
+            </dl>
+          )}
+          {label === "token_exchange" && tx && (
+            <>
+              <dl className="grid gap-y-0.5 break-all">
+                <FieldRow
+                  label="client_id"
+                  value={tx.client_id}
+                  mono
+                />
+                <FieldRow
+                  label="token_endpoint"
+                  value={tx.token_endpoint}
+                  mono
+                />
+                <FieldRow
+                  label="audience"
+                  value={tx.audience}
+                  mono
+                />
+              </dl>
+              <div className="mt-1 break-all">
+                <span className="text-ink-secondary">scopes </span>
+                <ScopeChips scopes={tx.scopes} />
+              </div>
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -1057,13 +1048,13 @@ function EditDialog({
           <button
             type="button"
             data-dialog-close
-            className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+            className={`${dialogButtonClass} border-border-dark bg-btn-secondary text-ink hover:bg-btn-secondary-hover`}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="text-sm font-semibold px-4 py-2 rounded bg-bc-blue text-white hover:bg-bc-blue-hover"
+            className={`${dialogButtonClass} border-transparent bg-btn-primary text-white hover:bg-btn-primary-hover`}
           >
             Save
           </button>
@@ -1509,7 +1500,7 @@ function ConfirmDialog({
         <button
           type="button"
           data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+          className={`${dialogButtonClass} border-border-dark bg-btn-secondary text-ink hover:bg-btn-secondary-hover`}
         >
           Cancel
         </button>
@@ -1540,7 +1531,16 @@ function ConfirmDialog({
           {action.confirmAbandonRevoke && (
             <input type="hidden" name="confirmAbandonRevoke" value="true" />
           )}
-          <Btn type="submit" danger={!action.reversible}>{action.label}</Btn>
+          <button
+            type="submit"
+            className={`${dialogButtonClass} border-transparent text-white ${
+              action.reversible
+                ? "bg-btn-primary hover:bg-btn-primary-hover"
+                : "bg-btn-danger hover:bg-btn-danger-hover"
+            }`}
+          >
+            {action.label}
+          </button>
         </form>
       </div>
     </dialog>
@@ -1676,7 +1676,7 @@ function ReviewDialog({
         <button
           type="button"
           data-dialog-close
-          className="text-sm font-semibold px-3 py-2 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+          className={`${dialogButtonClass} border-border-dark bg-btn-secondary text-ink hover:bg-btn-secondary-hover`}
         >
           Cancel
         </button>
@@ -1689,7 +1689,7 @@ function ReviewDialog({
             {hidden}
             <button
               type="submit"
-              className="text-sm font-semibold px-4 py-2 rounded border border-danger text-danger hover:bg-support-danger-bg"
+              className={`${dialogButtonClass} border-danger text-danger hover:bg-support-danger-bg`}
             >
               {hasProposal ? "Reject changes" : "Reject"}
             </button>
@@ -1700,7 +1700,12 @@ function ReviewDialog({
             className="inline"
           >
             {hidden}
-            <Btn type="submit">{hasProposal ? "Approve changes" : "Approve"}</Btn>
+            <button
+              type="submit"
+              className={`${dialogButtonClass} border-transparent bg-btn-primary text-white hover:bg-btn-primary-hover`}
+            >
+              {hasProposal ? "Approve changes" : "Approve"}
+            </button>
           </form>
         </div>
       </div>
