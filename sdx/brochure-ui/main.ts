@@ -2,7 +2,7 @@ import { verifyOrganizationResponse } from "./lib/response-verification.ts";
 import { keysForKeyset } from "./lib/keysets.ts";
 import { certificatePayload, certificatesWithoutRuntime, fetchSigningKeyset, planCertificateInstall } from "./lib/org-signing-keyset.ts";
 import { registerOrgCertificate, requestOrgCsr } from "./lib/org-signing.ts";
-import { orgKeysetsUrlForEnv } from "./lib/environments.ts";
+import { connectionPrivacyZonesUrl, loadPrivacyZoneNames, orgKeysetsUrlForEnv } from "./lib/environments.ts";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { config } from "./lib/config.ts";
@@ -61,6 +61,7 @@ import {
   getClientDetail,
   listConnections,
   listOrgActivity,
+  listSubmissionActivity,
   runConnectionLifecycle,
   SdxApiError,
   setConnectionApproval,
@@ -113,6 +114,7 @@ const SERVICES_API = `${SDX_API_BASE}/services`;
 const SCOPES_API = `${SDX_API_BASE}/scopes`;
 const ACTIVITY_API = `${SDX_API_BASE}/activity`;
 const ACTIVITY_PAGE_SIZE = 20;
+const ORGANIZATION_ACTIVITY_PAGE_SIZE = 5;
 
 async function loadActivity(
   first = 20,
@@ -827,9 +829,24 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   if (path === "/console/common-sso") {
     const gate = requireAuth(req, user);
     if (gate) return gate;
-    return htmlResponse(
-      React.createElement(CommonSsoPage, { currentPath: path, user: user! }),
+    let activity: ActivityRecord[] = [];
+    let error: string | undefined;
+    if (!user!.accessToken) {
+      error = "Sign in again to load your submissions.";
+    } else {
+      try {
+        activity = await listSubmissionActivity(user!.accessToken);
+      } catch (cause) {
+        error = cause instanceof SdxApiError && cause.status === 401
+          ? "Sign in again to load your submissions."
+          : "Your submissions could not be loaded.";
+      }
+    }
+    const response = htmlResponse(
+      React.createElement(CommonSsoPage, { currentPath: path, user: user!, activity, error }),
     );
+    response.headers.set("cache-control", "no-store");
+    return response;
   }
 
   if (path === "/runtimes") {
@@ -1040,7 +1057,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     let activityError: string | null = null;
     try {
       activity = await loadActivity(
-        ACTIVITY_PAGE_SIZE,
+        ORGANIZATION_ACTIVITY_PAGE_SIZE,
         0,
         org.name,
       );
@@ -1062,7 +1079,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
         publicBodyType,
         publicBodyError,
         activity,
-        activityPageSize: ACTIVITY_PAGE_SIZE,
+        activityPageSize: ORGANIZATION_ACTIVITY_PAGE_SIZE,
         activityError,
         orgKeys,
         config,
@@ -1451,16 +1468,28 @@ async function handleConnections(
   // The catalog summaries omit access. Fetch each party's details once,
   // limiting concurrency for organizations with many connection requests.
   const partyIds = new Set<string>();
+  const privacyZoneUrls = new Set<string>();
   for (const connection of connections) {
     partyIds.add(connection.clientId);
     const service = services.find((item) =>
       item.name === connection.serviceId &&
       item.environment === connection.environment
     ) ?? services.find((item) => item.name === connection.serviceId);
+    if (connection.requesterDetails?.client?.privacyZone ||
+      connection.requesterDetails?.service?.privacyZone) {
+      privacyZoneUrls.add(connectionPrivacyZonesUrl(
+        connection.serviceId,
+        connection.environment ?? service?.environment,
+      ));
+    }
     const providerId = service?.subsystem.clientId ??
       connection.serviceResources?.subsystemId;
     if (providerId) partyIds.add(providerId);
   }
+
+  const privacyZoneDirectories = Promise.all([...privacyZoneUrls].map(async (url) =>
+    [url, await loadPrivacyZoneNames(url)] as const
+  ));
 
   const parties = subsystems.filter((subsystem) =>
     partyIds.has(subsystem.clientId) && subsystem.access === undefined
@@ -1485,6 +1514,7 @@ async function handleConnections(
         return access ? { ...subsystem, access } : subsystem;
       }),
       resourceScopes,
+      privacyZoneNamesByUrl: new Map(await privacyZoneDirectories),
       services,
       config,
       currentPath: "/connections",

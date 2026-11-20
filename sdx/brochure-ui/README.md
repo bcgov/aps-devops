@@ -173,3 +173,14 @@ and displays each check plus Verified or Failed verification. The selected key
 set fixes the organization and environment. Edge JWT `jwks_uri` values must
 match that environment’s configured `jwks_urls`, or an edge key-set endpoint
 under its configured `org_keysets_url`. Response header values are not logged.
+
+
+### Privacy Zone directories
+
+Set `privacy_zones_url` on each environment in `config.yaml` to override the JSON directory used to resolve privacy zone names in the Information Sharing Agreement.
+
+| Environment | Default directory |
+| --- | --- |
+| Production | https://id.gov.bc.ca/oauth2/privacy-zones |
+| Test and other non-production environments | https://idtest.gov.bc.ca/oauth2/privacy-zones |
+| `apsdev` | https://idsit.gov.bc.ca/oauth2/privacy-zones |

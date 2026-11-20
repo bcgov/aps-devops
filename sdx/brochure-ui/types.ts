@@ -86,6 +86,8 @@ export interface EnvironmentConfig {
   id: string;
   /** Human-readable label shown in the environment filter (e.g. "Dev"). */
   label: string;
+  /** Directory of privacy zones for this environment. */
+  privacy_zones_url?: string;
   /**
    * Base URL of the keyset registry for this environment, e.g.
    * `https://…/keysets`. The org and subsystem JWKS used to verify entity

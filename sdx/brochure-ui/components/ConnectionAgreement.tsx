@@ -1,3 +1,4 @@
+import { CopyButton } from "./custom/CopyButton.tsx";
 import { TimeSeriesChart } from "./custom/TimeSeriesChart.tsx";
 import { Btn } from "./Btn.tsx";
 import type {
@@ -12,6 +13,7 @@ interface AgreementCatalog {
   provider?: Subsystem;
   service?: Service;
   scopes?: ReadonlyMap<string, ResourceScope>;
+  privacyZoneNames?: ReadonlyMap<string, string>;
 }
 
 function PartyContacts({
@@ -42,12 +44,10 @@ function PartyContacts({
                 <li key={key}>
                   {name && <span className="block">{name}</span>}
                   {email && (
-                    <a
-                      className="break-all text-link underline"
-                      href={`mailto:${email}`}
-                    >
-                      {email}
-                    </a>
+                    <div className="flex items-center gap-1">
+                      <span className="min-w-0 break-all">{email}</span>
+                      <CopyButton value={email} className="shrink-0" />
+                    </div>
                   )}
                 </li>
               ))}
@@ -72,7 +72,7 @@ export function ConnectionAgreement({
   connection: ConnectionRequest;
   catalog?: AgreementCatalog;
 }) {
-  const { client, provider, service, scopes } = catalog ?? {};
+  const { client, provider, service, scopes, privacyZoneNames } = catalog ?? {};
   const granted = connection.isApproved
     ? [
       ...new Set(
@@ -94,6 +94,7 @@ export function ConnectionAgreement({
   const parties = [
     {
       heading: "Client Party",
+      privacyZone: connection.requesterDetails?.client?.privacyZone,
       access: client?.access,
       organization: client?.organization.title,
       subsystem: client?.name ?? connection.clientId,
@@ -101,6 +102,7 @@ export function ConnectionAgreement({
     },
     {
       heading: "Service Party",
+      privacyZone: connection.requesterDetails?.service?.privacyZone,
       showAccessManagers: true,
       access: provider?.access,
       organization: provider?.organization.title ??
@@ -134,6 +136,7 @@ export function ConnectionAgreement({
             {
               heading,
               organization,
+              privacyZone,
               subsystem,
               subsystemId,
               access,
@@ -167,6 +170,14 @@ export function ConnectionAgreement({
                         </a>
                       )
                       : subsystem ?? "Unavailable"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink-secondary">Privacy Zone</dt>
+                  <dd>
+                    {privacyZone
+                      ? privacyZoneNames?.get(privacyZone) ?? privacyZone
+                      : "Unavailable"}
                   </dd>
                 </div>
                 <PartyContacts

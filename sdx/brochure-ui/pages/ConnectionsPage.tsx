@@ -1,3 +1,4 @@
+import { connectionPrivacyZonesUrl } from "../lib/environments.ts";
 import { CHART_JS_URL } from "../components/custom/TimeSeriesChart.tsx";
 import { ConnectionAgreement } from "../components/ConnectionAgreement.tsx";
 import { OverflowActions } from "../components/OverflowActions.tsx";
@@ -26,6 +27,7 @@ interface ConnectionsPageProps {
   connections: ConnectionRequest[];
   allSubsystems: Subsystem[];
   resourceScopes: ResourceScope[];
+  privacyZoneNamesByUrl: ReadonlyMap<string, ReadonlyMap<string, string>>;
   services: Service[];
   config: SiteConfig;
   currentPath: string;
@@ -1796,6 +1798,7 @@ function ClientGroupSection({
   services,
   subsystems,
   scopeCatalog,
+  privacyZoneNamesByUrl,
 }: {
   group: ClientGroup;
   org: string;
@@ -1803,6 +1806,7 @@ function ClientGroupSection({
   services: Service[];
   subsystems: ReadonlyMap<string, Subsystem>;
   scopeCatalog: ReadonlyMap<string, ResourceScope>;
+  privacyZoneNamesByUrl: ConnectionsPageProps["privacyZoneNamesByUrl"];
 }) {
   const { clientId, subsystem, items } = group;
   return (
@@ -1834,6 +1838,10 @@ function ClientGroupSection({
                 provider: providerId ? subsystems.get(providerId) : undefined,
                 service,
                 scopes: scopeCatalog,
+                privacyZoneNames: privacyZoneNamesByUrl.get(connectionPrivacyZonesUrl(
+                  conn.serviceId,
+                  conn.environment ?? service?.environment,
+                )),
               }}
             />
           );
@@ -1849,6 +1857,7 @@ export function ConnectionsPage({
   connections,
   allSubsystems,
   resourceScopes,
+  privacyZoneNamesByUrl,
   services,
   config,
   currentPath,
@@ -2026,6 +2035,7 @@ export function ConnectionsPage({
                     services={services}
                     subsystems={subByClientId}
                     scopeCatalog={scopeCatalog}
+                    privacyZoneNamesByUrl={privacyZoneNamesByUrl}
                   />
                 ))}
               </div>

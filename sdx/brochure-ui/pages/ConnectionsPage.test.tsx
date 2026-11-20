@@ -221,7 +221,13 @@ Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
         clientId: "MIN.CLIENT.APP",
         serviceId: "API.v1",
         isApproved: true,
-        requesterDetails: { scopes: ["api:read"] },
+        requesterDetails: {
+          scopes: ["api:read"],
+          client: { integrationId: "", clientId: "MIN.CLIENT.APP", privacyZone: "urn:client-zone" },
+          service: { clientId: "MIN.PROVIDER.APP", privacyZone: "urn:service-zone" },
+          requester: "",
+          submissionId: "",
+        },
         proposedConfiguration: { requesterDetails: { scopes: ["api:write"] } },
       }}
       agreementCatalog={{
@@ -231,10 +237,14 @@ Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
           organization: { name: "client", title: "Client Organization" },
           member: { memberClass: "MIN", memberId: "CLIENT" },
           access: [
-            { member: { name: "Client Owner" }, roles: ["subsystem-owner"] },
+            { member: { name: "Client Owner", email: "owner@example.com" }, roles: ["subsystem-owner"] },
             { member: { name: "Other User" }, roles: ["subsystem-reader"] },
           ],
         },
+        privacyZoneNames: new Map([
+          ["urn:client-zone", "Client Privacy Zone"],
+          ["urn:service-zone", "Service Privacy Zone"],
+        ]),
         scopes: new Map([
           ["api:read", { name: "api:read", description: "Read records", services: [] }],
         ]),
@@ -248,12 +258,19 @@ Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
     "Service Party",
     "Read records",
     "Client Owner",
+    'data-copy="owner@example.com"',
+    "Client Privacy Zone",
+    "Service Privacy Zone",
     "Last 30 days",
     "/api/connections/traffic?",
     ">Close</button>",
   ]) {
     if (!agreement.includes(text)) throw new Error(`Missing ISA content: ${text}`);
   }
+  if (agreement.includes("urn:client-zone") || agreement.includes("urn:service-zone")) {
+    throw new Error("Expected zone names without URI links");
+  }
+  if (agreement.includes("mailto:")) throw new Error("ISA email should be plain text");
   if (agreement.includes("Other User")) throw new Error("Non-owner appeared in the ISA");
   if (agreement.includes("api:write")) throw new Error("Proposed scope appeared as granted");
 });

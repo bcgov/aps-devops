@@ -60,30 +60,39 @@ export function KeysetKeyCard({ k }: { k: JwkRecord }) {
               </tr>
             </thead>
             <tbody>
-              {chain.map((cert, index) => (
-                <tr
-                  key={`${cert.serial}-${index}`}
-                  className="border-b border-border last:border-b-0"
-                >
-                  <td className="py-2 pr-4 align-top whitespace-nowrap text-ink">
-                    <time dateTime={cert.notAfter}>
-                      {cert.notAfter.replace("T", " ").replace(
-                        /\.\d{3}Z$/,
-                        " UTC",
-                      )}
-                    </time>
-                    {cert.validityState === "expired" && (
-                      <span className="ml-2 text-support-error-border">
-                        Expired
+              {chain.map((cert, index) => {
+                const expired = Date.parse(cert.notAfter) <= Date.now();
+                return (
+                  <tr
+                    key={`${cert.serial}-${index}`}
+                    className="border-b border-border last:border-b-0"
+                  >
+                    <td className="py-2 pr-4 align-top whitespace-nowrap text-ink">
+                      <span
+                        role="img"
+                        aria-label={expired ? "Expired" : "Not expired"}
+                        className={`mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold ${
+                          expired
+                            ? "border-support-danger-border bg-support-danger-bg text-danger"
+                            : "border-support-success-border bg-support-success-bg text-support-success-border"
+                        }`}
+                      >
+                        <span aria-hidden="true">{expired ? "×" : "✓"}</span>
                       </span>
-                    )}
-                  </td>
-                  <td className="py-2 align-top break-words text-ink">
-                    {cert.subject.split(/\r?\n/).map((part) => part.trim())
-                      .filter(Boolean).join(", ")}
-                  </td>
-                </tr>
-              ))}
+                      <time dateTime={cert.notAfter}>
+                        {cert.notAfter.replace("T", " ").replace(
+                          /\.\d{3}Z$/,
+                          " UTC",
+                        )}
+                      </time>
+                    </td>
+                    <td className="py-2 align-top break-words text-ink">
+                      {cert.subject.split(/\r?\n/).map((part) => part.trim())
+                        .filter(Boolean).join(", ")}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

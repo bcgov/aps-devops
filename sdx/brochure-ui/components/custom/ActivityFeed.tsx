@@ -2,9 +2,9 @@ import type { ActivityRecord } from "../../types.ts";
 
 interface ActivityFeedProps {
   activity: ActivityRecord[];
-  pageSize: number;
-  /** Endpoint the "Load more" button pages against. May include a query string. */
-  apiPath?: string;
+  pageSize?: number;
+  /** Endpoint the "Load more" button pages against. Use null to disable paging. */
+  apiPath?: string | null;
 }
 
 const DIALOG_STYLE = `
@@ -74,7 +74,7 @@ const FEED_SCRIPT = `
 (function(){
   var DATA = window.__ACTIVITY__ || [];
   var PAGE = window.__ACTIVITY_PAGE_SIZE__ || 20;
-  var API = window.__ACTIVITY_API__ || '/api/activity';
+  var API = window.__ACTIVITY_API__;
   var listEl = document.getElementById('activity-list');
   var moreWrap = document.getElementById('activity-more-wrap');
   var moreBtn = document.getElementById('activity-more');
@@ -269,12 +269,12 @@ const FEED_SCRIPT = `
       currentUl.appendChild(renderItem(r));
     }
   }
-  function setMore(count){ moreWrap.style.display = (count >= PAGE) ? '' : 'none'; }
+  function setMore(count){ moreWrap.style.display = (API && count >= PAGE) ? '' : 'none'; }
 
   if(!DATA.length){ emptyEl.style.display = ''; moreWrap.style.display = 'none'; }
   else { append(DATA); skip = DATA.length; setMore(DATA.length); }
 
-  if(moreBtn){
+  if(moreBtn && API){
     moreBtn.addEventListener('click', function(){
       moreBtn.disabled = true; moreBtn.textContent = 'Loading…';
       var sep = API.indexOf('?') >= 0 ? '&' : '?';
@@ -306,7 +306,7 @@ const FEED_SCRIPT = `
  */
 export function ActivityFeed({
   activity,
-  pageSize,
+  pageSize = 20,
   apiPath = "/api/activity",
 }: ActivityFeedProps) {
   const dataJson = JSON.stringify(activity).replace(

@@ -26,7 +26,7 @@ export function TrustKeysets({
   const total = keysets.reduce((n, ks) => n + ks.keys.length, 0);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h2 className="text-4xl font-bold text-bc-blue mb-1">
+      <h2 className="text-2xl font-bold text-bc-blue mb-1">
         Trust keysets
         <span className="ml-2 text-base font-normal text-ink-secondary">
           ({total} key{total !== 1 ? "s" : ""})

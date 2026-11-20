@@ -124,6 +124,24 @@ function normalizeConnection(c: ConnectionRequest): ConnectionRequest {
   };
 }
 
+export async function listSubmissionActivity(
+  accessToken: string,
+): Promise<ActivityRecord[]> {
+  const res = await fetch(`${SDX_API_ROOT}/activity?filter=me&first=100&skip=0`, {
+    headers: authHeaders(accessToken),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new SdxApiError(res.status, await res.text());
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) throw new Error("Unexpected activity response");
+  return data.filter((record) =>
+    record?.message === "Integration access request for {client} {action}" &&
+    typeof record.params?.submissionId === "string" &&
+    record.params.submissionId.trim()
+  );
+}
+
 // Org-scoped activity feed — includes both public and private activity for the
 // member, unlike the public `/catalog/activity` endpoint.
 export async function listOrgActivity(
