@@ -146,9 +146,12 @@ export async function listOrgActivity(
 export async function deleteConnection(
   org: string,
   id: string,
-  opts: SdxCallOpts = {},
+  opts: SdxCallOpts & { action?: "revoke" } = {},
 ): Promise<void> {
-  const url = `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections/${encodeURIComponent(id)}`;
+  const query = opts.action ? `?action=${opts.action}` : "";
+  const url = `${SDX_API_ROOT}/organizations/${
+    encodeURIComponent(org)
+  }/connections/${encodeURIComponent(id)}${query}`;
   const res = await fetch(url, {
     method: "DELETE",
     headers: authHeaders(opts.accessToken),
@@ -183,7 +186,7 @@ export async function runConnectionLifecycle(
   org: string,
   id: string,
   input: {
-    action: "activate" | "deactivate" | "retry" | "revoke";
+    action: "activate" | "deactivate" | "retry";
     confirmAbandonRevoke?: boolean;
   },
   opts: SdxCallOpts = {},

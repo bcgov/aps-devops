@@ -1468,7 +1468,7 @@ function ConfirmDialog({
     label: string;
     title: string;
     message: string;
-    lifecycleAction?: "activate" | "deactivate" | "retry" | "revoke";
+    lifecycleAction?: "activate" | "deactivate" | "retry";
     confirmAbandonRevoke?: boolean;
     reversible?: boolean;
   };
