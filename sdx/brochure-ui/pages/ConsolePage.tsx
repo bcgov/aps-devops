@@ -18,50 +18,88 @@ interface ConsoleCard {
 
 function RuntimesIcon() {
   return (
-    <path d="M4 6h16M4 6v12a1 1 0 001 1h14a1 1 0 001-1V6M4 6l1-2h14l1 2M9 11h6" />
+    <path d="M2 8h7a2 2 0 012 2v1h3V5h4V3h4v4h-4V6h-2v5h2V10h4v4h-4v-1h-2v5h2v-1h4v4h-4v-2h-4v-6h-3v1a2 2 0 01-2 2H2z" />
   );
 }
+
 function TrafficIcon() {
-  return <path d="M3 12h4l3 8 4-16 3 8h4" />;
+  return <path d="M1 11h5l3 5 4-13 4 8h6v2h-7l-2.5-5L10 21l-5-8H1z" />;
 }
+
 function LogsIcon() {
   return (
-    <path d="M4 5h16M4 5v14a1 1 0 001 1h14a1 1 0 001-1V5M8 9h8M8 13h8M8 17h5" />
+    <path
+      fillRule="evenodd"
+      d="M5 2h14a2 2 0 012 2v16a2 2 0 01-2 2H5a2 2 0 01-2-2V4a2 2 0 012-2zm2 5v2h10V7zm0 4v2h10v-2zm0 4v2h7v-2z"
+    />
   );
 }
+
 function MetricsIcon() {
   return (
-    <path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3M20 16v-7" />
+    <path d="M2 3h3v16h17v3H2zm5 9h3v5H7zm4-5h3v10h-3zm4 3h3v7h-3zm4-7h3v14h-3z" />
   );
 }
+
 function ConnectionsIcon() {
   return (
-    <path d="M7 8a3 3 0 100-6 3 3 0 000 6zM17 22a3 3 0 100-6 3 3 0 000 6zM7 8v5a3 3 0 003 3h4" />
+    <path d="M6 2a4 4 0 011 7.9V13a2 2 0 002 2h3v-3l4 4-4 4v-3H9a4 4 0 01-4-4V9.9A4 4 0 016 2zm13 11a4 4 0 110 8 4 4 0 010-8z" />
   );
 }
+
 function ActivityIcon() {
-  return <path d="M22 12h-4l-3 9L9 3l-3 9H2" />;
+  return (
+    <path
+      fillRule="evenodd"
+      d="M9 2h6v3h4a2 2 0 012 2v13a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h4zm-2 9-1 1 2 2 4-4-1-1-3 3zm6 0v2h5v-2zm-6 6-1 1 2 2 4-4-1-1-3 3zm6 0v2h5v-2z"
+    />
+  );
 }
+
+function IdentityIcon() {
+  return (
+    <>
+      <circle cx="8" cy="6" r="4" />
+      <path d="M1 20v-3a5 5 0 015-5h4a5 5 0 012 .4c.1 3.8 1.4 6.6 3.8 8.6H2a1 1 0 01-1-1z" />
+      <path
+        fillRule="evenodd"
+        d="M18 10l5 2v2c0 4-2 6.8-5 8-3-1.2-5-4-5-8v-2zm0 2.2v7.5c1.9-1.1 3-3.1 3-5.7v-.7z"
+      />
+    </>
+  );
+}
+
 function ScopesIcon() {
   return (
-    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+    <>
+      <path
+        fillRule="evenodd"
+        d="M4 2h8l5 5v2l-6 2.5V14c0 3 1 5.3 3 7H4a2 2 0 01-2-2V4a2 2 0 012-2zm7 2v4h4zM5 8v2h4V8zm0 5v2h4v-2z"
+      />
+      <path
+        fillRule="evenodd"
+        d="M18 10l5 2v2c0 4-2 6.8-5 8-3-1.2-5-4-5-8v-2zm-2.2 4.7-1 1 2.4 2.4 4-4-1-1-3 3z"
+      />
+    </>
   );
 }
+
 function SubsystemsIcon() {
   return (
-    <path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm0 9h7v7h-7v-7zM4 13h7v7H4v-7z" />
+    <>
+      <path
+        fillRule="evenodd"
+        d="M3 3h16a2 2 0 012 2v4h-2V8H3v10h9v2H3a2 2 0 01-2-2V5a2 2 0 012-2zm1 2v1.5h1.5V5zm3 0v1.5h1.5V5z"
+      />
+      <path d="M5 10h7v2H5zm0 4h5v2H5z" />
+      <ellipse cx="18" cy="11.5" rx="5" ry="2.5" />
+      <path d="M13 14c2.5 1.8 7.5 1.8 10 0v2c0 1.4-2.2 2.5-5 2.5s-5-1.1-5-2.5zm0 4.5c2.5 1.8 7.5 1.8 10 0v2c0 1.4-2.2 2.5-5 2.5s-5-1.1-5-2.5z" />
+    </>
   );
 }
 
 // Long horizontal boxes on the left — the operational resources.
 const RESOURCE_CARDS: ConsoleCard[] = [
-  {
-    label: "Runtime Groups",
-    href: "/runtimes",
-    description:
-      "Runtime groups owned by, and available to, an organization member.",
-    icon: <RuntimesIcon />,
-  },
   {
     label: "Subsystems",
     href: "/org-subsystems",
@@ -77,11 +115,11 @@ const RESOURCE_CARDS: ConsoleCard[] = [
     icon: <ConnectionsIcon />,
   },
   {
-    label: "Activity",
-    href: "/org-activity",
+    label: "Runtime Groups",
+    href: "/runtimes",
     description:
-      "Choose an organization to view its public and private activity.",
-    icon: <ActivityIcon />,
+      "Runtime groups owned by, and available to, an organization member.",
+    icon: <RuntimesIcon />,
   },
   {
     label: "Resource Scopes",
@@ -94,6 +132,13 @@ const RESOURCE_CARDS: ConsoleCard[] = [
 
 // Compact telemetry boxes on the right.
 const TELEMETRY_CARDS: ConsoleCard[] = [
+  {
+    label: "Activity",
+    href: "/org-activity",
+    description:
+      "Choose an organization to view its public and private activity.",
+    icon: <ActivityIcon />,
+  },
   {
     label: "Traffic",
     href: "/traffic",
@@ -127,11 +172,7 @@ function CardIcon({
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       aria-hidden="true"
     >
       {icon}
@@ -165,8 +206,8 @@ function ResourceCard({ card }: { card: ConsoleCard }) {
       href={card.href}
       className="group bg-white border border-border rounded-lg p-6 hover:border-bc-blue hover:shadow-md transition-all flex items-center gap-5"
     >
-      <span className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-surface-blue-tint text-bc-blue shrink-0">
-        <CardIcon icon={card.icon} size={26} />
+      <span className="inline-flex items-center justify-center w-12 h-12 text-bc-blue shrink-0">
+        <CardIcon icon={card.icon} size={36} />
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-xl font-bold text-bc-blue group-hover:underline">
@@ -181,14 +222,14 @@ function ResourceCard({ card }: { card: ConsoleCard }) {
   );
 }
 
-function TelemetryCard({ card }: { card: ConsoleCard }) {
+function CompactCard({ card }: { card: ConsoleCard }) {
   return (
     <a
       href={card.href}
       className="group bg-white border border-border rounded-lg px-4 py-3.5 hover:border-bc-blue hover:shadow-md transition-all flex items-center gap-3"
     >
-      <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-surface-blue-tint text-bc-blue shrink-0">
-        <CardIcon icon={card.icon} size={18} />
+      <span className="inline-flex items-center justify-center w-9 h-9 text-bc-blue shrink-0">
+        <CardIcon icon={card.icon} size={26} />
       </span>
       <span className="flex-1 min-w-0">
         <span className="block font-semibold text-bc-blue group-hover:underline">
@@ -243,16 +284,31 @@ export function ConsolePage({
             </div>
           </div>
 
-          {/* Telemetry — compact column */}
-          <div className="lg:col-span-1">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
-              Telemetry
-            </h2>
-            <div className="space-y-3">
-              {TELEMETRY_CARDS.map((card) => (
-                <TelemetryCard key={card.href} card={card} />
-              ))}
-            </div>
+          <div className="lg:col-span-1 space-y-6">
+            <section>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
+                Integrations
+              </h2>
+              <CompactCard
+                card={{
+                  label: "Common SSO",
+                  href: "/console/common-sso",
+                  description: "Common single sign-on integration.",
+                  icon: <IdentityIcon />,
+                }}
+              />
+            </section>
+
+            <section>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
+                Telemetry
+              </h2>
+              <div className="space-y-3">
+                {TELEMETRY_CARDS.map((card) => (
+                  <CompactCard key={card.href} card={card} />
+                ))}
+              </div>
+            </section>
           </div>
         </div>
       </div>

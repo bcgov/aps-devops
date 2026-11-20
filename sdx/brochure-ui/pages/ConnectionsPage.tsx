@@ -1,3 +1,4 @@
+import { OverflowActions } from "../components/OverflowActions.tsx";
 import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Btn } from "../components/Btn.tsx";
@@ -8,7 +9,6 @@ import {
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
 import type {
   ConnectionGatewayPattern,
-  ConnectionProvisionerStatus,
   ConnectionRequest,
   Organization,
   Service,
@@ -33,88 +33,133 @@ interface ConnectionsPageProps {
   error?: string | null;
 }
 
-function StatusPill({
-  connection,
-}: {
-  connection: ConnectionRequest;
-}) {
-  if (connection.isApproved && connection.isActive) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
-        Active
-      </span>
-    );
-  }
-  if (connection.isApproved) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-info-bg text-support-info-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-info-border" />
-        Approved
-      </span>
-    );
-  }
+type StatusIconName = "ready" | "info" | "clock";
+
+function StatusIcon({ name }: { name: StatusIconName }) {
+  const paths = {
+    ready: "m5 8 2 2 4-4",
+    info: "M8 7.5v3.5M8 5v.25",
+    clock: "M8 4.5V8l2 1.5",
+  };
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
-      <span className="w-1.5 h-1.5 rounded-full bg-support-warning-border" />
-      Pending
-    </span>
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.25" />
+      <path d={paths[name]} />
+    </svg>
   );
 }
 
-function ProvisionerStatusPill({
-  status,
+function StatusPopover({
+  label,
+  trigger,
+  className,
+  children,
 }: {
-  status: ConnectionProvisionerStatus;
+  label?: string;
+  trigger: React.ReactNode;
+  className: string;
+  children: React.ReactNode;
 }) {
-  if (status.status === "provisioned") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
-        Provisioned
-      </span>
-    );
-  }
-  if (status.status === "deprovisioning") {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
-        Removing access configuration
-      </span>
-    );
-  }
-  if (status.status === "deprovisioned") {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-        Access configuration removed
-      </span>
-    );
-  }
-  if (status.status === "failed") {
-    const label = status.operation === "deprovision"
-      ? "Couldn't remove access configuration"
-      : "Provisioning failed";
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-danger-bg text-support-danger-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-danger-border" />
-        {label}
-      </span>
-    );
-  }
-  if (status.status === "pending") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
-        <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
-        Provisioning
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
-      <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
-      {status.status}
-    </span>
+    <details data-status-popover="" className="relative">
+      <summary
+        aria-label={label}
+        className={`inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden ${className}`}
+      >
+        {trigger}
+      </summary>
+      <div className="absolute left-0 z-20 mt-1 w-56 max-w-[80vw] rounded-lg border border-border bg-white p-3 text-xs text-ink shadow-lg">
+        {children}
+      </div>
+    </details>
+  );
+}
+
+function StatusLegend() {
+  return (
+    <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary">
+      Connection statuses
+      <StatusPopover
+        label="About connection statuses"
+        trigger="?"
+        className="h-5 w-5 justify-center rounded-full border border-border text-bc-blue"
+      >
+        <dl className="space-y-2">
+          <div><dt className="font-semibold">Ready</dt><dd>The client can call the service.</dd></div>
+          <div><dt className="font-semibold">Not ready</dt><dd>Open the badge to see why the client can’t call the service.</dd></div>
+          <div><dt className="font-semibold">Changes pending approval</dt><dd>A proposed change is awaiting review.</dd></div>
+        </dl>
+      </StatusPopover>
+    </div>
+  );
+}
+
+const STATUS_PILL = "rounded-full px-2.5 py-1 text-sm font-semibold";
+
+function ConnectionStatus({
+  connection,
+  hasProposal = false,
+}: {
+  connection: ConnectionRequest;
+  hasProposal?: boolean;
+}) {
+  const provisioner = connection.provisionerStatus;
+  const isProvisioned = provisioner?.status === "provisioned";
+  const isReady = connection.isActive && connection.isApproved && isProvisioned;
+  const reasons: string[] = [];
+
+  if (!connection.isApproved) {
+    reasons.push("Initial request is awaiting approval");
+  } else if (!connection.isActive) {
+    reasons.push("Connection is inactive");
+  }
+
+  if (provisioner?.status === "failed") {
+    reasons.push(provisioner.operation === "deprovision"
+      ? "Couldn't remove access configuration"
+      : "Provisioning failed");
+  } else if (provisioner?.status === "deprovisioning") {
+    reasons.push("Removing access configuration");
+  } else if (connection.isApproved && provisioner?.status === "pending") {
+    reasons.push("Provisioning is in progress");
+  } else if (connection.isApproved && connection.isActive && !isProvisioned) {
+    reasons.push(provisioner?.status === "deprovisioned"
+      ? "Access configuration has been removed"
+      : "Provisioning has not completed");
+  }
+
+  return (
+    <>
+      {isReady ? (
+        <span className={`inline-flex items-center gap-1 bg-support-success-bg text-support-success-border ${STATUS_PILL}`}>
+          <StatusIcon name="ready" /> Ready
+        </span>
+      ) : (
+        <StatusPopover
+          trigger={
+            <>
+              <StatusIcon name="info" /> Not ready
+              <span aria-hidden="true" className="text-xs">▾</span>
+            </>
+          }
+          className={`border border-border bg-surface-muted text-ink hover:bg-gray-100 ${STATUS_PILL}`}
+        >
+          <ul className={reasons.length > 1 ? "list-disc space-y-1 pl-4" : undefined}>
+            {reasons.map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        </StatusPopover>
+      )}
+      {hasProposal && (
+        <StatusPopover
+          trigger={<><StatusIcon name="clock" /> Changes pending approval</>}
+          className={`bg-support-warning-bg text-ink ${STATUS_PILL}`}
+        >
+          {isReady
+            ? "Current access is still available while these changes await approval."
+            : "A proposed change is awaiting approval."}
+        </StatusPopover>
+      )}
+    </>
   );
 }
 
@@ -128,6 +173,10 @@ const DIALOG_SCRIPT = `
 (function(){
   // Handle the click before the hydrated design-system button handles the press.
   document.addEventListener('click', function(e){
+    document.querySelectorAll('[data-overflow-actions][open], [data-status-popover][open]').forEach(function(menu){
+      if (menu.matches('[data-status-popover]') ? !menu.contains(e.target) :
+        !menu.querySelector('summary').contains(e.target)) menu.open = false;
+    });
     var o = e.target.closest && e.target.closest('[data-dialog-open]');
     if (o) {
       e.preventDefault();
@@ -142,6 +191,13 @@ const DIALOG_SCRIPT = `
       if (dd) { if (typeof dd.close === 'function') dd.close(); else dd.removeAttribute('open'); }
     }
   }, true);
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    var menu = e.target.closest('[data-overflow-actions][open], [data-status-popover][open]');
+    if (!menu) return;
+    menu.open = false;
+    menu.querySelector('summary').focus();
+  });
 })();
 `;
 
@@ -252,101 +308,111 @@ function UpgradesView({
     ConnectionGatewayPattern["upgrades"]
   >;
 }) {
-  const flags: string[] = [];
-  if (upgrades.sign) flags.push("sign");
-  if (upgrades.verify) flags.push("verify");
-  if (upgrades.counter_sign) flags.push("counter_sign");
+  const selected = { ...upgrades };
+  const flags = [
+    UP_SIGN,
+    UP_VERIFY,
+    UP_COUNTER_SIGN,
+    UP_ACL,
+    UP_MTLS_AUTH,
+    UP_MTLS_ACL,
+  ].filter(({ key }) => pickKey(selected, key));
   const token = upgrades.token;
-  const tx = upgrades.token_exchange;
+  const tx = pickKey(selected, UP_TOKEN_EXCHANGE.key) as
+    | typeof upgrades.token_exchange;
+  if (flags.length === 0 && !token && !tx) return null;
+
+  const pillClass =
+    "inline-flex items-center whitespace-nowrap rounded-full border border-border bg-surface-blue-tint px-3 py-1 text-xs font-semibold leading-tight text-bc-blue";
   return (
-    <div className="mt-2 space-y-2">
-      {flags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {flags.map((f) => (
-            <span
-              key={f}
-              className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
-            >
-              {f}
-            </span>
-          ))}
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold text-ink-secondary">
+        Upgrades:
+      </span>
+      {flags.map(({ key, label }) => (
+        <div key={key} className={pillClass}>
+          {label}
         </div>
-      )}
+      ))}
       {token && (
-        <div className="border border-border rounded p-2 bg-surface-muted">
-          <div className="text-xs font-semibold text-ink-secondary mb-1">
-            token
+        <details className="relative">
+          <summary className={pillClass + " cursor-pointer list-none"}>
+            Token
+          </summary>
+          <div className="absolute z-10 mt-1 w-40 space-y-1 rounded-lg border border-border bg-surface-muted p-2 break-words">
+            <dl className="grid gap-y-0.5">
+              <FieldRow
+                label="allowed_aud"
+                value={token.allowed_aud}
+                mono
+              />
+              <FieldRow
+                label="allowed_iss"
+                value={token.allowed_iss}
+                mono
+              />
+              <FieldRow
+                label="scope"
+                value={token.scope}
+                mono
+              />
+              <FieldRow
+                label="consumer_match"
+                value={fmtBool(token.consumer_match)}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_claim"
+                value={token.consumer_match_claim}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_claim_custom_id"
+                value={fmtBool(
+                  token.consumer_match_claim_custom_id,
+                )}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_ignore_not_found"
+                value={fmtBool(
+                  token.consumer_match_ignore_not_found,
+                )}
+                mono
+              />
+            </dl>
           </div>
-          <dl className="grid grid-cols-[200px,1fr] gap-x-3 gap-y-0.5">
-            <FieldRow
-              label="allowed_aud"
-              value={token.allowed_aud}
-              mono
-            />
-            <FieldRow
-              label="allowed_iss"
-              value={token.allowed_iss}
-              mono
-            />
-            <FieldRow
-              label="scope"
-              value={token.scope}
-              mono
-            />
-            <FieldRow
-              label="consumer_match"
-              value={fmtBool(token.consumer_match)}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_claim"
-              value={token.consumer_match_claim}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_claim_custom_id"
-              value={fmtBool(
-                token.consumer_match_claim_custom_id,
-              )}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_ignore_not_found"
-              value={fmtBool(
-                token.consumer_match_ignore_not_found,
-              )}
-              mono
-            />
-          </dl>
-        </div>
+        </details>
       )}
       {tx && (
-        <div className="border border-border rounded p-2 bg-surface-muted">
-          <div className="text-xs font-semibold text-ink-secondary mb-1">
-            token_exchange
+        <details className="relative">
+          <summary className={pillClass + " cursor-pointer list-none"}>
+            Token exchange
+          </summary>
+          <div className="absolute z-10 mt-1 w-40 space-y-1 rounded-lg border border-border bg-surface-muted p-2 break-words">
+            <dl className="grid gap-y-0.5">
+              <FieldRow
+                label="client_id"
+                value={tx.client_id}
+                mono
+              />
+              <FieldRow
+                label="token_endpoint"
+                value={tx.token_endpoint}
+                mono
+              />
+              <FieldRow
+                label="audience"
+                value={tx.audience}
+                mono
+              />
+            </dl>
+            <div className="mt-1">
+              <span className="text-ink-secondary">scopes</span>
+              <ScopeChips scopes={tx.scopes} />
+            </div>
           </div>
-          <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-0.5">
-            <FieldRow
-              label="client_id"
-              value={tx.client_id}
-              mono
-            />
-            <FieldRow
-              label="token_endpoint"
-              value={tx.token_endpoint}
-              mono
-            />
-            <FieldRow
-              label="audience"
-              value={tx.audience}
-              mono
-            />
-          </dl>
-          <div className="mt-1">
-            <span className="text-ink-secondary">scopes </span>
-            <ScopeChips scopes={tx.scopes} />
-          </div>
-        </div>
+        </details>
       )}
     </div>
   );
@@ -723,7 +789,7 @@ function pickKey(
   if (key in obj) return obj[key];
   const snake = camelToSnake(key);
   if (snake in obj) return obj[snake];
-  return undefined;
+  return obj[snake.replaceAll("_", "-")];
 }
 
 function fieldDefaultString(
@@ -1083,12 +1149,9 @@ function LifecycleForm({
       <input type="hidden" name="clientId" value={conn.clientId} />
       <input type="hidden" name="serviceId" value={conn.serviceId} />
       <input type="hidden" name="action" value={action} />
-      <button
-        type="submit"
-        className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-      >
+      <Btn type="submit" size="small">
         {label}
-      </button>
+      </Btn>
     </form>
   );
 }
@@ -1189,25 +1252,82 @@ export function ConnectionCard({
       lifecycleIntent ||
       (conn.scopes && conn.scopes.length > 0),
   );
+  const retryLabel = revokePending ? "Retry revoke" : "Retry";
+  const retryAction = {
+    label: retryLabel,
+    control: (
+      <LifecycleForm conn={conn} org={org} action="retry" label={retryLabel} />
+    ),
+  };
+  const [primaryAction, ...otherPrimaryActions] = [
+    isProviderPending && {
+      label: hasProposal ? "Review changes" : "Approve / Reject",
+      control: (
+        <Btn size="small" data={{ "dialog-open": reviewId }}>
+          {hasProposal ? "Review changes" : "Approve / Reject"}
+        </Btn>
+      ),
+    },
+    (canRevoke || canCancel) && {
+      label: destructiveAction.label,
+      control: (
+        <Btn size="small" variant="secondary" danger data={{ "dialog-open": confirmId }}>
+          {destructiveAction.label}
+        </Btn>
+      ),
+    },
+    canRetry && provisionerStatus?.status !== "failed" && retryAction,
+  ].filter((action) => action !== false);
+  const additionalActions = [
+    ...otherPrimaryActions,
+    canActivate && !activateRequiresConfirmation && {
+      label: "Activate",
+      control: (
+        <LifecycleForm conn={conn} org={org} action="activate" label="Activate" />
+      ),
+    },
+    canActivate && activateRequiresConfirmation && {
+      label: "Activate",
+      control: (
+        <button
+          type="button"
+          data-dialog-open={abandonId}
+          className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+        >
+          Activate
+        </button>
+      ),
+    },
+    canDeactivate && {
+      label: "Deactivate",
+      control: (
+        <LifecycleForm conn={conn} org={org} action="deactivate" label="Deactivate" />
+      ),
+    },
+    {
+      label: "Customize...",
+      control: (
+        <button
+          type="button"
+          data-dialog-open={editId}
+          className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+        >
+          Customize...
+        </button>
+      ),
+    },
+  ].filter((action) => action !== false);
   return (
     <article className="bg-white border border-border rounded-lg">
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <div className="font-mono text-sm text-ink break-all">
-            {conn.serviceId}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="font-mono text-sm text-ink break-all">
+              {conn.serviceId}
+            </div>
+            <ConnectionStatus connection={conn} hasProposal={hasProposal} />
           </div>
-          <div className="flex flex-wrap items-center gap-2 mt-1.5">
-            <StatusPill connection={conn} />
-            {hasProposal && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
-                Changes pending approval
-              </span>
-            )}
-            {provisionerStatus && (
-              <ProvisionerStatusPill
-                status={provisionerStatus}
-              />
-            )}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <SubmittedByBadge
               policyVersion={conn.policyVersion}
             />
@@ -1221,64 +1341,17 @@ export function ConnectionCard({
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-          <button
-            type="button"
-            data-dialog-open={editId}
-            className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-          >
-            Customize...
-          </button>
-          {isProviderPending && (
-            <button
-              type="button"
-              data-dialog-open={reviewId}
-              className="text-xs font-semibold px-3 py-1 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
-            >
-              {hasProposal ? "Review changes" : "Approve / Reject"}
-            </button>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          {canRetry && provisionerStatus?.status === "failed" &&
+            retryAction.control}
+          {primaryAction?.control ?? (
+            busy && conn.isApproved && (
+              <Btn size="small" variant="secondary" disabled>
+                Lifecycle action in progress
+              </Btn>
+            )
           )}
-          {canRetry && (
-            <LifecycleForm
-              conn={conn}
-              org={org}
-              action="retry"
-              label={revokePending ? "Retry revoke" : "Retry"}
-            />
-          )}
-          {canActivate && !activateRequiresConfirmation && (
-            <LifecycleForm conn={conn} org={org} action="activate" label="Activate" />
-          )}
-          {canActivate && activateRequiresConfirmation && (
-            <button
-              type="button"
-              data-dialog-open={abandonId}
-              className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-            >
-              Activate
-            </button>
-          )}
-          {canDeactivate && (
-            <LifecycleForm conn={conn} org={org} action="deactivate" label="Deactivate" />
-          )}
-          {(canRevoke || canCancel) && (
-            <button
-              type="button"
-              data-dialog-open={confirmId}
-              className="text-xs font-semibold px-3 py-1 rounded border border-danger text-danger hover:bg-support-danger-bg"
-            >
-              {destructiveAction.label}
-            </button>
-          )}
-          {busy && conn.isApproved && (
-            <button
-              type="button"
-              disabled
-              className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
-            >
-              Lifecycle action in progress
-            </button>
-          )}
+          <OverflowActions id={`actions-${editId}`} actions={additionalActions} />
         </div>
       </div>
 
@@ -1592,7 +1665,7 @@ function ReviewDialog({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill connection={conn} />
+          <ConnectionStatus connection={conn} />
           {conn.environment && (
             <MetaBadge label={conn.environment} />
           )}
@@ -1706,8 +1779,8 @@ function ClientGroupSection({
 }) {
   const { clientId, subsystem, items } = group;
   return (
-    <section className="bg-white border border-border rounded-lg overflow-hidden">
-      <header className="bg-surface-muted border-b border-border px-4 py-3">
+    <section className="bg-white border border-border rounded-lg">
+      <header className="rounded-t-lg bg-surface-muted border-b border-border px-4 py-3">
         <h3 className="font-semibold text-bc-blue break-all">
           <ClientSubsystemLink clientId={clientId} />
         </h3>
@@ -1898,7 +1971,8 @@ export function ConnectionsPage({
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
+                <StatusLegend />
                 {groups.map((group) => (
                   <ClientGroupSection
                     key={group.clientId}

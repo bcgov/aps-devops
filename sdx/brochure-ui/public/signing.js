@@ -14,10 +14,11 @@ function selectSigningTab(dialog, name, focus = false) {
   dialog.querySelector("[data-signing-status]").textContent = "";
 }
 
+// Handle clicks before the design-system button consumes the press.
 document.addEventListener("click", async (event) => {
   const open = event.target.closest("[data-open-signing]");
   if (open) {
-    open.parentElement.querySelector("[data-signing-dialog]").showModal();
+    open.closest("article").querySelector("[data-signing-dialog]").showModal();
     return;
   }
   const dialog = event.target.closest("[data-signing-dialog]");
@@ -42,7 +43,7 @@ document.addEventListener("click", async (event) => {
     field.select();
     button.textContent = "Select and copy the CSR manually";
   }
-});
+}, true);
 
 document.addEventListener("keydown", (event) => {
   const tab = event.target.closest("[data-signing-tab]");

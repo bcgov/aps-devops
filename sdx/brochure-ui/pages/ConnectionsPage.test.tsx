@@ -165,3 +165,49 @@ Deno.test("failed revoke offers retry and confirmed activation recovery", () => 
     if (!html.includes(text)) throw new Error(`Missing recovery UI: ${text}`);
   }
 });
+
+Deno.test("readiness requires approval, activation, and provisioning", () => {
+  const render = (state: Partial<ConnectionRequest>) =>
+    renderToStaticMarkup(
+      <ConnectionCard
+        org="provider"
+        canApprove
+        conn={{
+          clientId: "MIN.CLIENT.APP",
+          serviceId: "API.v1",
+          isApproved: true,
+          isActive: true,
+          ...state,
+        }}
+      />,
+    );
+
+  const ready = render({
+    provisionerStatus: { status: "provisioned", message: "" },
+    proposedConfiguration: { requesterDetails: { scopes: ["api:read"] } },
+  });
+  if (!ready.includes("Ready</span>") ||
+    !ready.includes("Current access is still available while these changes await approval")) {
+    throw new Error("Expected ready status and continued access during review");
+  }
+
+  const pending = render({
+    isApproved: false,
+    isActive: false,
+    provisionerStatus: { status: "pending", message: "" },
+  });
+  if (!pending.includes("Initial request is awaiting approval") ||
+    pending.includes("Connection is inactive") ||
+    pending.includes("Provisioning is in progress")) {
+    throw new Error("Expected only the approval reason");
+  }
+
+  const failed = render({
+    isActive: false,
+    provisionerStatus: { status: "failed", message: "" },
+  });
+  if (!failed.includes("Connection is inactive") ||
+    !failed.includes("Provisioning failed")) {
+    throw new Error("Expected both independent reasons");
+  }
+});

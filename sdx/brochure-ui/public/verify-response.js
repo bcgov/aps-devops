@@ -1,4 +1,5 @@
 (() => {
+  // Handle clicks before the design-system button consumes the press.
   document.addEventListener("click", (event) => {
     const host = event.target.closest("[data-response-verifier]");
     if (!host) return;
@@ -7,7 +8,7 @@
       dialog.showModal();
     }
     if (event.target.closest("[data-close-response-verifier]")) dialog.close();
-  });
+  }, true);
   document.addEventListener("input", (event) => {
     const form = event.target.closest("[data-response-verifier-form]");
     if (!form) return;

@@ -326,13 +326,18 @@ function SourceSection({ source }: { source: JwksData }) {
 
   return (
     <details
-      open
       data-env-item
       data-env={source.environment ?? envAttr(source.url)}
       className="group mb-6 border-2 border-bc-blue rounded-lg overflow-hidden bg-white shadow-sm"
     >
-      <summary className="cursor-pointer list-none bg-bc-blue text-ink-invert hover:bg-bc-blue-pressed transition-colors">
+      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-bc-blue text-ink-invert hover:bg-bc-blue-pressed transition-colors">
         <div className="px-5 py-4 flex flex-wrap items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="inline-flex leading-none text-ink-invert-secondary text-lg group-open:rotate-90 transition-transform shrink-0"
+          >
+            ›
+          </span>
           <span className="text-xs font-bold uppercase tracking-wider text-bc-gold shrink-0">
             JWKS source
           </span>
@@ -343,12 +348,6 @@ function SourceSection({ source }: { source: JwksData }) {
             {hasError
               ? "load failed"
               : `${source.keys.length} key${source.keys.length !== 1 ? "s" : ""} · ${totalCerts} cert${totalCerts !== 1 ? "s" : ""}`}
-          </span>
-          <span
-            aria-hidden="true"
-            className="text-ink-invert-secondary text-lg group-open:rotate-90 transition-transform shrink-0"
-          >
-            ›
           </span>
         </div>
         <div className="h-1 bg-bc-gold" />

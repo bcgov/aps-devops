@@ -1,3 +1,4 @@
+import { Btn } from "../components/Btn.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
@@ -45,6 +46,10 @@ function RuntimeGroupCard({
   const hosted = Array.isArray(group.hostedOrganizations)
     ? group.hostedOrganizations
     : [];
+  const signingConfigured = signing?.[`${group.name}:${group.environment}`];
+  const signingAction = signingConfigured
+    ? "Renew signing certificate"
+    : "Set up organization signing";
   return (
     <article
       data-env-item
@@ -113,48 +118,41 @@ function RuntimeGroupCard({
         )}
       </dl>
       {org && group.environment && (
-        <div className="border-t pt-3 text-sm space-y-2">
-          <p>
-            Organization signing:{" "}
-            <strong>
-              {signing?.[`${group.name}:${group.environment}`] === true
-                ? "Configured"
-                : signing?.[`${group.name}:${group.environment}`] === false
-                ? "Not configured"
-                : "Status unavailable"}
-            </strong>
-          </p>
-          <p className="text-xs text-gray-500">
-            Each edge runtime has its own certificate in the organization’s{" "}
-            {group.environment} signing key set.
-          </p>
-          <button
-            type="button"
-            data-open-signing
-            className="rounded bg-[#003366] text-white px-3 py-2"
-          >
-            {signing?.[`${group.name}:${group.environment}`]
-              ? "Renew"
-              : "Setup"}
-          </button>
+        <div className="border-t border-border pt-4 space-y-4">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-ink">Organization signing</h4>
+              <p className="text-sm text-ink-secondary">
+                {signingConfigured === true
+                  ? "Configured"
+                  : signingConfigured === false
+                  ? "Not configured"
+                  : "Status unavailable"}
+              </p>
+              <p className="text-xs text-ink-secondary">
+                Each edge runtime has its own certificate in the organization’s{" "}
+                {group.environment} signing key set.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Btn size="small" data={{ "open-signing": "" }}>
+                {signingAction}
+              </Btn>
+            </div>
+          </div>
           <dialog
             data-signing-dialog
-            aria-label="Setup Signing Key"
+            aria-label={signingAction}
             className="rounded-lg p-0 w-full max-w-2xl backdrop:bg-black/40"
           >
             <div className="p-6 space-y-4">
               <header className="flex items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold text-[#003366]">
-                  Setup Signing Key
+                  {signingAction}
                 </h2>
-                <button
-                  type="button"
-                  data-close-signing
-                  aria-label="Close dialog"
-                  className="text-gray-600 px-2 py-1"
-                >
+                <Btn size="small" data={{ "close-signing": "" }} ariaLabel="Close dialog" variant="secondary">
                   ✕
-                </button>
+                </Btn>
               </header>
               <p className="text-sm text-gray-600">
                 {group.name} · {group.environment}
@@ -213,9 +211,9 @@ function RuntimeGroupCard({
                     value={group.environment}
                   />
                   <input type="hidden" name="operation" value="csr" />
-                  <button className="rounded bg-[#003366] text-white px-3 py-2">
+                  <Btn size="small" type="submit">
                     Create a CSR
-                  </button>
+                  </Btn>
                 </form>
                 <div data-csr-result hidden>
                   <label className="block text-sm">
@@ -226,13 +224,9 @@ function RuntimeGroupCard({
                       rows={10}
                     />
                   </label>
-                  <button
-                    type="button"
-                    data-copy-csr
-                    className="mt-2 text-blue-800 underline"
-                  >
+                  <Btn size="small" data={{ "copy-csr": "" }} variant="secondary" className="mt-2">
                     Copy CSR to clipboard
-                  </button>
+                  </Btn>
                 </div>
               </section>
               <section
@@ -271,12 +265,11 @@ function RuntimeGroupCard({
                       placeholder="-----BEGIN CERTIFICATE-----"
                     />
                   </label>
-                  <button
-                    data-review-install
-                    className="rounded bg-[#003366] text-white px-3 py-2"
-                  >
-                    Install
-                  </button>
+                  <div data-review-install>
+                    <Btn size="small" type="submit">
+                      Install
+                    </Btn>
+                  </div>
                   <div
                     data-install-review
                     hidden
@@ -288,9 +281,9 @@ function RuntimeGroupCard({
                       <input type="checkbox" name="confirmed" />{" "}
                       I confirm this change to the environment signing key set.
                     </label>
-                    <button className="rounded bg-[#003366] text-white px-3 py-2">
+                    <Btn size="small" type="submit">
                       Confirm installation
-                    </button>
+                    </Btn>
                   </div>
                 </form>
               </section>
@@ -301,17 +294,13 @@ function RuntimeGroupCard({
                 className="text-sm"
               />
               <footer className="flex justify-end border-t pt-3">
-                <button
-                  type="button"
-                  data-close-signing
-                  className="rounded border px-4 py-2"
-                >
+                <Btn size="small" data={{ "close-signing": "" }} variant="secondary">
                   Close
-                </button>
+                </Btn>
               </footer>
             </div>
           </dialog>
-          {signing?.[`${group.name}:${group.environment}`] === true && (
+          {signingConfigured === true && (
             <form
               method="post"
               action="/runtimes/signing"
@@ -329,13 +318,10 @@ function RuntimeGroupCard({
                 Remove organization signing for this runtime group and
                 environment
               </label>
-              <button
-                className="text-red-800 underline"
-                name="operation"
-                value="remove"
-              >
+              <input type="hidden" name="operation" value="remove" />
+              <Btn size="small" type="submit" variant="secondary" danger>
                 Remove
-              </button>
+              </Btn>
             </form>
           )}
         </div>

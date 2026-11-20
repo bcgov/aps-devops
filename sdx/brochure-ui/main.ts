@@ -24,6 +24,7 @@ import { SubsystemDetailPage } from "./pages/SubsystemDetailPage.tsx";
 import { ActivityConsolePage } from "./pages/ActivityConsolePage.tsx";
 import { LogsPage } from "./pages/LogsPage.tsx";
 import { MetricsPage } from "./pages/MetricsPage.tsx";
+import { CommonSsoPage } from "./pages/CommonSsoPage.tsx";
 import { ConsolePage } from "./pages/ConsolePage.tsx";
 import { ScopesPage } from "./pages/ScopesPage.tsx";
 import { RuntimesPage } from "./pages/RuntimesPage.tsx";
@@ -820,6 +821,14 @@ Deno.serve({ port: PORT }, async (req: Request) => {
 
   if (path === "/runtimes/signing") {
     return await handleRuntimes(req, url, user);
+  }
+
+  if (path === "/console/common-sso") {
+    const gate = requireAuth(req, user);
+    if (gate) return gate;
+    return htmlResponse(
+      React.createElement(CommonSsoPage, { currentPath: path, user: user! }),
+    );
   }
 
   if (path === "/runtimes") {

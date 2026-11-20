@@ -8,6 +8,7 @@ import { AppFooter } from "./AppFooter.tsx";
 import { IslandLink } from "./IslandLink.tsx";
 import { IslandButton } from "./IslandButton.tsx";
 import { IslandTagGroup } from "./IslandTagGroup.tsx";
+import { IslandOverflowActions } from "./IslandOverflowActions.tsx";
 
 // deno-lint-ignore no-explicit-any
 export const ISLAND_REGISTRY: Record<string, ComponentType<any>> = {
@@ -16,4 +17,5 @@ export const ISLAND_REGISTRY: Record<string, ComponentType<any>> = {
   IslandLink,
   IslandButton,
   IslandTagGroup,
+  IslandOverflowActions,
 };

@@ -1,3 +1,4 @@
+import { Btn } from "./Btn.tsx";
 const verifyResponseScript = await Deno.readTextFile(
   new URL("../public/verify-response.js", import.meta.url),
 );
@@ -7,13 +8,9 @@ export function VerifyResponseDialog(
 ) {
   return (
     <div data-response-verifier>
-      <button
-        type="button"
-        data-open-response-verifier
-        className="rounded border border-[#003366] bg-white text-[#003366] hover:bg-blue-50 px-3 py-2 text-sm font-semibold"
-      >
+      <Btn size="small" data={{ "open-response-verifier": "" }} variant="secondary">
         Verify Response
-      </button>
+      </Btn>
       <dialog
         data-response-verifier-dialog
         aria-label="Verify Response"
@@ -24,13 +21,9 @@ export function VerifyResponseDialog(
             <h2 className="text-xl font-semibold text-[#003366]">
               Verify Response
             </h2>
-            <button
-              type="button"
-              data-close-response-verifier
-              aria-label="Close verification dialog"
-            >
+            <Btn size="small" data={{ "close-response-verifier": "" }} ariaLabel="Close verification dialog" variant="secondary">
               ✕
-            </button>
+            </Btn>
           </header>
           <p className="text-sm text-gray-600">
             Verify the provider’s response edge token, organization signature
@@ -71,9 +64,9 @@ export function VerifyResponseDialog(
                 spellCheck={false}
               />
             </label>
-            <button className="rounded bg-[#003366] text-white px-4 py-2">
+            <Btn size="small" type="submit">
               Check
-            </button>
+            </Btn>
           </form>
           <p
             data-response-verifier-result
@@ -83,13 +76,9 @@ export function VerifyResponseDialog(
           />
           <ul data-response-verifier-checks className="space-y-2 text-sm" />
           <footer className="flex justify-end border-t pt-3">
-            <button
-              type="button"
-              data-close-response-verifier
-              className="rounded border px-4 py-2"
-            >
+            <Btn size="small" data={{ "close-response-verifier": "" }} variant="secondary">
               Close
-            </button>
+            </Btn>
           </footer>
         </div>
       </dialog>
