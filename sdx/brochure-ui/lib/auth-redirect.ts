@@ -7,6 +7,7 @@ export const CONNECTION_ACTION_PATHS: ReadonlySet<string> = new Set([
   "/connections/edit",
   "/connections/approve",
   "/connections/reject",
+  "/connections/lifecycle",
   "/connections/revoke",
   "/connections/delete",
 ]);
