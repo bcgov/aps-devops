@@ -187,6 +187,10 @@ export function TimeSeriesChart({
 
   window.__sdxCharts=window.__sdxCharts||{};
   window.__sdxCharts[ID]={
+    destroy:function(){
+      if(chart)chart.destroy();
+      delete window.__sdxCharts[ID];
+    },
     refresh:function(url,options){
       return fetch(url,options).then(function(r){if(!r.ok)throw new Error("Metrics unavailable");return r.json();}).then(function(payload){
         var series=(payload&&payload.data&&payload.data.result)||[];

@@ -58,12 +58,9 @@ export async function runQuery(name: string, dateRange = "1h"): Promise<any> {
   return await queryRange(q.query, rangeSeconds, getStep(rangeSeconds));
 }
 
-export async function connectionTraffic(clientId: string, serviceId: string) {
-  const selector = `consumer=${JSON.stringify(clientId)},service=${
-    JSON.stringify(serviceId)
-  }`;
+export async function connectionTraffic() {
   const result = await queryRange(
-    `sum(increase(konglog_service_consumer_counter{${selector}}[1d]))`,
+    "sum(increase(konglog_service_consumer_counter[1d]))",
     29 * 86400,
     "86400",
   );

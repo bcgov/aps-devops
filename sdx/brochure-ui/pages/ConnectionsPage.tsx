@@ -1,6 +1,4 @@
-import { connectionPrivacyZonesUrl } from "../lib/environments.ts";
 import { CHART_JS_URL } from "../components/custom/TimeSeriesChart.tsx";
-import { ConnectionAgreement } from "../components/ConnectionAgreement.tsx";
 import { OverflowActions } from "../components/OverflowActions.tsx";
 import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
@@ -14,7 +12,6 @@ import type {
   ConnectionGatewayPattern,
   ConnectionRequest,
   Organization,
-  ResourceScope,
   Service,
   SiteConfig,
   Subsystem,
@@ -26,8 +23,6 @@ interface ConnectionsPageProps {
   selectedOrg: Organization | null;
   connections: ConnectionRequest[];
   allSubsystems: Subsystem[];
-  resourceScopes: ResourceScope[];
-  privacyZoneNamesByUrl: ReadonlyMap<string, ReadonlyMap<string, string>>;
   services: Service[];
   config: SiteConfig;
   currentPath: string;
@@ -187,6 +182,12 @@ const DIALOG_SCRIPT = `
       if (menu.matches('[data-status-popover]') ? !menu.contains(e.target) :
         !menu.querySelector('summary').contains(e.target)) menu.open = false;
     });
+    var agreement = e.target.closest && e.target.closest('[data-agreement-url]');
+    if (agreement) {
+      e.preventDefault();
+      openConnectionAgreement(agreement.getAttribute('data-agreement-url'));
+      return;
+    }
     var o = e.target.closest && e.target.closest('[data-dialog-open]');
     if (o) {
       e.preventDefault();
@@ -194,7 +195,6 @@ const DIALOG_SCRIPT = `
       if (d && !d.open) {
         if (typeof d.showModal === 'function') d.showModal();
         else d.setAttribute('open','');
-        startAgreementTraffic(d);
       }
       return;
     }
@@ -1174,12 +1174,10 @@ export function ConnectionCard({
   conn,
   org,
   canApprove,
-  agreementCatalog,
 }: {
   conn: ConnectionRequest;
   org: string;
   canApprove: boolean;
-  agreementCatalog?: Parameters<typeof ConnectionAgreement>[0]["catalog"];
 }) {
   const proposal = conn.proposedConfiguration;
   const hasProposal = Boolean(proposal && Object.keys(proposal).length > 0);
@@ -1201,7 +1199,12 @@ export function ConnectionCard({
   const hasId = Boolean(conn.id);
   const slug = (conn.clientId + "__" + conn.serviceId)
     .replace(/[^a-zA-Z0-9_-]/g, "_");
-  const agreementId = `isa-${slug}`;
+  const agreementQuery = new URLSearchParams({
+    org,
+    clientId: conn.clientId,
+    serviceId: conn.serviceId,
+  });
+  if (conn.id) agreementQuery.set("id", conn.id);
   const reviewId = `review-${slug}`;
   const confirmId = `confirm-${slug}`;
   const abandonId = `abandon-revoke-${slug}`;
@@ -1335,7 +1338,7 @@ export function ConnectionCard({
     },
     {
       label: "ISA",
-      control: <Btn size="small" variant="secondary" data={{ "dialog-open": agreementId }}>ISA</Btn>,
+      control: <Btn size="small" variant="secondary" data={{ "agreement-url": `/api/connections/agreement?${agreementQuery}` }}>ISA</Btn>,
     },
   ].filter((action) => action !== false);
   return (
@@ -1375,8 +1378,6 @@ export function ConnectionCard({
           <OverflowActions id={`actions-${editId}`} actions={additionalActions} />
         </div>
       </div>
-
-      <ConnectionAgreement id={agreementId} org={org} connection={conn} catalog={agreementCatalog} />
 
       {hasDetails && (
         <details className="border-t border-border">
@@ -1795,18 +1796,10 @@ function ClientGroupSection({
   group,
   org,
   ownedServiceIds,
-  services,
-  subsystems,
-  scopeCatalog,
-  privacyZoneNamesByUrl,
 }: {
   group: ClientGroup;
   org: string;
   ownedServiceIds: Set<string>;
-  services: Service[];
-  subsystems: ReadonlyMap<string, Subsystem>;
-  scopeCatalog: ReadonlyMap<string, ResourceScope>;
-  privacyZoneNamesByUrl: ConnectionsPageProps["privacyZoneNamesByUrl"];
 }) {
   const { clientId, subsystem, items } = group;
   return (
@@ -1822,30 +1815,14 @@ function ClientGroupSection({
         )}
       </header>
       <div className="p-4 space-y-3">
-        {items.map((conn) => {
-          const service = services.find((item) =>
-            item.name === conn.serviceId && item.environment === conn.environment
-          ) ?? services.find((item) => item.name === conn.serviceId);
-          const providerId = service?.subsystem.clientId ?? conn.serviceResources?.subsystemId;
-          return (
-            <ConnectionCard
-              key={`${conn.clientId}:${conn.serviceId}`}
-              conn={conn}
-              org={org}
-              canApprove={ownedServiceIds.has(conn.serviceId)}
-              agreementCatalog={{
-                client: subsystem ?? undefined,
-                provider: providerId ? subsystems.get(providerId) : undefined,
-                service,
-                scopes: scopeCatalog,
-                privacyZoneNames: privacyZoneNamesByUrl.get(connectionPrivacyZonesUrl(
-                  conn.serviceId,
-                  conn.environment ?? service?.environment,
-                )),
-              }}
-            />
-          );
-        })}
+        {items.map((conn) => (
+          <ConnectionCard
+            key={`${conn.clientId}:${conn.serviceId}`}
+            conn={conn}
+            org={org}
+            canApprove={ownedServiceIds.has(conn.serviceId)}
+          />
+        ))}
       </div>
     </section>
   );
@@ -1856,8 +1833,6 @@ export function ConnectionsPage({
   selectedOrg,
   connections,
   allSubsystems,
-  resourceScopes,
-  privacyZoneNamesByUrl,
   services,
   config,
   currentPath,
@@ -1876,7 +1851,6 @@ export function ConnectionsPage({
           .map((s) => s.name)
       : [],
   );
-  const scopeCatalog = new Map(resourceScopes.map((scope) => [scope.name, scope]));
   const r1RequestUrl = config.connections?.r1RequestUrl;
 
   // Group every connection by its client (always), regardless of whether the
@@ -1917,9 +1891,6 @@ export function ConnectionsPage({
       currentPath={currentPath}
       user={user}
     >
-      {connections.some((connection) => connection.isApproved) && (
-        <script src={CHART_JS_URL} />
-      )}
       <style
         dangerouslySetInnerHTML={{ __html: DIALOG_STYLE }}
       />
@@ -2032,10 +2003,6 @@ export function ConnectionsPage({
                     group={group}
                     org={selectedOrg.name}
                     ownedServiceIds={ownedServiceIds}
-                    services={services}
-                    subsystems={subByClientId}
-                    scopeCatalog={scopeCatalog}
-                    privacyZoneNamesByUrl={privacyZoneNamesByUrl}
                   />
                 ))}
               </div>
@@ -2044,6 +2011,24 @@ export function ConnectionsPage({
           </>
         )}
       </div>
+
+      <dialog
+        id="connection-agreement"
+        aria-labelledby="connection-agreement-title"
+        className="sdx-dialog sdx-dialog-wide"
+        data-chart-src={CHART_JS_URL}
+      >
+        <header className="border-b border-border px-5 py-4">
+          <h2 id="connection-agreement-title" className="text-lg font-bold text-bc-blue">
+            Information Sharing Agreement
+          </h2>
+          <p data-agreement-subtitle className="mt-1 break-words text-sm text-ink-secondary" hidden />
+        </header>
+        <div data-agreement-content />
+        <footer className="flex justify-end border-t border-border px-5 py-3">
+          <Btn variant="secondary" data={{ "dialog-close": "" }}>Close</Btn>
+        </footer>
+      </dialog>
 
       <script
         dangerouslySetInnerHTML={{ __html: AGREEMENT_TRAFFIC_SCRIPT + DIALOG_SCRIPT }}

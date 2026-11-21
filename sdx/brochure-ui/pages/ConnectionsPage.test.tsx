@@ -1,3 +1,4 @@
+import { ConnectionAgreement } from "../components/ConnectionAgreement.tsx";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   ClientSubsystemLink,
@@ -87,6 +88,9 @@ Deno.test("connection card uses backend lifecycle actions and has no active chec
   );
   if (!html.includes(">Deactivate</button>") || !html.includes(">Revoke access</button>")) {
     throw new Error("Expected explicit Deactivate and Revoke actions");
+  }
+  if (!html.includes("data-agreement-url=") || html.includes('id="isa-')) {
+    throw new Error("Connection row should load its ISA on demand");
   }
   if (html.includes("data-active-toggle")) {
     throw new Error("Customize must not expose lifecycle state as a checkbox");
@@ -214,10 +218,10 @@ Deno.test("readiness requires approval, activation, and provisioning", () => {
 
 Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
   const html = renderToStaticMarkup(
-    <ConnectionCard
+    <ConnectionAgreement
       org="provider"
-      canApprove={false}
-      conn={{
+      id="isa-test"
+      connection={{
         clientId: "MIN.CLIENT.APP",
         serviceId: "API.v1",
         isApproved: true,
@@ -230,7 +234,7 @@ Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
         },
         proposedConfiguration: { requesterDetails: { scopes: ["api:write"] } },
       }}
-      agreementCatalog={{
+      catalog={{
         client: {
           clientId: "MIN.CLIENT.APP",
           name: "Client App",

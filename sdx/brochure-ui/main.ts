@@ -1,3 +1,4 @@
+import { ConnectionAgreement } from "./components/ConnectionAgreement.tsx";
 import { verifyOrganizationResponse } from "./lib/response-verification.ts";
 import { keysForKeyset } from "./lib/keysets.ts";
 import { certificatePayload, certificatesWithoutRuntime, fetchSigningKeyset, planCertificateInstall } from "./lib/org-signing-keyset.ts";
@@ -152,10 +153,12 @@ async function loadScopes(): Promise<ResourceScope[]> {
 // to the summary already in hand.
 async function fetchSubsystemDetail(
   clientId: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown> | null> {
   try {
     const detailRes = await fetch(
       `${SUBSYSTEMS_API}/${encodeURIComponent(clientId)}?includeAccess=true`,
+      { signal },
     );
     if (detailRes.ok) return await detailRes.json();
   } catch (e) {
@@ -1089,6 +1092,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     );
   }
 
+  if (path === "/api/connections/agreement" && req.method === "GET") {
+    return await handleConnectionAgreement(url, user);
+  }
+
   if (path === "/api/connections/traffic" && req.method === "GET") {
     const headers = { "cache-control": "no-store" };
     if (!user?.accessToken) {
@@ -1107,7 +1114,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       )) {
         return Response.json({ error: "Traffic is available for approved connections." }, { status: 404, headers });
       }
-      return Response.json(await connectionTraffic(clientId, serviceId), { headers });
+      return Response.json(await connectionTraffic(), { headers });
     } catch (error) {
       const status = error instanceof SdxApiError && [401, 403, 404].includes(error.status)
         ? error.status
@@ -1465,56 +1472,12 @@ async function handleConnections(
     }
   }
 
-  // The catalog summaries omit access. Fetch each party's details once,
-  // limiting concurrency for organizations with many connection requests.
-  const partyIds = new Set<string>();
-  const privacyZoneUrls = new Set<string>();
-  for (const connection of connections) {
-    partyIds.add(connection.clientId);
-    const service = services.find((item) =>
-      item.name === connection.serviceId &&
-      item.environment === connection.environment
-    ) ?? services.find((item) => item.name === connection.serviceId);
-    if (connection.requesterDetails?.client?.privacyZone ||
-      connection.requesterDetails?.service?.privacyZone) {
-      privacyZoneUrls.add(connectionPrivacyZonesUrl(
-        connection.serviceId,
-        connection.environment ?? service?.environment,
-      ));
-    }
-    const providerId = service?.subsystem.clientId ??
-      connection.serviceResources?.subsystemId;
-    if (providerId) partyIds.add(providerId);
-  }
-
-  const privacyZoneDirectories = Promise.all([...privacyZoneUrls].map(async (url) =>
-    [url, await loadPrivacyZoneNames(url)] as const
-  ));
-
-  const parties = subsystems.filter((subsystem) =>
-    partyIds.has(subsystem.clientId) && subsystem.access === undefined
-  );
-  const accessByClientId = new Map<string, NonNullable<Subsystem["access"]>>();
-  for (let offset = 0; offset < parties.length; offset += 8) {
-    await Promise.all(parties.slice(offset, offset + 8).map(async (party) => {
-      const detail = await fetchSubsystemDetail(party.clientId);
-      if (Array.isArray(detail?.access)) {
-        accessByClientId.set(party.clientId, detail.access);
-      }
-    }));
-  }
-
   return htmlResponse(
     React.createElement(ConnectionsPage, {
       organizations,
       selectedOrg,
       connections,
-      allSubsystems: subsystems.map((subsystem) => {
-        const access = accessByClientId.get(subsystem.clientId);
-        return access ? { ...subsystem, access } : subsystem;
-      }),
-      resourceScopes,
-      privacyZoneNamesByUrl: new Map(await privacyZoneDirectories),
+      allSubsystems: subsystems,
       services,
       config,
       currentPath: "/connections",
@@ -1523,6 +1486,78 @@ async function handleConnections(
       error,
     }),
   );
+}
+
+async function handleConnectionAgreement(
+  url: URL,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<Response> {
+  const headers = { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" };
+  if (!user?.accessToken) return new Response("Sign in to view this agreement.", { status: 401, headers });
+
+  const org = url.searchParams.get("org");
+  const clientId = url.searchParams.get("clientId");
+  const serviceId = url.searchParams.get("serviceId");
+  const id = url.searchParams.get("id");
+  if (!org || !clientId || !serviceId) {
+    return new Response("Missing connection identifiers.", { status: 400, headers });
+  }
+
+  try {
+    const connections = await listConnections(org, {
+      accessToken: user.accessToken,
+      signal: AbortSignal.timeout(10_000),
+    });
+    const connection = connections.find((conn) =>
+      conn.clientId === clientId && conn.serviceId === serviceId &&
+      (!id || conn.id === id)
+    );
+    if (!connection) return new Response("Connection request unavailable.", { status: 404, headers });
+
+    const service = services.find((item) =>
+      item.name === serviceId && item.environment === connection.environment
+    ) ?? services.find((item) => item.name === serviceId);
+    const providerId = service?.subsystem.clientId ?? connection.serviceResources?.subsystemId;
+    const partyDetails = new Map<string, Promise<Subsystem | undefined>>();
+    function loadParty(partyId?: string): Promise<Subsystem | undefined> {
+      if (!partyId) return Promise.resolve(undefined);
+      const existing = partyDetails.get(partyId);
+      if (existing) return existing;
+      const pending = (async () => {
+        const summary = subsystems.find((item) => item.clientId === partyId);
+        if (!summary || summary.access !== undefined) return summary;
+        const detail = await fetchSubsystemDetail(partyId, AbortSignal.timeout(5000));
+        return Array.isArray(detail?.access) ? { ...summary, access: detail.access } : summary;
+      })();
+      partyDetails.set(partyId, pending);
+      return pending;
+    }
+
+    const zonesUrl = connectionPrivacyZonesUrl(serviceId, connection.environment ?? service?.environment);
+    const [client, provider, privacyZoneNames] = await Promise.all([
+      loadParty(clientId),
+      loadParty(providerId),
+      connection.requesterDetails?.client?.privacyZone || connection.requesterDetails?.service?.privacyZone
+        ? loadPrivacyZoneNames(zonesUrl)
+        : undefined,
+    ]);
+
+    const html = renderToStaticMarkup(React.createElement(ConnectionAgreement, {
+      id: "connection-agreement",
+      org,
+      connection,
+      catalog: { client, provider, service, privacyZoneNames,
+        scopes: new Map(resourceScopes.map((scope) => [scope.name, scope])) },
+    }));
+    return new Response(html, {
+      headers: { ...headers, "content-type": "text/html; charset=utf-8" },
+    });
+  } catch (error) {
+    const status = error instanceof SdxApiError && [401, 403, 404].includes(error.status)
+      ? error.status
+      : 502;
+    return new Response("Could not load this agreement.", { status, headers });
+  }
 }
 
 async function handleConnectionsEdit(

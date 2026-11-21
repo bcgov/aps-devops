@@ -130,7 +130,10 @@ export function ConnectionAgreement({
           </p>
         )}
       </header>
-      <div className="max-h-[65vh] space-y-5 overflow-auto px-5 py-4 text-sm">
+      <div
+        data-agreement-body
+        className="max-h-[65vh] space-y-5 overflow-auto px-5 py-4 text-sm"
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           {parties.map((
             {
@@ -231,7 +234,7 @@ export function ConnectionAgreement({
               <>
                 <TimeSeriesChart
                   id={`${id}-traffic`}
-                  title="Connection traffic · Last 30 days"
+                  title="All traffic · Last 30 days"
                   series={[]}
                   codeField="status"
                   dailyCounts
@@ -246,7 +249,7 @@ export function ConnectionAgreement({
             : (
               <>
                 <h3 className="mb-2 font-semibold text-bc-blue">
-                  Connection traffic · Last 30 days
+                  All traffic · Last 30 days
                 </h3>
                 <p className="text-ink-secondary">
                   Traffic is available for approved connections.
