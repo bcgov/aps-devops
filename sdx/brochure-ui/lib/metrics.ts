@@ -49,27 +49,48 @@ export class MetricsQueryNotFoundError extends Error {
   }
 }
 
+function metricsQuery(name: string): string {
+  const query = QUERY_INDEX.get(name);
+  if (!query) throw new MetricsQueryNotFoundError(name);
+  return query.query;
+}
+
 // deno-lint-ignore no-explicit-any
 export async function runQuery(name: string, dateRange = "1h"): Promise<any> {
-  const q = QUERY_INDEX.get(name);
-  if (!q) throw new MetricsQueryNotFoundError(name);
-
   const rangeSeconds = parseRangeSeconds(dateRange);
-  return await queryRange(q.query, rangeSeconds, getStep(rangeSeconds));
+  return await queryRange(
+    metricsQuery(name),
+    rangeSeconds,
+    getStep(rangeSeconds),
+  );
 }
 
 export async function connectionTraffic() {
+  const daySeconds = 86400;
+  const days = 30;
+  const end = Math.floor(Date.now() / 1000);
   const result = await queryRange(
-    "sum(increase(konglog_service_consumer_counter[1d]))",
-    29 * 86400,
-    "86400",
+    metricsQuery("isa_traffic"),
+    (days - 1) * daySeconds,
+    String(daySeconds),
+    end,
   );
   if (result.status !== "success") throw new Error("Traffic query failed");
-  return result;
+  return {
+    ...result,
+    dailyTimestamps: Array.from(
+      { length: days },
+      (_, index) => end - (days - 1 - index) * daySeconds,
+    ),
+  };
 }
 
-async function queryRange(query: string, rangeSeconds: number, step: string) {
-  const now = Math.floor(Date.now() / 1000);
+async function queryRange(
+  query: string,
+  rangeSeconds: number,
+  step: string,
+  now = Math.floor(Date.now() / 1000),
+) {
   const start = now - rangeSeconds;
   const promUrl = new URL(`${PROMETHEUS_URL}/api/v1/query_range`);
   promUrl.searchParams.set("query", query);

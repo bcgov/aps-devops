@@ -122,8 +122,20 @@ function publicBase(req: Request): URL {
   const proto = req.headers.get("x-forwarded-proto");
   const host = req.headers.get("x-forwarded-host");
   if (proto) url.protocol = proto.split(",")[0].trim() + ":";
-  if (host) url.host = host.split(",")[0].trim();
+  if (host) {
+    url.port = "";
+    url.host = host.split(",")[0].trim();
+  }
   return url;
+}
+
+export function hasSameRequestOrigin(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  const site = req.headers.get("sec-fetch-site");
+  if (!origin || (site && site !== "same-origin")) return false;
+
+  const external = publicBase(req);
+  return origin === external.origin;
 }
 
 function cookieFlags(req: Request): string {

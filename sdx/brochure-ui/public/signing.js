@@ -110,6 +110,13 @@ document.addEventListener("submit", async (event) => {
         "Your session has expired. Reload the page and sign in again.",
       );
     }
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error(
+        (await response.text()).trim() === "Invalid origin"
+          ? "Invalid request origin. Open the Member Console directly and try again."
+          : `Signing request returned an unexpected response (HTTP ${response.status}).`,
+      );
+    }
     const result = await response.json();
     if (!response.ok || result.error) {
       throw new Error(result.error || "Request failed");

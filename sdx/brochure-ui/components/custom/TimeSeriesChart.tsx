@@ -100,20 +100,20 @@ export function TimeSeriesChart({
   var COLORS=['#013366','#E05B00','#1a6e3c','#6B21A8','#0369A1','#9F1239','#0F766E','#92400E'];
   var CODE_STYLES={'2':'bg-support-success-bg text-support-success-border','3':'bg-support-info-bg text-support-info-border','4':'bg-support-danger-bg text-support-danger-border','5':'bg-support-warning-bg text-ink'};
 
-  function fmtDay(ts){return new Date(ts*1000).toLocaleDateString('en-CA',{month:'short',day:'numeric'});}
+  function fmtDay(ts){return new Date(ts*1000).toLocaleDateString('en-CA',{month:'short',day:'numeric',timeZone:'UTC'});}
   function fmtTime(ts){var d=new Date(ts*1000);return d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
   function fmtDateTime(ts){var d=new Date(ts*1000);return d.toLocaleString('en-CA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});}
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-  function buildData(series){
-    var allTs=Array.from(new Set(series.flatMap(function(s){return s.values.map(function(v){return Number(v[0]);});}))).sort(function(a,b){return a-b;});
+  function buildData(series,dailyTimestamps){
+    var allTs=(DAILY&&dailyTimestamps)||Array.from(new Set(series.flatMap(function(s){return s.values.map(function(v){return Number(v[0]);});}))).sort(function(a,b){return a-b;});
     var labels=allTs.map(DAILY?fmtDay:fmtTime);
     var datasets=series.map(function(s,i){
       var tsMap=new Map(s.values.map(function(v){return [Number(v[0]),parseFloat(v[1])];}));
       return {
         label:DAILY?'Requests':s.metric.service+' · '+(s.metric[CODE]||''),
         backgroundColor:COLORS[i%COLORS.length],
-        data:allTs.map(function(ts){return tsMap.has(ts)?tsMap.get(ts):null;}),
+        data:allTs.map(function(ts){return Number.isFinite(tsMap.get(ts))?tsMap.get(ts):null;}),
         borderColor:COLORS[i%COLORS.length],
         borderWidth:2,pointRadius:3,pointHoverRadius:6,tension:0.3,spanGaps:true,fill:false
       };
@@ -151,8 +151,8 @@ export function TimeSeriesChart({
     el.textContent=allTs.length>0?fmt(allTs[0])+' – '+fmt(allTs[allTs.length-1]):'No data';
   }
 
-  function applySeries(series){
-    var built=buildData(series);
+  function applySeries(series,dailyTimestamps){
+    var built=buildData(series,dailyTimestamps);
     chart.data.labels=built.labels;
     chart.data.datasets=built.datasets;
     chart.update();
@@ -196,7 +196,7 @@ export function TimeSeriesChart({
         var series=(payload&&payload.data&&payload.data.result)||[];
         if(options&&options.signal&&options.signal.aborted)return null;
         init();
-        applySeries(series);
+        applySeries(series,payload.dailyTimestamps);
         return series;
       }).catch(function(){return null;});
     }

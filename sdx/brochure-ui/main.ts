@@ -49,6 +49,7 @@ import {
   authEnabled,
   completeLogin,
   getCurrentUser,
+  hasSameRequestOrigin,
   logout,
   startLogin,
 } from "./lib/auth.ts";
@@ -564,7 +565,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
 
   if (path === "/api/trust/verify-response") {
     if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-    if (req.headers.get("origin") !== url.origin) return new Response("Invalid origin", { status: 403 });
+    if (!hasSameRequestOrigin(req)) return new Response("Invalid origin", { status: 403 });
     try {
       const form = await req.formData();
       const org = organizations.find((entry) => entry.name === String(form.get("org")));
@@ -1208,7 +1209,12 @@ async function handleRuntimes(
 
   const isSigning = url.pathname === "/runtimes/signing";
   if (isSigning && req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (isSigning && req.headers.get("origin") !== url.origin) return new Response("Invalid origin", { status: 403 });
+  if (isSigning && !hasSameRequestOrigin(req)) {
+    const error = "Invalid request origin. Open the Member Console directly and try again.";
+    return req.headers.get("accept")?.includes("application/json")
+      ? Response.json({ error }, { status: 403 })
+      : new Response(error, { status: 403 });
+  }
   const form = isSigning ? await req.formData() : null;
   const orgName = String(form?.get("org") ?? url.searchParams.get("org") ?? "");
   const selectedOrg = organizations.find((o) => o.name === orgName) ?? null;

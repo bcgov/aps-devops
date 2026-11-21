@@ -101,10 +101,19 @@ function startAgreementTraffic(dialog) {
       cache: "no-store",
     });
     if (request.signal.aborted) return;
+    const reportedDays = new Set(
+      series?.flatMap(({ values }) =>
+        values.filter(([, value]) => Number.isFinite(Number(value))).map((
+          [day],
+        ) => day)
+      ),
+    ).size;
     status.textContent = series == null
       ? "Connection traffic is currently unavailable."
-      : series.length === 0
-      ? "No traffic data was recorded."
+      : reportedDays === 0
+      ? "No traffic samples were returned for this period."
+      : reportedDays < 30
+      ? `Traffic is available for ${reportedDays} of 30 days. Blank days have no reported data.`
       : "";
     if (dialog.open) timer = setTimeout(refresh, 60_000);
   }
