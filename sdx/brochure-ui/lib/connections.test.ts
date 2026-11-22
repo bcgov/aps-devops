@@ -1,4 +1,5 @@
 import {
+  deleteConnection,
   runConnectionLifecycle,
   setConnectionApproval,
 } from "./connections.ts";
@@ -61,6 +62,31 @@ Deno.test("lifecycle actions use the connection action endpoint", async () => {
         JSON.stringify({ action: "activate", confirmAbandonRevoke: true })
     ) {
       throw new Error("Lifecycle action payload was not forwarded");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+Deno.test("revoke uses the connection DELETE endpoint with an explicit action", async () => {
+  const originalFetch = globalThis.fetch;
+  let request: { url: string; method?: string } | undefined;
+  globalThis.fetch = async (input, init) => {
+    request = { url: String(input), method: init?.method };
+    return Response.json({ status: 200 });
+  };
+  try {
+    await deleteConnection("provider org", "connection/1", {
+      action: "revoke",
+    });
+    if (
+      !request?.url.endsWith(
+        "/organizations/provider%20org/connections/connection%2F1?action=revoke",
+      ) || request.method !== "DELETE"
+    ) {
+      throw new Error(
+        `Unexpected revoke request: ${JSON.stringify(request)}`,
+      );
     }
   } finally {
     globalThis.fetch = originalFetch;

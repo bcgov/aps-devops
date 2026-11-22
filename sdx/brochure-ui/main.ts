@@ -1864,6 +1864,7 @@ async function deleteConnectionAction(
   try {
     await deleteConnection(org, id, {
       accessToken: user!.accessToken,
+      ...(verb === "Revoked" ? { action: "revoke" as const } : {}),
     });
     return connectionsRedirect(
       req,
@@ -1891,7 +1892,6 @@ async function deleteConnectionAction(
 async function lifecycleConnectionAction(
   req: Request,
   user: Awaited<ReturnType<typeof getCurrentUser>>,
-  forcedAction?: "activate" | "deactivate" | "retry" | "revoke",
 ): Promise<Response> {
   const gate = requireAuth(req, user);
   if (gate) return gate;
@@ -1903,12 +1903,11 @@ async function lifecycleConnectionAction(
   const id = String(form.get("id") ?? "");
   const clientId = String(form.get("clientId") ?? "");
   const serviceId = String(form.get("serviceId") ?? "");
-  const action = forcedAction ?? (String(form.get("action") ?? "") as
+  const action = String(form.get("action") ?? "") as
     | "activate"
     | "deactivate"
-    | "retry"
-    | "revoke");
-  if (!org || !id || !["activate", "deactivate", "retry", "revoke"].includes(action)) {
+    | "retry";
+  if (!org || !id || !["activate", "deactivate", "retry"].includes(action)) {
     return connectionsRedirect(
       req,
       org,
@@ -1931,9 +1930,7 @@ async function lifecycleConnectionAction(
       ? "Activated"
       : action === "deactivate"
       ? "Deactivated"
-      : action === "retry"
-      ? "Retried"
-      : "Revoked";
+      : "Retried";
     return connectionsRedirect(
       req,
       org,
@@ -1959,7 +1956,7 @@ function handleConnectionsRevoke(
   req: Request,
   user: Awaited<ReturnType<typeof getCurrentUser>>,
 ): Promise<Response> {
-  return lifecycleConnectionAction(req, user, "revoke");
+  return deleteConnectionAction(req, user, "Revoked");
 }
 
 function handleConnectionsDelete(
