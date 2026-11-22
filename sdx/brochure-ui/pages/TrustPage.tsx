@@ -62,21 +62,19 @@ function CertCard({
   cert,
   index,
   total,
-  authority = false,
+  authorityLabel,
 }: {
   cert: CertInfo;
   index: number;
   total: number;
-  authority?: boolean;
+  authorityLabel?: string;
 }) {
   const badge = VALIDITY_BADGES[cert.validityState];
-  const role = authority
-    ? "Signing CA"
-    : index === 0
+  const role = authorityLabel ?? (index === 0
       ? "Leaf"
       : index === total - 1 && cert.isSelfSigned
         ? "Root"
-        : "Intermediate";
+        : "Intermediate");
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 bg-surface-muted border-b border-border flex flex-wrap items-center gap-2">
@@ -401,10 +399,10 @@ export function TrustPage({
   currentPath,
   user,
 }: TrustPageProps) {
-  const authorities = (config.environments ?? []).flatMap((environment) => {
-    const pem = environment.signing_root_ca_pem?.trim();
-    return pem ? [{ environment, certificates: parsePemCertificates(pem) }] : [];
-  });
+  const certificateSections = [
+    { title: "Certificate Authorities", field: "signing_root_ca_pem", empty: "No signing root certificates configured." },
+    { title: "Timestamp Authorities", field: "timestamp_authority_pem", empty: "No timestamp authority certificates configured." },
+  ] as const;
   const totalKeys = sources.reduce((n, s) => n + s.keys.length, 0);
   const totalCerts = sources.reduce(
     (n, s) => n + s.keys.reduce((m, k) => m + (k.certs?.length ?? 0), 0),
@@ -418,8 +416,8 @@ export function TrustPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <h1 className="text-3xl font-bold mb-3">Trust Services</h1>
           <p className="text-ink-invert-secondary max-w-2xl">
-            Authorized certificate authorities and public keyset registries used to verify
-            signatures on Secure Data Exchange tokens and messages.
+            Authorized certificate authorities, timestamp authorities, and public keyset registries used to verify
+            Secure Data Exchange participating identities and messages.
           </p>
         </div>
       </div>
@@ -433,30 +431,41 @@ export function TrustPage({
         </div>
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <h2 className="mb-4 text-2xl font-bold text-bc-blue">Certificate Authorities</h2>
-        {authorities.length === 0 ? (
-          <p className="text-ink-secondary">No signing root certificates configured.</p>
-        ) : (
-          <div className="space-y-5">
-            {authorities.map(({ environment, certificates }) => (
-              <div key={environment.id} data-env-item data-env={environment.id} className="space-y-2">
-                <h3 className="font-semibold text-bc-blue">{environment.label}</h3>
-                {certificates.length === 0 && (
-                  <p className="text-danger">The configured certificate could not be read.</p>
-                )}
-                {certificates.map((certificate, index) =>
-                  "error" in certificate ? (
-                    <p key={index} className="text-danger">The configured certificate could not be read.</p>
-                  ) : (
-                    <CertCard key={index} cert={certificate} index={index} total={certificates.length} authority />
-                  )
-                )}
+      {certificateSections.map(({ title, field, empty }) => {
+        const authorities = (config.environments ?? []).flatMap((environment) => {
+          const pem = environment[field]?.trim();
+          return pem ? [{ environment, certificates: parsePemCertificates(pem) }] : [];
+        });
+        return (
+          <section key={field} className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <h2 className="mb-4 text-2xl font-bold text-bc-blue">{title}</h2>
+            {authorities.length === 0 ? (
+              <p className="text-ink-secondary">{empty}</p>
+            ) : (
+              <div className="space-y-5">
+                {authorities.map(({ environment, certificates }) => (
+                  <div key={environment.id} data-env-item data-env={environment.id} className="space-y-2">
+                    <h3 className="font-semibold text-bc-blue">{environment.label}</h3>
+                    {certificates.length === 0 && (
+                      <p className="text-danger">The configured certificate could not be read.</p>
+                    )}
+                    {certificates.map((certificate, index) =>
+                      "error" in certificate ? (
+                        <p key={index} className="text-danger">The configured certificate could not be read.</p>
+                      ) : (
+                        <CertCard key={index} cert={certificate} index={index} total={certificates.length}
+                          authorityLabel={field === "signing_root_ca_pem"
+                            ? "Signing CA"
+                            : certificate.isCA ? "Timestamp CA" : "Timestamp signing certificate"} />
+                      )
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            )}
+          </section>
+        );
+      })}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <h2 className="mb-2 text-2xl font-bold text-bc-blue">Public Keyset Registries</h2>

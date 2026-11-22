@@ -1872,13 +1872,13 @@ interface ClientGroup {
 function ClientGroupSection({
   group,
   org,
-  ownedServiceIds,
+  ownsService,
   showActionRequired,
   open,
 }: {
   group: ClientGroup;
   org: string;
-  ownedServiceIds: Set<string>;
+  ownsService: (connection: ConnectionRequest) => boolean;
   showActionRequired: boolean;
   open: boolean;
 }) {
@@ -1939,7 +1939,7 @@ function ClientGroupSection({
             key={`${conn.clientId}:${conn.serviceId}`}
             conn={conn}
             org={org}
-            canApprove={ownedServiceIds.has(conn.serviceId)}
+            canApprove={ownsService(conn)}
           />
         ))}
       </div>
@@ -1961,17 +1961,6 @@ export function ConnectionsPage({
   flash,
   error,
 }: ConnectionsPageProps) {
-  const ownedServiceIds = new Set<string>(
-    selectedOrg
-      ? services
-          .filter(
-            (s) =>
-              s.subsystem.organization.name ===
-              selectedOrg.name,
-          )
-          .map((s) => s.name)
-      : [],
-  );
   const r1RequestUrl = config.connections?.r1RequestUrl ||
     (config.defaultEnvironment === "apsdev"
       ? "https://sso-requests-sandbox.apps.gold.devops.gov.bc.ca/"
@@ -1979,11 +1968,8 @@ export function ConnectionsPage({
 
   const subByClientId = new Map(allSubsystems.map((s) => [s.clientId, s]));
   const role = roleFilter === "services" ? "services" : "clients";
-  const visibleConnections = connections.filter((connection) => {
+  function ownsService(connection: ConnectionRequest): boolean {
     if (!selectedOrg) return false;
-    if (role === "services") {
-      return subByClientId.get(connection.clientId)?.organization.name === selectedOrg.name;
-    }
     const providerId = connection.serviceResources?.subsystemId;
     const provider = providerId ? subByClientId.get(providerId) : undefined;
     if (provider) return provider.organization.name === selectedOrg.name;
@@ -1991,7 +1977,15 @@ export function ConnectionsPage({
       item.name === connection.serviceId && item.environment === connection.environment
     ) ?? services.find((item) => item.name === connection.serviceId);
     return service?.subsystem.organization.name === selectedOrg.name;
-  });
+  }
+
+  // A connection can match both views when this organization owns both parties.
+  const visibleConnections = connections.filter((connection) =>
+    role === "clients"
+      ? ownsService(connection)
+      : Boolean(selectedOrg &&
+        subByClientId.get(connection.clientId)?.organization.name === selectedOrg.name)
+  );
 
   // Keep the list grouped by client after applying the organization role.
   const expandedClients = new Set(openClients);
@@ -2176,7 +2170,7 @@ export function ConnectionsPage({
                     key={group.clientId}
                     group={group}
                     org={selectedOrg.name}
-                    ownedServiceIds={ownedServiceIds}
+                    ownsService={ownsService}
                     showActionRequired={role === "clients"}
                     open={expandedClients.has(group.clientId)}
                   />

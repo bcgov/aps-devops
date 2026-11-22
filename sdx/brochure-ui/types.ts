@@ -96,6 +96,8 @@ export interface EnvironmentConfig {
   org_keysets_url?: string;
   /** Trusted root CA PEM used when installing organization signing certificates. */
   signing_root_ca_pem?: string;
+  /** PEM bundle containing the timestamp signing certificate and its CA chain. */
+  timestamp_authority_pem?: string;
   /** JWKS source URLs published for this environment on the trust registry. */
   jwks_urls?: string[];
 }

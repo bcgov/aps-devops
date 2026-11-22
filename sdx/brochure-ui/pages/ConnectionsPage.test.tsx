@@ -5,7 +5,7 @@ import {
   ProvisionerStatusDetails,
   ScopeChips,
 } from "../components/ConnectionDetails.tsx";
-import { ConnectionCard } from "./ConnectionsPage.tsx";
+import { ConnectionCard, ConnectionsPage } from "./ConnectionsPage.tsx";
 import type { ConnectionRequest } from "../types.ts";
 Deno.test("status details copy endpoint and spec, excluding status and message", () => {
   const html = renderToStaticMarkup(
@@ -277,4 +277,46 @@ Deno.test("ISA shows approved scopes and offers a traffic chart", () => {
   if (agreement.includes("mailto:")) throw new Error("ISA email should be plain text");
   if (agreement.includes("Other User")) throw new Error("Non-owner appeared in the ISA");
   if (agreement.includes("api:write")) throw new Error("Proposed scope appeared as granted");
+});
+
+Deno.test("a subsystem can participate in both connection request views", () => {
+  const org = {
+    name: "member",
+    title: "Member organization",
+    member: { memberClass: "MIN", memberId: "MEMBER" },
+  };
+  const otherOrg = { ...org, name: "other" };
+  const subsystem = { ...org, clientId: "MEMBER.APP", organization: org };
+  const external = { ...otherOrg, clientId: "OTHER.APP", organization: otherOrg };
+  const connection = (clientId: string, serviceId: string, subsystemId: string) => ({
+    clientId,
+    serviceId,
+    serviceResources: { subsystemId },
+  });
+  for (const role of ["clients", "services"]) {
+    const html = renderToStaticMarkup(
+      <ConnectionsPage
+        organizations={[org]}
+        selectedOrg={org}
+        allSubsystems={[subsystem, external]}
+        services={[]}
+        connections={[
+          connection(subsystem.clientId, "shared-service", subsystem.clientId),
+          connection(external.clientId, "inbound-service", subsystem.clientId),
+          connection(subsystem.clientId, "outbound-service", external.clientId),
+        ]}
+        config={{ site: { title: "", description: "", subtitle: "" }, support_url: "" }}
+        currentPath="/connections"
+        roleFilter={role}
+        user={{ sub: "test", exp: 0 }}
+      />,
+    );
+    const expected = role === "clients" ? "inbound-service" : "outbound-service";
+    const excluded = role === "clients" ? "outbound-service" : "inbound-service";
+    if (!html.includes('data-connection-service="shared-service"') ||
+      !html.includes(`data-connection-service="${expected}"`) ||
+      html.includes(`data-connection-service="${excluded}"`)) {
+      throw new Error(`Incorrect connection ownership in ${role} view`);
+    }
+  }
 });
