@@ -143,6 +143,12 @@ function parseCert(b64: string, now: Date): CertInfo | { error: string } {
   }
 }
 
+export function parsePemCertificates(pem: string) {
+  const now = new Date();
+  return [...pem.matchAll(/-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE-----/g)]
+    .map(([, certificate]) => parseCert(certificate, now));
+}
+
 export async function loadAllJwks(urls: string[]): Promise<JwksData[]> {
   return await Promise.all(
     urls.map(async (url) => {
