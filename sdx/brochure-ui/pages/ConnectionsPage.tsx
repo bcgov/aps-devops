@@ -1888,7 +1888,7 @@ function ClientGroupSection({
     connection.isApproved && connection.isActive &&
     connection.provisionerStatus?.status === "provisioned"
   ).length;
-  const changesPendingApproval = showActionRequired && items.some(({ proposedConfiguration }) =>
+  const changesPendingApproval = items.some(({ proposedConfiguration }) =>
     proposedConfiguration && Object.keys(proposedConfiguration).length > 0
   );
   return (
@@ -1923,7 +1923,7 @@ function ClientGroupSection({
             {serviceCount} {serviceCount === 1 ? "service" : "services"}
           </span>
           <span className="block">{readyCount} of {items.length} ready</span>
-          {showActionRequired && (changesPendingApproval || readyCount < items.length) && (
+          {(changesPendingApproval || (showActionRequired && readyCount < items.length)) && (
             <span className="mt-1 inline-block rounded-full bg-support-warning-bg px-2 py-0.5 font-semibold text-ink">
               {changesPendingApproval ? "Changes pending approval" : "Action required"}
             </span>
