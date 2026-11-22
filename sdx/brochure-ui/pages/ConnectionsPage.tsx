@@ -178,15 +178,74 @@ const AGREEMENT_TRAFFIC_SCRIPT = await Deno.readTextFile(
 
 const DIALOG_SCRIPT = `
 (function(){
+  function captureOpenClients(params){
+    params.delete('openClient');
+    document.querySelectorAll('details[data-connection-client][open]').forEach(function(group){
+      params.append('openClient', group.dataset.connectionClient);
+    });
+  }
   document.addEventListener('toggle', function(e){
     if (!e.target.matches('details[data-connection-client]')) return;
     var url = new URL(window.location.href);
-    url.searchParams.delete('openClient');
-    document.querySelectorAll('details[data-connection-client][open]').forEach(function(group){
-      url.searchParams.append('openClient', group.dataset.connectionClient);
-    });
+    captureOpenClients(url.searchParams);
     if (url.href !== window.location.href) history.replaceState(history.state, '', url);
   }, true);
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    if (!form.matches('form[method="post"]')) return;
+    var action = new URL(form.action, window.location.href);
+    if (action.origin !== window.location.origin || !action.pathname.startsWith('/connections/')) return;
+    var role = new URL(window.location.href).searchParams.get('role');
+    action.searchParams.set('role', role === 'services' ? 'services' : 'clients');
+    captureOpenClients(action.searchParams);
+    var service = form.elements.namedItem("serviceId");
+    if (service && service.value) action.searchParams.set('returnService', service.value);
+    form.action = action.href;
+  }, true);
+  function returnToActionResult(){
+    var flash = document.querySelector('[data-connection-flash]');
+    if (!flash) return;
+    var params = new URL(window.location.href).searchParams;
+    var clientId = params.get('subsystem');
+    var serviceId = params.get('returnService');
+    var group = clientId && Array.from(document.querySelectorAll('details[data-connection-client]'))
+      .find(function(row){ return row.dataset.connectionClient === clientId; });
+    var connection = group && serviceId && Array.from(group.querySelectorAll('[data-connection-service]'))
+      .find(function(row){ return row.dataset.connectionService === serviceId; });
+    if (connection) group.open = true;
+    var target = connection || group || document.getElementById('connection-results');
+    if (!target) return;
+    requestAnimationFrame(function(){
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'start' });
+    });
+  }
+  returnToActionResult();
+  var busyRows = Array.from(document.querySelectorAll('[data-provisioning-connection]'));
+  var org = new URL(window.location.href).searchParams.get('org');
+  if (org && busyRows.length) {
+    var watched = busyRows.map(function(row){ return row.dataset.provisioningConnection; });
+    var endpoint = '/api/connections/provisioning?' + new URLSearchParams({org: org});
+    var checks = 0;
+    var timer = setInterval(async function(){
+      checks += 1;
+      if (checks === 5) clearInterval(timer);
+      try {
+        var response = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(1900) });
+        if (!response.ok) return;
+        var payload = await response.json();
+        if (!Array.isArray(payload.busy)) return;
+        var busy = new Set(payload.busy.map(function(key){ return JSON.stringify(key); }));
+        if (!watched.some(function(key){ return busy.has(key); })) {
+          clearInterval(timer);
+          window.location.reload();
+        }
+      } catch {
+        // Leave the current status in place and try again on the next tick.
+      }
+    }, 2000);
+  }
   // Handle the click before the hydrated design-system button handles the press.
   document.addEventListener('click', function(e){
     document.querySelectorAll('[data-overflow-actions][open], [data-status-popover][open]').forEach(function(menu){
@@ -1353,7 +1412,7 @@ export function ConnectionCard({
     },
   ].filter((action) => action !== false);
   return (
-    <article className="bg-white border border-border rounded-lg">
+    <article data-connection-service={conn.serviceId} className="bg-white border border-border rounded-lg">
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -1379,12 +1438,19 @@ export function ConnectionCard({
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {canRetry && provisionerStatus?.status === "failed" &&
             retryAction.control}
-          {primaryAction?.control ?? (
-            busy && conn.isApproved && (
-              <Btn size="small" variant="secondary" disabled>
-                Lifecycle action in progress
-              </Btn>
-            )
+          {primaryAction?.control}
+          {busy && conn.isApproved && (
+            <span
+              role="status"
+              data-provisioning-connection={JSON.stringify([conn.id ?? "", conn.clientId, conn.serviceId])}
+              className="inline-flex items-center gap-2 text-sm text-ink-secondary"
+            >
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 rounded-full border-2 border-bc-blue border-r-transparent motion-safe:animate-spin"
+              />
+              Lifecycle action in progress
+            </span>
           )}
           <OverflowActions id={`actions-${editId}`} actions={additionalActions} />
         </div>
@@ -1822,6 +1888,9 @@ function ClientGroupSection({
     connection.isApproved && connection.isActive &&
     connection.provisionerStatus?.status === "provisioned"
   ).length;
+  const changesPendingApproval = showActionRequired && items.some(({ proposedConfiguration }) =>
+    proposedConfiguration && Object.keys(proposedConfiguration).length > 0
+  );
   return (
     <details
       open={open}
@@ -1854,9 +1923,9 @@ function ClientGroupSection({
             {serviceCount} {serviceCount === 1 ? "service" : "services"}
           </span>
           <span className="block">{readyCount} of {items.length} ready</span>
-          {showActionRequired && readyCount < items.length && (
+          {showActionRequired && (changesPendingApproval || readyCount < items.length) && (
             <span className="mt-1 inline-block rounded-full bg-support-warning-bg px-2 py-0.5 font-semibold text-ink">
-              Action required
+              {changesPendingApproval ? "Changes pending approval" : "Action required"}
             </span>
           )}
         </span>
@@ -2029,6 +2098,7 @@ export function ConnectionsPage({
         {flash && (
           <div
             role="status"
+            data-connection-flash=""
             className={[
               "mb-4 rounded-md border-l-4 px-4 py-3 text-sm text-ink",
               flash.kind === "success"
@@ -2057,7 +2127,7 @@ export function ConnectionsPage({
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div id="connection-results" className="flex flex-wrap items-end justify-between gap-3 mb-5">
               <div>
                 <h2 className="text-2xl font-bold text-bc-blue">
                   {selectedOrg.title}

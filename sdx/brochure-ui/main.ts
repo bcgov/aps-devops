@@ -1097,6 +1097,26 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     return await handleConnectionAgreement(url, user);
   }
 
+  if (path === "/api/connections/provisioning" && req.method === "GET") {
+    const headers = { "cache-control": "no-store" };
+    if (!user?.accessToken) return Response.json(null, { status: 401, headers });
+    const org = url.searchParams.get("org");
+    if (!org) return Response.json(null, { status: 400, headers });
+    try {
+      const connections = await listConnections(org, {
+        accessToken: user.accessToken,
+        signal: req.signal,
+      });
+      const busy = connections.filter(({ provisionerStatus }) =>
+        provisionerStatus?.status === "pending" ||
+        provisionerStatus?.status === "deprovisioning"
+      ).map(({ id, clientId, serviceId }) => [id ?? "", clientId, serviceId]);
+      return Response.json({ busy }, { headers });
+    } catch {
+      return Response.json(null, { status: 502, headers });
+    }
+  }
+
   if (path === "/api/connections/traffic" && req.method === "GET") {
     const headers = { "cache-control": "no-store" };
     if (!user?.accessToken) {
@@ -1193,22 +1213,32 @@ function connectionsRedirect(
     flash: flash.kind,
     msg: flash.message,
   });
-  const referrer = req.headers.get("referer");
-  if (referrer && URL.canParse(referrer)) {
-    const source = new URL(referrer);
-    const role = source.searchParams.get("role");
-    if (
-      source.origin === new URL(req.url).origin &&
-      source.pathname === "/connections" &&
-      source.searchParams.get("org") === org
-    ) {
-      if (role === "clients" || role === "services") params.set("role", role);
-      for (const clientId of source.searchParams.getAll("openClient")) {
-        params.append("openClient", clientId);
+  const actionUrl = new URL(req.url);
+  let state = actionUrl.searchParams;
+  const actionRole = state.get("role");
+  if (actionRole !== "clients" && actionRole !== "services") {
+    const referrer = req.headers.get("referer");
+    if (referrer && URL.canParse(referrer)) {
+      const source = new URL(referrer);
+      if (
+        source.origin === actionUrl.origin &&
+        source.pathname === "/connections" &&
+        source.searchParams.get("org") === org
+      ) {
+        state = source.searchParams;
       }
     }
   }
-  if (subsystem) params.set("subsystem", subsystem);
+  const role = state.get("role");
+  if (role === "clients" || role === "services") params.set("role", role);
+  for (const clientId of state.getAll("openClient")) {
+    params.append("openClient", clientId);
+  }
+  if (subsystem) {
+    params.set("subsystem", subsystem);
+    const serviceId = actionUrl.searchParams.get("returnService");
+    if (serviceId) params.set("returnService", serviceId);
+  }
   return redirect(`/connections?${params}`);
 }
 
