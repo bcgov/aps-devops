@@ -1903,7 +1903,10 @@ export function ConnectionsPage({
           .map((s) => s.name)
       : [],
   );
-  const r1RequestUrl = config.connections?.r1RequestUrl;
+  const r1RequestUrl = config.connections?.r1RequestUrl ||
+    (config.defaultEnvironment === "apsdev"
+      ? "https://sso-requests-sandbox.apps.gold.devops.gov.bc.ca/"
+      : undefined);
 
   const subByClientId = new Map(allSubsystems.map((s) => [s.clientId, s]));
   const role = roleFilter === "services" ? "services" : "clients";
@@ -2071,7 +2074,7 @@ export function ConnectionsPage({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {r1RequestUrl && (
+                {role === "services" && r1RequestUrl && (
                   <Btn
                     href={r1RequestUrl}
                     target="_blank"
