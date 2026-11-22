@@ -3,6 +3,25 @@ import { parse } from "@std/yaml";
 const PROMETHEUS_URL = Deno.env.get("PROMETHEUS_URL") ??
   "https://thanos-prom.apps.gold.devops.gov.bc.ca";
 
+function historicalMetricsUrl(): string {
+  const configured = Deno.env.get("ISA_PROMETHEUS_URL");
+  if (configured) return configured;
+
+  // Existing cluster deployments still point at the short-retention
+  // Prometheus service. The sibling Thanos Query service reads archived blocks.
+  const liveUrl = new URL(PROMETHEUS_URL);
+  const prometheusService = "thanos-prom-prometheus-server";
+  if (
+    liveUrl.hostname === prometheusService ||
+    liveUrl.hostname.startsWith(prometheusService + ".")
+  ) {
+    liveUrl.hostname = "thanos-query" +
+      liveUrl.hostname.slice(prometheusService.length);
+    liveUrl.port = "9090";
+  }
+  return liveUrl.toString().replace(/\/$/, "");
+}
+
 export interface MetricsQuery {
   name: string;
   description: string;
@@ -74,6 +93,7 @@ export async function connectionTraffic() {
     (days - 1) * daySeconds,
     String(daySeconds),
     end,
+    historicalMetricsUrl(),
   );
   if (result.status !== "success") throw new Error("Traffic query failed");
   return {
@@ -90,9 +110,10 @@ async function queryRange(
   rangeSeconds: number,
   step: string,
   now = Math.floor(Date.now() / 1000),
+  baseUrl = PROMETHEUS_URL,
 ) {
   const start = now - rangeSeconds;
-  const promUrl = new URL(`${PROMETHEUS_URL}/api/v1/query_range`);
+  const promUrl = new URL(`${baseUrl.replace(/\/$/, "")}/api/v1/query_range`);
   promUrl.searchParams.set("query", query);
   promUrl.searchParams.set("start", String(start));
   promUrl.searchParams.set("end", String(now));

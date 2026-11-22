@@ -25,6 +25,8 @@ interface ConnectionsPageProps {
   allSubsystems: Subsystem[];
   services: Service[];
   config: SiteConfig;
+  roleFilter?: string | null;
+  openClients?: string[];
   currentPath: string;
   user: SessionUser;
   flash?: {
@@ -176,6 +178,15 @@ const AGREEMENT_TRAFFIC_SCRIPT = await Deno.readTextFile(
 
 const DIALOG_SCRIPT = `
 (function(){
+  document.addEventListener('toggle', function(e){
+    if (!e.target.matches('details[data-connection-client]')) return;
+    var url = new URL(window.location.href);
+    url.searchParams.delete('openClient');
+    document.querySelectorAll('details[data-connection-client][open]').forEach(function(group){
+      url.searchParams.append('openClient', group.dataset.connectionClient);
+    });
+    if (url.href !== window.location.href) history.replaceState(history.state, '', url);
+  }, true);
   // Handle the click before the hydrated design-system button handles the press.
   document.addEventListener('click', function(e){
     document.querySelectorAll('[data-overflow-actions][open], [data-status-popover][open]').forEach(function(menu){
@@ -1796,25 +1807,64 @@ function ClientGroupSection({
   group,
   org,
   ownedServiceIds,
+  showActionRequired,
+  open,
 }: {
   group: ClientGroup;
   org: string;
   ownedServiceIds: Set<string>;
+  showActionRequired: boolean;
+  open: boolean;
 }) {
   const { clientId, subsystem, items } = group;
+  const serviceCount = new Set(items.map(({ serviceId }) => serviceId)).size;
+  const readyCount = items.filter((connection) =>
+    connection.isApproved && connection.isActive &&
+    connection.provisionerStatus?.status === "provisioned"
+  ).length;
   return (
-    <section className="bg-white border border-border rounded-lg">
-      <header className="rounded-t-lg bg-surface-muted border-b border-border px-4 py-3">
-        <h3 className="font-semibold text-bc-blue break-all">
+    <details
+      open={open}
+      data-connection-client={clientId}
+      className="group rounded-lg border border-border bg-white"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg bg-surface-muted px-4 py-3 group-open:rounded-b-none [&::-webkit-details-marker]:hidden">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          aria-hidden="true"
+          className="shrink-0 text-bc-blue transition-transform group-open:rotate-90"
+        >
+          <path d="m6 3 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="min-w-0 flex-1">
+          <span className="block break-all font-semibold text-bc-blue">{clientId}</span>
+          {subsystem?.description && (
+            <span className="block break-words text-xs text-ink-secondary">
+              {subsystem.description}
+            </span>
+          )}
+        </span>
+        <span className="shrink-0 text-right text-xs text-ink-secondary">
+          <span className="block text-sm font-semibold text-ink">
+            {serviceCount} {serviceCount === 1 ? "service" : "services"}
+          </span>
+          <span className="block">{readyCount} of {items.length} ready</span>
+          {showActionRequired && readyCount < items.length && (
+            <span className="mt-1 inline-block rounded-full bg-support-warning-bg px-2 py-0.5 font-semibold text-ink">
+              Action required
+            </span>
+          )}
+        </span>
+      </summary>
+      <div className="space-y-3 border-t border-border p-4">
+        <div className="text-sm text-link">
           <ClientSubsystemLink clientId={clientId} />
-        </h3>
-        {subsystem?.name && (
-          <p className="text-xs text-ink-secondary">
-            {subsystem.name}
-          </p>
-        )}
-      </header>
-      <div className="p-4 space-y-3">
+        </div>
         {items.map((conn) => (
           <ConnectionCard
             key={`${conn.clientId}:${conn.serviceId}`}
@@ -1824,7 +1874,7 @@ function ClientGroupSection({
           />
         ))}
       </div>
-    </section>
+    </details>
   );
 }
 
@@ -1836,6 +1886,8 @@ export function ConnectionsPage({
   services,
   config,
   currentPath,
+  roleFilter,
+  openClients = [],
   user,
   flash,
   error,
@@ -1853,14 +1905,26 @@ export function ConnectionsPage({
   );
   const r1RequestUrl = config.connections?.r1RequestUrl;
 
-  // Group every connection by its client (always), regardless of whether the
-  // client subsystem belongs to the selected organization.
-  const subByClientId = new Map<string, Subsystem>();
-  for (const s of allSubsystems)
-    subByClientId.set(s.clientId, s);
+  const subByClientId = new Map(allSubsystems.map((s) => [s.clientId, s]));
+  const role = roleFilter === "services" ? "services" : "clients";
+  const visibleConnections = connections.filter((connection) => {
+    if (!selectedOrg) return false;
+    if (role === "services") {
+      return subByClientId.get(connection.clientId)?.organization.name === selectedOrg.name;
+    }
+    const providerId = connection.serviceResources?.subsystemId;
+    const provider = providerId ? subByClientId.get(providerId) : undefined;
+    if (provider) return provider.organization.name === selectedOrg.name;
+    const service = services.find((item) =>
+      item.name === connection.serviceId && item.environment === connection.environment
+    ) ?? services.find((item) => item.name === connection.serviceId);
+    return service?.subsystem.organization.name === selectedOrg.name;
+  });
 
+  // Keep the list grouped by client after applying the organization role.
+  const expandedClients = new Set(openClients);
   const byClient = new Map<string, ConnectionRequest[]>();
-  for (const c of connections) {
+  for (const c of visibleConnections) {
     const list = byClient.get(c.clientId) ?? [];
     list.push(c);
     byClient.set(c.clientId, list);
@@ -1920,8 +1984,41 @@ export function ConnectionsPage({
             selectedOrg={selectedOrg}
             action="/connections"
             submitLabel="Load connections"
+            queryParams={{ role }}
             autoSubmit
           />
+          {selectedOrg && (
+            <nav aria-label="Choose a connection request view" className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  value: "clients",
+                  label: "Client View",
+                  description: "For service providers to review and manage client access requests to their services.",
+                },
+                {
+                  value: "services",
+                  label: "Service View",
+                  description: "For clients to see the status of the services they have requested access to.",
+                },
+              ].map(({ value, label, description }) => {
+                const query = new URLSearchParams({ org: selectedOrg.name, role: value });
+                const active = role === value;
+                return (
+                  <a
+                    key={value}
+                    href={`/connections?${query}`}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-lg border p-4 hover:border-bc-blue hover:bg-surface-blue-tint ${active
+                      ? "border-bc-blue bg-surface-blue-tint ring-1 ring-bc-blue"
+                      : "border-border bg-white"}`}
+                  >
+                    <span className="block font-semibold text-bc-blue">{label}</span>
+                    <span className="mt-1 block text-sm text-ink-secondary">{description}</span>
+                  </a>
+                );
+              })}
+            </nav>
+          )}
         </div>
       </div>
 
@@ -1967,8 +2064,8 @@ export function ConnectionsPage({
                   {selectedOrg.member.memberId}
                 </p>
                 <p className="text-ink-secondary text-sm mt-1">
-                  {connections.length} connection
-                  {connections.length === 1 ? "" : "s"}{" "}
+                  {visibleConnections.length} connection
+                  {visibleConnections.length === 1 ? "" : "s"}{" "}
                   across {groups.length} client
                   {groups.length === 1 ? "" : "s"}.
                 </p>
@@ -1988,10 +2085,14 @@ export function ConnectionsPage({
               </div>
             </div>
 
-            {connections.length === 0 ? (
+            {visibleConnections.length === 0 ? (
               <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
                 <p className="text-ink-secondary">
-                  No connections yet for this organization.
+                  {role === "clients"
+                ? "No clients connect to services provided by this organization."
+                : role === "services"
+                ? "No service connections for this organization’s clients."
+                : "No connections yet for this organization."}
                 </p>
               </div>
             ) : (
@@ -2003,6 +2104,8 @@ export function ConnectionsPage({
                     group={group}
                     org={selectedOrg.name}
                     ownedServiceIds={ownedServiceIds}
+                    showActionRequired={role === "clients"}
+                    open={expandedClients.has(group.clientId)}
                   />
                 ))}
               </div>

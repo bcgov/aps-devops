@@ -124,6 +124,12 @@ helm upgrade --install sdx-brochure \
 bcgov/generic-api
 ```
 
+The ISA traffic chart needs a metrics source with at least 30 days of history.
+`ISA_PROMETHEUS_URL` points it at Thanos Query in the Helm deployment, while
+`PROMETHEUS_URL` serves the live Metrics page. Existing deployments that point
+`PROMETHEUS_URL` at the in-cluster `thanos-prom-prometheus-server` service
+automatically use the sibling `thanos-query:9090` service for ISA traffic.
+
 ### Test
 
 ```sh

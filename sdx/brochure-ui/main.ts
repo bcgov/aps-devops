@@ -1183,6 +1183,7 @@ function redirect(location: string): Response {
 }
 
 function connectionsRedirect(
+  req: Request,
   org: string,
   flash: { kind: "success" | "error"; message: string },
   subsystem?: string,
@@ -1192,6 +1193,21 @@ function connectionsRedirect(
     flash: flash.kind,
     msg: flash.message,
   });
+  const referrer = req.headers.get("referer");
+  if (referrer && URL.canParse(referrer)) {
+    const source = new URL(referrer);
+    const role = source.searchParams.get("role");
+    if (
+      source.origin === new URL(req.url).origin &&
+      source.pathname === "/connections" &&
+      source.searchParams.get("org") === org
+    ) {
+      if (role === "clients" || role === "services") params.set("role", role);
+      for (const clientId of source.searchParams.getAll("openClient")) {
+        params.append("openClient", clientId);
+      }
+    }
+  }
   if (subsystem) params.set("subsystem", subsystem);
   return redirect(`/connections?${params}`);
 }
@@ -1448,6 +1464,7 @@ async function handleConnections(
   if (gate) return gate;
 
   const orgName = url.searchParams.get("org") ?? "";
+  const role = url.searchParams.get("role") === "services" ? "services" : "clients";
   const flashKind = url.searchParams.get("flash");
   const flashMsg = url.searchParams.get("msg");
   const flash =
@@ -1486,6 +1503,8 @@ async function handleConnections(
       allSubsystems: subsystems,
       services,
       config,
+      roleFilter: role,
+      openClients: url.searchParams.getAll("openClient"),
       currentPath: "/connections",
       user: user!,
       flash,
@@ -1586,6 +1605,7 @@ async function handleConnectionsEdit(
 
   if (!org || !clientId || !serviceId) {
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: "Missing required fields" },
       clientId,
@@ -1603,6 +1623,7 @@ async function handleConnectionsEdit(
     payload = parsed;
   } catch (e) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1624,6 +1645,7 @@ async function handleConnectionsEdit(
       { accessToken: user!.accessToken },
     );
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1637,6 +1659,7 @@ async function handleConnectionsEdit(
         ? `Save failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1661,6 +1684,7 @@ async function handleConnectionsApprove(
   const serviceId = String(form.get("serviceId") ?? "");
   if (!org || !clientId || !serviceId) {
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: "Missing required fields" },
       clientId,
@@ -1674,6 +1698,7 @@ async function handleConnectionsApprove(
     service.subsystem.organization.name !== org
   ) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1695,6 +1720,7 @@ async function handleConnectionsApprove(
       { accessToken: user!.accessToken },
     );
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1710,6 +1736,7 @@ async function handleConnectionsApprove(
         ? `Approve failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1735,6 +1762,7 @@ async function handleConnectionsReject(
   const serviceId = String(form.get("serviceId") ?? "");
   if (!org || !id || !clientId || !serviceId) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1752,6 +1780,7 @@ async function handleConnectionsReject(
     service.subsystem.organization.name !== org
   ) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1776,6 +1805,7 @@ async function handleConnectionsReject(
       });
     }
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1791,6 +1821,7 @@ async function handleConnectionsReject(
         ? `Reject failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1817,6 +1848,7 @@ async function deleteConnectionAction(
   const serviceId = String(form.get("serviceId") ?? "");
   if (!org || !id) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1834,6 +1866,7 @@ async function deleteConnectionAction(
       accessToken: user!.accessToken,
     });
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1847,6 +1880,7 @@ async function deleteConnectionAction(
         ? `${verb === "Revoked" ? "Revoke" : "Cancel"} failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1876,6 +1910,7 @@ async function lifecycleConnectionAction(
     | "revoke");
   if (!org || !id || !["activate", "deactivate", "retry", "revoke"].includes(action)) {
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: "Missing organization, connection id, or lifecycle action." },
       clientId,
@@ -1900,6 +1935,7 @@ async function lifecycleConnectionAction(
       ? "Retried"
       : "Revoked";
     return connectionsRedirect(
+      req,
       org,
       { kind: "success", message: `${past} ${clientId} → ${serviceId}` },
       clientId,
@@ -1908,7 +1944,7 @@ async function lifecycleConnectionAction(
     const msg = e instanceof SdxApiError
       ? `${action[0].toUpperCase()}${action.slice(1)} failed (${e.status}): ${e.body}`
       : (e as Error).message;
-    return connectionsRedirect(org, { kind: "error", message: msg }, clientId);
+    return connectionsRedirect(req, org, { kind: "error", message: msg }, clientId);
   }
 }
 

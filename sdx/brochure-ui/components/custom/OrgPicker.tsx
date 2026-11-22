@@ -10,6 +10,7 @@ interface OrgPickerProps {
   submitLabel: string;
   /** Submit automatically when the selection changes. */
   autoSubmit?: boolean;
+  queryParams?: Record<string, string>;
 }
 
 // Shared across every Member Console org selector. Handles:
@@ -92,6 +93,7 @@ export function OrgPicker({
   action,
   submitLabel,
   autoSubmit,
+  queryParams = {},
 }: OrgPickerProps) {
   const sorted = organizations
     .slice()
@@ -105,6 +107,9 @@ export function OrgPicker({
         data-autosubmit={autoSubmit ? "1" : undefined}
         className="flex flex-wrap items-center gap-2"
       >
+        {Object.entries(queryParams).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
         <label htmlFor="org-select" className="text-sm font-medium text-ink-secondary">
           Organization member
         </label>
