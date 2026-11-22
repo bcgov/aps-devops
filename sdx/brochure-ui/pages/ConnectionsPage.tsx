@@ -1966,17 +1966,23 @@ export function ConnectionsPage({
       ? "https://sso-requests-sandbox.apps.gold.devops.gov.bc.ca/"
       : undefined);
 
-  const subByClientId = new Map(allSubsystems.map((s) => [s.clientId, s]));
+  const subByClientId = new Map(allSubsystems.map((s) => [s.clientId.trim().toUpperCase(), s]));
   const role = roleFilter === "services" ? "services" : "clients";
+
+  function findSubsystem(clientId?: string): Subsystem | undefined {
+    return clientId ? subByClientId.get(clientId.trim().toUpperCase()) : undefined;
+  }
+
   function ownsService(connection: ConnectionRequest): boolean {
     if (!selectedOrg) return false;
-    const providerId = connection.serviceResources?.subsystemId;
-    const provider = providerId ? subByClientId.get(providerId) : undefined;
+    const provider = findSubsystem(connection.serviceResources?.subsystemId);
     if (provider) return provider.organization.name === selectedOrg.name;
     const service = services.find((item) =>
       item.name === connection.serviceId && item.environment === connection.environment
     ) ?? services.find((item) => item.name === connection.serviceId);
-    return service?.subsystem.organization.name === selectedOrg.name;
+    if (service) return service.subsystem.organization.name === selectedOrg.name;
+    return findSubsystem(connection.requesterDetails?.service?.clientId)
+      ?.organization.name === selectedOrg.name;
   }
 
   // A connection can match both views when this organization owns both parties.
@@ -1984,7 +1990,9 @@ export function ConnectionsPage({
     role === "clients"
       ? ownsService(connection)
       : Boolean(selectedOrg &&
-        subByClientId.get(connection.clientId)?.organization.name === selectedOrg.name)
+        (findSubsystem(connection.clientId) ??
+          findSubsystem(connection.requesterDetails?.client?.clientId))
+          ?.organization.name === selectedOrg.name)
   );
 
   // Keep the list grouped by client after applying the organization role.
@@ -1998,7 +2006,7 @@ export function ConnectionsPage({
   const groups: ClientGroup[] = [...byClient.entries()]
     .map(([clientId, items]) => ({
       clientId,
-      subsystem: subByClientId.get(clientId) ?? null,
+      subsystem: findSubsystem(clientId) ?? null,
       items: items
         .slice()
         .sort((a, b) =>

@@ -302,6 +302,19 @@ Deno.test("a subsystem can participate in both connection request views", () => 
         services={[]}
         connections={[
           connection(subsystem.clientId, "shared-service", subsystem.clientId),
+          connection("member.app", "mixed-case-self-service", "member.app"),
+          connection("MIN.MEMBER.PRIVATE", "private-self-service", "MIN.MEMBER.PRIVATE"),
+          {
+            clientId: subsystem.clientId,
+            serviceId: "shared-service-with-requester-details",
+            requesterDetails: {
+              client: { integrationId: "", clientId: subsystem.clientId, privacyZone: "" },
+              service: { clientId: subsystem.clientId, privacyZone: "" },
+              requester: "",
+              scopes: [],
+              submissionId: "",
+            },
+          },
           connection(external.clientId, "inbound-service", subsystem.clientId),
           connection(subsystem.clientId, "outbound-service", external.clientId),
         ]}
@@ -314,6 +327,9 @@ Deno.test("a subsystem can participate in both connection request views", () => 
     const expected = role === "clients" ? "inbound-service" : "outbound-service";
     const excluded = role === "clients" ? "outbound-service" : "inbound-service";
     if (!html.includes('data-connection-service="shared-service"') ||
+      !html.includes('data-connection-service="mixed-case-self-service"') ||
+      html.includes('data-connection-service="private-self-service"') ||
+      !html.includes('data-connection-service="shared-service-with-requester-details"') ||
       !html.includes(`data-connection-service="${expected}"`) ||
       html.includes(`data-connection-service="${excluded}"`)) {
       throw new Error(`Incorrect connection ownership in ${role} view`);
