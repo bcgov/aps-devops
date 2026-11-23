@@ -1210,7 +1210,9 @@ function connectionsRedirect(
   const destination = returnPath === "/console/common-sso" || state.get("role") === "services"
     ? "/console/common-sso"
     : "/connections";
-  for (const clientId of state.getAll("openClient")) {
+  const openClients = new Set(state.getAll("openClient"));
+  if (subsystem) openClients.add(subsystem);
+  for (const clientId of openClients) {
     params.append("openClient", clientId);
   }
   if (subsystem) {
@@ -1218,7 +1220,7 @@ function connectionsRedirect(
     const serviceId = actionUrl.searchParams.get("returnService");
     if (serviceId) params.set("returnService", serviceId);
   }
-  return redirect(`${destination}?${params}`);
+  return new Response(null, { status: 303, headers: { location: `${destination}?${params}` } });
 }
 
 async function handleRuntimes(

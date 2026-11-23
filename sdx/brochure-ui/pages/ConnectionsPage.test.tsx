@@ -319,11 +319,16 @@ Deno.test("a subsystem can participate in both connection request views", () => 
           connection(subsystem.clientId, "outbound-service", external.clientId),
         ]}
         config={{ site: { title: "", description: "", subtitle: "" }, support_url: "" }}
-        currentPath="/connections"
-        roleFilter={role}
+        currentPath={role === "clients" ? "/connections" : "/console/common-sso"}
         user={{ sub: "test", exp: 0 }}
       />,
     );
+    const editAction = role === "clients"
+      ? "/connections/edit"
+      : "/connections/edit?returnPath=%2Fconsole%2Fcommon-sso&amp;org=member";
+    if (!html.includes(`action="${editAction}"`)) {
+      throw new Error(`Incorrect edit action in ${role} view`);
+    }
     const expected = role === "clients" ? "inbound-service" : "outbound-service";
     const excluded = role === "clients" ? "outbound-service" : "inbound-service";
     if (!html.includes('data-connection-service="shared-service"') ||

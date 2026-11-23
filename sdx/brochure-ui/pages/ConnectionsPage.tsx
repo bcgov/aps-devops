@@ -210,7 +210,7 @@ const DIALOG_SCRIPT = `
       .find(function(row){ return row.dataset.connectionClient === clientId; });
     var connection = group && serviceId && Array.from(group.querySelectorAll('[data-connection-service]'))
       .find(function(row){ return row.dataset.connectionService === serviceId; });
-    if (connection) group.open = true;
+    if (group) group.open = true;
     var target = connection || group || document.getElementById('connection-results');
     if (!target) return;
     requestAnimationFrame(function(){
@@ -698,6 +698,11 @@ const TOKEN_EXCHANGE_FIELDS: EditFieldSpec[] = [
     type: "set",
     placeholder: "one scope per line",
   },
+  {
+    key: "targetPrivacyZoneScope",
+    label: "Target privacy zone scope",
+    type: "string",
+  },
 ];
 
 const UP_SIGN: UpgradeSpec = {
@@ -1083,10 +1088,12 @@ function PatternBlock({
 function EditDialog({
   conn,
   org,
+  actionQuery,
   dialogId,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   dialogId: string;
 }) {
   const clientPatterns = (conn.clientResources
@@ -1108,7 +1115,7 @@ function EditDialog({
     >
       <form
         method="post"
-        action="/connections/edit"
+        action={"/connections/edit" + actionQuery}
         className="conn-edit-form"
       >
         <input type="hidden" name="org" value={org} />
@@ -1216,16 +1223,18 @@ function EditDialog({
 function LifecycleForm({
   conn,
   org,
+  actionQuery,
   action,
   label,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   action: "activate" | "deactivate" | "retry";
   label: string;
 }) {
   return (
-    <form method="post" action="/connections/lifecycle" className="inline">
+    <form method="post" action={"/connections/lifecycle" + actionQuery} className="inline">
       <input type="hidden" name="org" value={org} />
       <input type="hidden" name="id" value={conn.id ?? ""} />
       <input type="hidden" name="clientId" value={conn.clientId} />
@@ -1241,10 +1250,12 @@ function LifecycleForm({
 export function ConnectionCard({
   conn,
   org,
+  actionQuery = "",
   canApprove,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery?: string;
   canApprove: boolean;
 }) {
   const proposal = conn.proposedConfiguration;
@@ -1344,7 +1355,7 @@ export function ConnectionCard({
   const retryAction = {
     label: retryLabel,
     control: (
-      <LifecycleForm conn={conn} org={org} action="retry" label={retryLabel} />
+      <LifecycleForm conn={conn} org={org} actionQuery={actionQuery} action="retry" label={retryLabel} />
     ),
   };
   const [primaryAction, ...otherPrimaryActions] = [
@@ -1371,7 +1382,7 @@ export function ConnectionCard({
     canActivate && !activateRequiresConfirmation && {
       label: "Activate",
       control: (
-        <LifecycleForm conn={conn} org={org} action="activate" label="Activate" />
+        <LifecycleForm conn={conn} org={org} actionQuery={actionQuery} action="activate" label="Activate" />
       ),
     },
     canActivate && activateRequiresConfirmation && {
@@ -1389,7 +1400,7 @@ export function ConnectionCard({
     canDeactivate && {
       label: "Deactivate",
       control: (
-        <LifecycleForm conn={conn} org={org} action="deactivate" label="Deactivate" />
+        <LifecycleForm conn={conn} org={org} actionQuery={actionQuery} action="deactivate" label="Deactivate" />
       ),
     },
     {
@@ -1589,11 +1600,12 @@ export function ConnectionCard({
         </details>
       )}
 
-      <EditDialog conn={conn} org={org} dialogId={editId} />
+      <EditDialog conn={conn} org={org} actionQuery={actionQuery} dialogId={editId} />
       {isProviderPending && (
         <ReviewDialog
           conn={conn}
           org={org}
+          actionQuery={actionQuery}
           dialogId={reviewId}
         />
       )}
@@ -1601,6 +1613,7 @@ export function ConnectionCard({
         <ConfirmDialog
           conn={conn}
           org={org}
+          actionQuery={actionQuery}
           dialogId={confirmId}
           action={destructiveAction}
         />
@@ -1609,6 +1622,7 @@ export function ConnectionCard({
         <ConfirmDialog
           conn={conn}
           org={org}
+          actionQuery={actionQuery}
           dialogId={abandonId}
           action={{
             path: "/connections/lifecycle",
@@ -1629,11 +1643,13 @@ export function ConnectionCard({
 function ConfirmDialog({
   conn,
   org,
+  actionQuery,
   dialogId,
   action,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   dialogId: string;
   action: {
     path: string;
@@ -1675,7 +1691,7 @@ function ConfirmDialog({
         </Btn>
         <form
           method="post"
-          action={action.path}
+          action={action.path + actionQuery}
           className="inline"
         >
           <input type="hidden" name="org" value={org} />
@@ -1710,10 +1726,12 @@ function ConfirmDialog({
 function ReviewDialog({
   conn,
   org,
+  actionQuery,
   dialogId,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   dialogId: string;
 }) {
   const proposal = conn.proposedConfiguration;
@@ -1839,7 +1857,7 @@ function ReviewDialog({
         <div className="flex gap-2">
           <form
             method="post"
-            action="/connections/reject"
+            action={"/connections/reject" + actionQuery}
             className="inline"
           >
             {hidden}
@@ -1849,7 +1867,7 @@ function ReviewDialog({
           </form>
           <form
             method="post"
-            action="/connections/approve"
+            action={"/connections/approve" + actionQuery}
             className="inline"
           >
             {hidden}
@@ -1870,12 +1888,14 @@ interface ClientGroup {
 function ClientGroupSection({
   group,
   org,
+  actionQuery,
   ownsService,
   showActionRequired,
   open,
 }: {
   group: ClientGroup;
   org: string;
+  actionQuery: string;
   ownsService: (connection: ConnectionRequest) => boolean;
   showActionRequired: boolean;
   open: boolean;
@@ -1937,6 +1957,7 @@ function ClientGroupSection({
             key={`${conn.clientId}:${conn.serviceId}`}
             conn={conn}
             org={org}
+            actionQuery={actionQuery}
             canApprove={ownsService(conn)}
           />
         ))}
@@ -1965,6 +1986,9 @@ export function ConnectionsPage({
 
   const subByClientId = new Map(allSubsystems.map((s) => [s.clientId.trim().toUpperCase(), s]));
   const isServiceView = currentPath === "/console/common-sso";
+  const actionQuery = isServiceView && selectedOrg
+    ? `?${new URLSearchParams({ returnPath: currentPath, org: selectedOrg.name })}`
+    : "";
 
   function findSubsystem(clientId?: string): Subsystem | undefined {
     return clientId ? subByClientId.get(clientId.trim().toUpperCase()) : undefined;
@@ -2116,6 +2140,7 @@ export function ConnectionsPage({
                     key={group.clientId}
                     group={group}
                     org={selectedOrg.name}
+                    actionQuery={actionQuery}
                     ownsService={ownsService}
                     showActionRequired={!isServiceView}
                     open={expandedClients.has(group.clientId)}

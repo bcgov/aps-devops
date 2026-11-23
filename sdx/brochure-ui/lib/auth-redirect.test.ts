@@ -132,3 +132,15 @@ Deno.test("POST to a connection action and other paths are not intercepted", () 
     null,
   );
 });
+
+Deno.test("Common SSO actions retain the page and organization without a Referer", () => {
+  const action = "/connections/edit?returnPath=%2Fconsole%2Fcommon-sso&org=demo";
+  const loginTarget = new URL(loginReturnTo(post(action)), BASE);
+  assertEquals(loginTarget.pathname, "/console/common-sso");
+  assertEquals(loginTarget.searchParams.get("org"), "demo");
+  assertEquals(loginTarget.searchParams.get("flash"), "error");
+
+  const response = redirectStrayConnectionAction(new Request(BASE + action));
+  assertEquals(response?.status, 303);
+  assertEquals(response?.headers.get("location"), "/console/common-sso?org=demo");
+});
