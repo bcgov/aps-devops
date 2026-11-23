@@ -830,29 +830,6 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     return await handleRuntimes(req, url, user);
   }
 
-  if (path === "/console/common-sso") {
-    const gate = requireAuth(req, user);
-    if (gate) return gate;
-    let activity: ActivityRecord[] = [];
-    let error: string | undefined;
-    if (!user!.accessToken) {
-      error = "Sign in again to load your submissions.";
-    } else {
-      try {
-        activity = await listSubmissionActivity(user!.accessToken);
-      } catch (cause) {
-        error = cause instanceof SdxApiError && cause.status === 401
-          ? "Sign in again to load your submissions."
-          : "Your submissions could not be loaded.";
-      }
-    }
-    const response = htmlResponse(
-      React.createElement(CommonSsoPage, { currentPath: path, user: user!, activity, error }),
-    );
-    response.headers.set("cache-control", "no-store");
-    return response;
-  }
-
   if (path === "/runtimes") {
     return await handleRuntimes(req, url, user);
   }
@@ -1144,7 +1121,7 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     }
   }
 
-  if (path === "/connections") {
+  if (path === "/connections" || path === "/console/common-sso") {
     return await handleConnections(req, url, user);
   }
   const strayAction = redirectStrayConnectionAction(req);
@@ -1215,22 +1192,24 @@ function connectionsRedirect(
   });
   const actionUrl = new URL(req.url);
   let state = actionUrl.searchParams;
-  const actionRole = state.get("role");
-  if (actionRole !== "clients" && actionRole !== "services") {
+  let returnPath = state.get("returnPath");
+  if (!returnPath) {
     const referrer = req.headers.get("referer");
     if (referrer && URL.canParse(referrer)) {
       const source = new URL(referrer);
       if (
         source.origin === actionUrl.origin &&
-        source.pathname === "/connections" &&
+        (source.pathname === "/connections" || source.pathname === "/console/common-sso") &&
         source.searchParams.get("org") === org
       ) {
         state = source.searchParams;
+        returnPath = source.pathname;
       }
     }
   }
-  const role = state.get("role");
-  if (role === "clients" || role === "services") params.set("role", role);
+  const destination = returnPath === "/console/common-sso" || state.get("role") === "services"
+    ? "/console/common-sso"
+    : "/connections";
   for (const clientId of state.getAll("openClient")) {
     params.append("openClient", clientId);
   }
@@ -1239,7 +1218,7 @@ function connectionsRedirect(
     const serviceId = actionUrl.searchParams.get("returnService");
     if (serviceId) params.set("returnService", serviceId);
   }
-  return redirect(`/connections?${params}`);
+  return redirect(`${destination}?${params}`);
 }
 
 async function handleRuntimes(
@@ -1494,7 +1473,10 @@ async function handleConnections(
   if (gate) return gate;
 
   const orgName = url.searchParams.get("org") ?? "";
-  const role = url.searchParams.get("role") === "services" ? "services" : "clients";
+  if (url.pathname === "/connections" && url.searchParams.get("role") === "services") {
+    url.searchParams.delete("role");
+    return redirect(`/console/common-sso${url.search}`);
+  }
   const flashKind = url.searchParams.get("flash");
   const flashMsg = url.searchParams.get("msg");
   const flash =
@@ -1502,8 +1484,15 @@ async function handleConnections(
       ? { kind: flashKind, message: flashMsg ?? "" }
       : null;
 
+  const availableOrganizations = url.pathname === "/console/common-sso"
+    ? organizations.filter((org) =>
+      subsystemsByOrg.get(org.name)?.some((subsystem) =>
+        (subsystem.integrationClientIds?.length ?? 0) > 0
+      )
+    )
+    : organizations;
   const selectedOrg =
-    organizations.find((o) => o.name === orgName) ?? null;
+    availableOrganizations.find((org) => org.name === orgName) ?? null;
 
   let connections: Awaited<
     ReturnType<typeof listConnections>
@@ -1525,22 +1514,44 @@ async function handleConnections(
     }
   }
 
-  return htmlResponse(
-    React.createElement(ConnectionsPage, {
-      organizations,
-      selectedOrg,
-      connections,
-      allSubsystems: subsystems,
-      services,
-      config,
-      roleFilter: role,
-      openClients: url.searchParams.getAll("openClient"),
-      currentPath: "/connections",
-      user: user!,
-      flash,
-      error,
-    }),
-  );
+  const connectionList = React.createElement(ConnectionsPage, {
+    organizations: availableOrganizations,
+    selectedOrg,
+    connections,
+    allSubsystems: subsystems,
+    services,
+    config,
+    openClients: url.searchParams.getAll("openClient"),
+    currentPath: url.pathname,
+    user: user!,
+    flash,
+    error,
+  });
+
+  if (url.pathname === "/connections") return htmlResponse(connectionList);
+
+  let activity: ActivityRecord[] = [];
+  let submissionsError: string | undefined;
+  if (!user!.accessToken) {
+    submissionsError = "Sign in again to load your submissions.";
+  } else {
+    try {
+      activity = await listSubmissionActivity(user!.accessToken);
+    } catch (cause) {
+      submissionsError = cause instanceof SdxApiError && cause.status === 401
+        ? "Sign in again to load your submissions."
+        : "Your submissions could not be loaded.";
+    }
+  }
+  const response = htmlResponse(React.createElement(CommonSsoPage, {
+    currentPath: url.pathname,
+    user: user!,
+    activity,
+    error: submissionsError,
+    children: connectionList,
+  }));
+  response.headers.set("cache-control", "no-store");
+  return response;
 }
 
 async function handleConnectionAgreement(

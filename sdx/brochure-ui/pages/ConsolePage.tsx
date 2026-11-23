@@ -274,7 +274,7 @@ export function ConsolePage({
           {/* Resources — long horizontal boxes */}
           <div className="lg:col-span-2">
             <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
-              Resources
+              Manage Resources
             </h2>
             <div className="space-y-4">
               {RESOURCE_CARDS.map((card) => (
@@ -286,11 +286,11 @@ export function ConsolePage({
           <div className="lg:col-span-1 space-y-6">
             <section>
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary mb-3">
-                Integrations
+                Consumer Applications
               </h2>
               <CompactCard
                 card={{
-                  label: "Common SSO",
+                  label: "Common SSO Integrations",
                   href: "/console/common-sso",
                   description: "Common single sign-on integration.",
                   icon: <IdentityIcon />,

@@ -42,7 +42,11 @@ export function loginReturnTo(req: Request): string {
   }
 
   const isConnectionAction = CONNECTION_ACTION_PATHS.has(url.pathname);
-  const fallback = isConnectionAction ? "/connections" : "/";
+  const fallback = isConnectionAction
+    ? url.searchParams.get("returnPath") === "/console/common-sso"
+      ? "/console/common-sso"
+      : "/connections"
+    : "/";
   let back = fallback;
   const referer = req.headers.get("referer");
   if (referer) {
@@ -58,7 +62,10 @@ export function loginReturnTo(req: Request): string {
   if (CONNECTION_ACTION_PATHS.has(target.pathname)) {
     target.pathname = "/connections";
   }
-  if (isConnectionAction && target.pathname === "/connections") {
+  if (
+    isConnectionAction &&
+    (target.pathname === "/connections" || target.pathname === "/console/common-sso")
+  ) {
     target.searchParams.set("flash", "error");
     target.searchParams.set("msg", SESSION_EXPIRED_MESSAGE);
   }

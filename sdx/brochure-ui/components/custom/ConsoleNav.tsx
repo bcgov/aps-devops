@@ -7,7 +7,7 @@ export const CONSOLE_PAGES: {
   { label: "Connection Requests", href: "/connections" },
   { label: "Edge Runtime Groups", href: "/runtimes" },
   { label: "Resource Scopes", href: "/scopes" },
-  { label: "Common SSO", href: "/console/common-sso" },
+  { label: "Common SSO Integrations", href: "/console/common-sso" },
   { label: "Activity", href: "/org-activity" },
   { label: "Traffic", href: "/traffic" },
   { label: "Logs", href: "/logs" },

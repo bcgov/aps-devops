@@ -25,7 +25,6 @@ interface ConnectionsPageProps {
   allSubsystems: Subsystem[];
   services: Service[];
   config: SiteConfig;
-  roleFilter?: string | null;
   openClients?: string[];
   currentPath: string;
   user: SessionUser;
@@ -71,7 +70,7 @@ function StatusPopover({
       >
         {trigger}
       </summary>
-      <div className="absolute left-0 z-20 mt-1 w-56 max-w-[80vw] rounded-lg border border-border bg-white p-3 text-xs text-ink shadow-lg">
+      <div className="absolute left-0 z-20 mt-1 w-56 max-w-[80vw] rounded-lg border border-border bg-white p-3 text-xs font-normal text-ink shadow-lg">
         {children}
       </div>
     </details>
@@ -195,8 +194,7 @@ const DIALOG_SCRIPT = `
     if (!form.matches('form[method="post"]')) return;
     var action = new URL(form.action, window.location.href);
     if (action.origin !== window.location.origin || !action.pathname.startsWith('/connections/')) return;
-    var role = new URL(window.location.href).searchParams.get('role');
-    action.searchParams.set('role', role === 'services' ? 'services' : 'clients');
+    action.searchParams.set('returnPath', window.location.pathname);
     captureOpenClients(action.searchParams);
     var service = form.elements.namedItem("serviceId");
     if (service && service.value) action.searchParams.set('returnService', service.value);
@@ -1955,7 +1953,6 @@ export function ConnectionsPage({
   services,
   config,
   currentPath,
-  roleFilter,
   openClients = [],
   user,
   flash,
@@ -1967,7 +1964,7 @@ export function ConnectionsPage({
       : undefined);
 
   const subByClientId = new Map(allSubsystems.map((s) => [s.clientId.trim().toUpperCase(), s]));
-  const role = roleFilter === "services" ? "services" : "clients";
+  const isServiceView = currentPath === "/console/common-sso";
 
   function findSubsystem(clientId?: string): Subsystem | undefined {
     return clientId ? subByClientId.get(clientId.trim().toUpperCase()) : undefined;
@@ -1987,12 +1984,12 @@ export function ConnectionsPage({
 
   // A connection can match both views when this organization owns both parties.
   const visibleConnections = connections.filter((connection) =>
-    role === "clients"
-      ? ownsService(connection)
-      : Boolean(selectedOrg &&
+    isServiceView
+      ? Boolean(selectedOrg &&
         (findSubsystem(connection.clientId) ??
           findSubsystem(connection.requesterDetails?.client?.clientId))
           ?.organization.name === selectedOrg.name)
+      : ownsService(connection)
   );
 
   // Keep the list grouped by client after applying the organization role.
@@ -2020,35 +2017,13 @@ export function ConnectionsPage({
     { label: "Member Console", href: "/console" },
     { label: "Connection Requests" },
   ];
-  if (selectedOrg)
-    breadcrumbItems.push({ label: selectedOrg.title });
+  if (selectedOrg) breadcrumbItems.push({ label: selectedOrg.title });
 
-  return (
-    <Layout
-      title="Connection Requests"
-      currentPath={currentPath}
-      user={user}
-    >
+  const content = (
+    <>
       <style
         dangerouslySetInnerHTML={{ __html: DIALOG_STYLE }}
       />
-
-      <Breadcrumb items={breadcrumbItems} />
-
-      {/* Header */}
-      <div className="bg-bc-blue text-ink-invert">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-5xl font-bold mb-2">
-            Connection Requests
-          </h1>
-          <p className="text-ink-invert-secondary">
-            Connection requests for an organization member,
-            grouped by subsystem — each subsystem appears
-            where it is the client or the service provider.
-          </p>
-        </div>
-      </div>
-      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
       <div className="bg-white border-b border-border">
@@ -2056,43 +2031,10 @@ export function ConnectionsPage({
           <OrgPicker
             organizations={organizations}
             selectedOrg={selectedOrg}
-            action="/connections"
+            action={currentPath}
             submitLabel="Load connections"
-            queryParams={{ role }}
             autoSubmit
           />
-          {selectedOrg && (
-            <nav aria-label="Choose a connection request view" className="mt-4 grid gap-3 sm:grid-cols-2">
-              {[
-                {
-                  value: "clients",
-                  label: "Client View",
-                  description: "For service providers to review and manage client access requests to their services.",
-                },
-                {
-                  value: "services",
-                  label: "Service View",
-                  description: "For clients to see the status of the services they have requested access to.",
-                },
-              ].map(({ value, label, description }) => {
-                const query = new URLSearchParams({ org: selectedOrg.name, role: value });
-                const active = role === value;
-                return (
-                  <a
-                    key={value}
-                    href={`/connections?${query}`}
-                    aria-current={active ? "page" : undefined}
-                    className={`rounded-lg border p-4 hover:border-bc-blue hover:bg-surface-blue-tint ${active
-                      ? "border-bc-blue bg-surface-blue-tint ring-1 ring-bc-blue"
-                      : "border-border bg-white"}`}
-                  >
-                    <span className="block font-semibold text-bc-blue">{label}</span>
-                    <span className="mt-1 block text-sm text-ink-secondary">{description}</span>
-                  </a>
-                );
-              })}
-            </nav>
-          )}
         </div>
       </div>
 
@@ -2145,29 +2087,25 @@ export function ConnectionsPage({
                   {groups.length === 1 ? "" : "s"}.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {role === "services" && r1RequestUrl && (
-                  <Btn
-                    href={r1RequestUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="primary"
-                    ariaLabel="Request a connection through Common SSO (opens in a new tab)"
-                  >
-                    Request Connection through Common SSO
-                  </Btn>
-                )}
-              </div>
+              {isServiceView && r1RequestUrl && (
+                <Btn
+                  href={r1RequestUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="primary"
+                  ariaLabel="Request a connection through Common SSO (opens in a new tab)"
+                >
+                  Request Connection through Common SSO
+                </Btn>
+              )}
             </div>
 
             {visibleConnections.length === 0 ? (
               <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
                 <p className="text-ink-secondary">
-                  {role === "clients"
-                ? "No clients connect to services provided by this organization."
-                : role === "services"
-                ? "No service connections for this organization’s clients."
-                : "No connections yet for this organization."}
+                  {isServiceView
+                    ? "No service connections for this organization’s clients."
+                    : "No clients connect to services provided by this organization."}
                 </p>
               </div>
             ) : (
@@ -2179,7 +2117,7 @@ export function ConnectionsPage({
                     group={group}
                     org={selectedOrg.name}
                     ownsService={ownsService}
-                    showActionRequired={role === "clients"}
+                    showActionRequired={!isServiceView}
                     open={expandedClients.has(group.clientId)}
                   />
                 ))}
@@ -2214,6 +2152,24 @@ export function ConnectionsPage({
       <script
         dangerouslySetInnerHTML={{ __html: EDIT_SCRIPT }}
       />
+    </>
+  );
+
+  if (isServiceView) return content;
+
+  return (
+    <Layout title="Connection Requests" currentPath={currentPath} user={user}>
+      <Breadcrumb items={breadcrumbItems} />
+      <div className="bg-bc-blue text-ink-invert">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <h1 className="text-5xl font-bold mb-2">Connection Requests</h1>
+          <p className="text-ink-invert-secondary">
+            Review and manage client access requests to your organization’s services.
+          </p>
+        </div>
+      </div>
+      <div className="h-1 bg-bc-gold" />
+      {content}
     </Layout>
   );
 }

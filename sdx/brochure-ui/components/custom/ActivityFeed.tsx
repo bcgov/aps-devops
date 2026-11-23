@@ -3,7 +3,7 @@ import type { ActivityRecord } from "../../types.ts";
 interface ActivityFeedProps {
   activity: ActivityRecord[];
   pageSize?: number;
-  /** Endpoint the "Load more" button pages against. Use null to disable paging. */
+  /** Endpoint for "Load more". With null, an explicit pageSize pages the supplied records. */
   apiPath?: string | null;
 }
 
@@ -73,7 +73,7 @@ dialog.sdx-activity-dialog::backdrop { background: rgba(0,0,0,0.45); }
 const FEED_SCRIPT = `
 (function(){
   var DATA = window.__ACTIVITY__ || [];
-  var PAGE = window.__ACTIVITY_PAGE_SIZE__ || 20;
+  var PAGE = window.__ACTIVITY_PAGE_SIZE__;
   var API = window.__ACTIVITY_API__;
   var listEl = document.getElementById('activity-list');
   var moreWrap = document.getElementById('activity-more-wrap');
@@ -269,20 +269,29 @@ const FEED_SCRIPT = `
       currentUl.appendChild(renderItem(r));
     }
   }
-  function setMore(count){ moreWrap.style.display = (API && count >= PAGE) ? '' : 'none'; }
+  function setMore(count){
+    var hasMore = API ? count >= PAGE : skip < DATA.length;
+    moreWrap.style.display = hasMore ? '' : 'none';
+  }
+  function appendPage(records){
+    append(records);
+    skip += records.length;
+    setMore(records.length);
+  }
 
-  if(!DATA.length){ emptyEl.style.display = ''; moreWrap.style.display = 'none'; }
-  else { append(DATA); skip = DATA.length; setMore(DATA.length); }
+  emptyEl.style.display = DATA.length ? 'none' : '';
+  appendPage(API || !PAGE ? DATA : DATA.slice(0, PAGE));
 
-  if(moreBtn && API){
+  if(moreBtn){
     moreBtn.addEventListener('click', function(){
+      if(!API){ appendPage(DATA.slice(skip, skip + PAGE)); return; }
       moreBtn.disabled = true; moreBtn.textContent = 'Loading…';
       var sep = API.indexOf('?') >= 0 ? '&' : '?';
       fetch(API + sep + 'first=' + PAGE + '&skip=' + skip, {headers:{'accept':'application/json'}})
         .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
         .then(function(recs){
           recs = Array.isArray(recs) ? recs : [];
-          append(recs); skip += recs.length; setMore(recs.length);
+          appendPage(recs);
           moreBtn.disabled = false; moreBtn.textContent = 'Load more';
         })
         .catch(function(e){
@@ -302,11 +311,11 @@ const FEED_SCRIPT = `
  * Client-rendered activity feed: a day-grouped list with a "Load more" button
  * and a details dialog. Shared by the public catalogue Activity page and the
  * Member Console org-scoped Activity page; `apiPath` selects the paging
- * endpoint.
+ * endpoint or enables paging through the supplied records with a page size.
  */
 export function ActivityFeed({
   activity,
-  pageSize = 20,
+  pageSize,
   apiPath = "/api/activity",
 }: ActivityFeedProps) {
   const dataJson = JSON.stringify(activity).replace(
@@ -425,7 +434,7 @@ export function ActivityFeed({
         dangerouslySetInnerHTML={{
           __html:
             `window.__ACTIVITY__=${dataJson};` +
-            `window.__ACTIVITY_PAGE_SIZE__=${pageSize};` +
+            `window.__ACTIVITY_PAGE_SIZE__=${pageSize ?? (apiPath ? 20 : 0)};` +
             `window.__ACTIVITY_API__=${apiJson};`,
         }}
       />

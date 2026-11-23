@@ -6,6 +6,7 @@ export interface SubsystemAccess {
 export interface Subsystem {
   name: string;
   clientId: string;
+  integrationClientIds?: string[];
   organization: { name: string; title: string; description?: string };
   member: { memberClass: string; memberId: string };
   description?: string;

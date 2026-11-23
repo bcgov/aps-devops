@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ActivityFeed } from "../components/custom/ActivityFeed.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
@@ -9,11 +10,13 @@ export function CommonSsoPage({
   user,
   activity,
   error,
+  children,
 }: {
   currentPath: string;
   user: SessionUser;
   activity: ActivityRecord[];
   error?: string;
+  children: ReactNode;
 }) {
   const sorted = activity.toSorted((a, b) =>
     Date.parse(b.activityAt) - Date.parse(a.activityAt)
@@ -26,23 +29,24 @@ export function CommonSsoPage({
   });
 
   return (
-    <Layout title="Common SSO" currentPath={currentPath} user={user}>
+    <Layout title="Common SSO Integrations" currentPath={currentPath} user={user}>
       <Breadcrumb
         items={[
           { label: "Home", href: "/" },
           { label: "Member Console", href: "/console" },
-          { label: "Common SSO" },
+          { label: "Common SSO Integrations" },
         ]}
       />
       <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-          <h1 className="text-4xl font-bold mb-2">Common SSO</h1>
+          <h1 className="text-4xl font-bold mb-2">Common SSO Integrations</h1>
           <p className="text-ink-invert-secondary">
-            View the latest status of your integration access requests.
+            View your organization’s service connections and the latest status of your integration access requests.
           </p>
         </div>
       </div>
       <div className="h-1 bg-bc-gold" />
+      {children}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <h2 className="mb-4 text-2xl font-bold text-bc-blue">My Submissions</h2>
         {error
@@ -54,7 +58,7 @@ export function CommonSsoPage({
               {error}
             </p>
           )
-          : <ActivityFeed activity={submissions} apiPath={null} />}
+          : <ActivityFeed activity={submissions} pageSize={5} apiPath={null} />}
       </section>
     </Layout>
   );
