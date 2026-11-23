@@ -92,22 +92,35 @@ function normalizeScopes(v: unknown): string[] | undefined {
   return v.map(toName).filter((s) => s !== "");
 }
 
+function normalizeRequesterDetails(
+  rd: ConnectionRequest["requesterDetails"],
+): ConnectionRequest["requesterDetails"] {
+  return rd
+    ? {
+        ...rd,
+        requester: toName(rd.requester),
+        requesterEmail: toEmail(rd.requester) ?? rd.requesterEmail,
+        scopes: normalizeScopes(rd.scopes) ?? rd.scopes,
+      }
+    : rd;
+}
+
 function normalizeConnection(c: ConnectionRequest): ConnectionRequest {
-  const rd = c.requesterDetails;
+  const proposal = c.proposedConfiguration;
   return {
     ...c,
     scopes: normalizeScopes(c.scopes) ?? c.scopes,
     provisionerStatus: c.provisionerStatus?.status
       ? c.provisionerStatus
       : undefined,
-    requesterDetails: rd
+    lifecycleIntent: c.lifecycleIntent?.action ? c.lifecycleIntent : undefined,
+    requesterDetails: normalizeRequesterDetails(c.requesterDetails),
+    proposedConfiguration: proposal && Object.keys(proposal).length > 0
       ? {
-          ...rd,
-          requester: toName(rd.requester),
-          requesterEmail: toEmail(rd.requester) ?? rd.requesterEmail,
-          scopes: normalizeScopes(rd.scopes) ?? rd.scopes,
+          ...proposal,
+          requesterDetails: normalizeRequesterDetails(proposal.requesterDetails),
         }
-      : rd,
+      : undefined,
   };
 }
 
@@ -133,9 +146,12 @@ export async function listOrgActivity(
 export async function deleteConnection(
   org: string,
   id: string,
-  opts: SdxCallOpts = {},
+  opts: SdxCallOpts & { action?: "revoke" } = {},
 ): Promise<void> {
-  const url = `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections/${encodeURIComponent(id)}`;
+  const query = opts.action ? `?action=${opts.action}` : "";
+  const url = `${SDX_API_ROOT}/organizations/${
+    encodeURIComponent(org)
+  }/connections/${encodeURIComponent(id)}${query}`;
   const res = await fetch(url, {
     method: "DELETE",
     headers: authHeaders(opts.accessToken),
@@ -158,6 +174,26 @@ export async function setConnectionApproval(
     `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections/approval`;
   const res = await fetch(url, {
     method: "PUT",
+    headers: authHeaders(opts.accessToken),
+    body: JSON.stringify(input),
+    signal: opts.signal,
+  });
+  if (!res.ok) throw new SdxApiError(res.status, await res.text());
+  return await res.json();
+}
+
+export async function runConnectionLifecycle(
+  org: string,
+  id: string,
+  input: {
+    action: "activate" | "deactivate" | "retry";
+    confirmAbandonRevoke?: boolean;
+  },
+  opts: SdxCallOpts = {},
+): Promise<unknown> {
+  const url = `${SDX_API_ROOT}/organizations/${encodeURIComponent(org)}/connections/${encodeURIComponent(id)}/lifecycle`;
+  const res = await fetch(url, {
+    method: "POST",
     headers: authHeaders(opts.accessToken),
     body: JSON.stringify(input),
     signal: opts.signal,
