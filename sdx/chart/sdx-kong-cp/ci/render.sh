@@ -19,7 +19,7 @@ else
   image=ghcr.io/bcgov/aps-devops/sdx-access-point:v1.0.1@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 fi
 export image version
-yq '.image.unifiedRepoTag = strenv(image) | .image.effectiveSemver = strenv(version)' "$chart/ci/control-plane.yaml" > "$temp/upstream.yaml"
+yq '.image.unifiedRepoTag = strenv(image) | .image.effectiveSemver = strenv(version)' "$chart/ci/legacy-standalone-values.yaml" > "$temp/upstream.yaml"
 # Apply only environment-specific values to the wrapper, so the comparison
 # also verifies its shared defaults against the standalone configuration.
 yq '{"kong": {
