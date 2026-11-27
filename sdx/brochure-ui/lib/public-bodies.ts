@@ -1,8 +1,7 @@
 // Client for the BC Public Bodies registry API. Responses are wrapped in a
 // `{ payload, datetimeRequested }` envelope.
 
-const PUBLIC_BODIES_API =
-  Deno.env.get("PUBLIC_BODIES_API") ??
+const PUBLIC_BODIES_API = Deno.env.get("PUBLIC_BODIES_API") ??
   "https://public-bodies.dev.api.gov.bc.ca/v1";
 
 export interface PublicBody {
@@ -38,33 +37,19 @@ interface Envelope<T> {
   datetimeRequested?: string;
 }
 
-// The type list is small and rarely changes, so cache it for the process.
-let typesPromise: Promise<PublicBodyType[]> | null = null;
-
-export function clearPublicBodyCache(): void {
-  typesPromise = null;
-}
-
-async function fetchTypes(): Promise<PublicBodyType[]> {
-  const res = await fetch(`${PUBLIC_BODIES_API}/PublicBodies/types`);
+export async function getPublicBodyTypes(): Promise<PublicBodyType[]> {
+  const res = await fetch(`${PUBLIC_BODIES_API}/PublicBodies/types`, {
+    signal: AbortSignal.timeout(5_000),
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const env = (await res.json()) as Envelope<PublicBodyType[]>;
   return Array.isArray(env?.payload) ? env.payload : [];
 }
 
-export function getPublicBodyTypes(): Promise<PublicBodyType[]> {
-  if (!typesPromise) {
-    typesPromise = fetchTypes().catch((e) => {
-      typesPromise = null; // don't cache failures
-      throw e;
-    });
-  }
-  return typesPromise;
-}
-
 export async function getPublicBody(id: string): Promise<PublicBody | null> {
   const res = await fetch(
     `${PUBLIC_BODIES_API}/PublicBodies/${encodeURIComponent(id)}`,
+    { signal: AbortSignal.timeout(5_000) },
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

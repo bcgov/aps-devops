@@ -48,25 +48,14 @@ interface Jwks {
   keys: Jwk[];
 }
 
-// JWKS endpoints are cached for the lifetime of the server process: once a
-// JWKS URL has been resolved successfully, every subsequent verification
-// reuses the same in-memory copy. Concurrent first-time requests for the
-// same URL share a single in-flight Promise so we never fire duplicate
-// fetches against the keyset endpoint.
-const jwksCache = new Map<string, Jwks>();
+// Revalidate recently used keys periodically and share concurrent fetches.
+const JWKS_CACHE_TTL_MS = 60_000;
+const jwksCache = new Map<string, { expiresAt: number; jwks: Jwks }>();
 const jwksInflight = new Map<string, Promise<Jwks>>();
 
-// Drop any cached JWKS responses so the next verification re-fetches them.
-// Called when a request asks for `?refresh=1`, since deployed keysets and
-// configured JWKS endpoints can change between page loads.
-export function clearJwksCache(): void {
-  jwksCache.clear();
-  jwksInflight.clear();
-}
-
-function fetchJwks(url: string): Promise<Jwks> {
+function fetchJwks(url: string, refresh = false): Promise<Jwks> {
   const cached = jwksCache.get(url);
-  if (cached) return Promise.resolve(cached);
+  if (!refresh && cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.jwks);
   const inflight = jwksInflight.get(url);
   if (inflight) return inflight;
 
@@ -80,7 +69,7 @@ function fetchJwks(url: string): Promise<Jwks> {
       if (!jwks || !Array.isArray(jwks.keys)) {
         throw new Error("malformed JWKS");
       }
-      jwksCache.set(url, jwks);
+      jwksCache.set(url, { expiresAt: Date.now() + JWKS_CACHE_TTL_MS, jwks });
       return jwks;
     } finally {
       clearTimeout(t);
@@ -716,6 +705,7 @@ export async function verifyEdgeToken(
   token: string,
   source: HeaderSource,
   allowedJwksUrls?: readonly string[],
+  refreshJwks = false,
 ): Promise<VerificationResult> {
   let parsed: JwtParts;
   try {
@@ -736,7 +726,7 @@ export async function verifyEdgeToken(
   }
   let jwks: Jwks;
   try {
-    jwks = await fetchJwks(jwksUrl);
+    jwks = await fetchJwks(jwksUrl, refreshJwks);
   } catch (e) {
     return {
       status: "error",
@@ -951,6 +941,7 @@ export async function verifyEntitySig(
   edgeToken: string,
   entity: { dotted: string; keysetId: string },
   source: HeaderSource,
+  refreshJwks = false,
 ): Promise<VerificationResult> {
   let entitySig: Uint8Array;
   try {
@@ -983,7 +974,7 @@ export async function verifyEntitySig(
   }
   let jwks: Jwks;
   try {
-    jwks = await fetchJwks(url);
+    jwks = await fetchJwks(url, refreshJwks);
   } catch (e) {
     return {
       status: "error",

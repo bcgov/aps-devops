@@ -9,7 +9,6 @@
 - Use the design components from https://www2.gov.bc.ca/gov/content/digital/design-system/components
 - Use Deno runtime
 - Use `jsr:@std/yaml` for YAML handling
-- No environment variables
 - Serve on port 8000
 - Use latest tailwindcss
 - Use latest React version
@@ -115,6 +114,123 @@ connections:
 Direct R0 requests remain available through the SDX API for tools such as Restish;
 they are not exposed in this UI.
 
+## Catalogue refresh
+
+The brochure UI reads organization, subsystem, and service lists from the
+Portal HTTP API. With both refresh options disabled, it fetches these lists
+on request.
+
+### Environment variables
+
+| Variable | Value |
+| --- | --- |
+| `SDX_CATALOG_REFRESH_PERIOD_SECONDS` | Whole seconds between background API refreshes. Unset or `0` disables polling. A positive value enables an initial refresh at startup and periodic refreshes after that. |
+| `SDX_CATALOG_LISTENER_ENABLED` | Set to `true` to listen for changes on a writable Portal PostgreSQL primary. Unset or any other value leaves it off. |
+| `SDX_CATALOG_DATABASE_URL` | PostgreSQL URL for the Portal database that owns the catalogue tables. Required only when the listener is enabled. Supply it from a Kubernetes Secret or equivalent secret store. |
+| `SDX_API_BASE` | Catalogue HTTP API for the same Portal environment. All cache refreshes read from this API. |
+
+Each UI pod refreshes independently. During a periodic refresh it can serve
+the previous successful value for a list. Public-body records referenced by
+catalogue organizations and their types share the catalogue refresh policy. If a list refresh fails, it keeps
+that value and retries on the next tick. The OpenAPI detail endpoints and the
+Scopes page keep their request-time reads.
+
+### Standby and promotion
+
+On a Patroni standby, leave the listener off and set a refresh period, for
+example `30` seconds. Point `SDX_API_BASE` at the Portal API for that site.
+New data becomes visible after PostgreSQL replays the change and the next
+successful API refresh completes.
+
+After promotion, check that the database is writable (`SELECT
+pg_is_in_recovery();` returns `false`). Update the brochure deployment with
+the database URL for the promoted primary and set
+`SDX_CATALOG_LISTENER_ENABLED=true`. You can keep polling as a fallback,
+increase its interval, or set it to `0` for listener-only mode. Changes to
+these environment variables take effect on pod restart.
+
+### PostgreSQL listener
+
+A committed Portal change invalidates the lists in every listening pod. The
+next request reloads the lists it needs. In listener-only mode, cached lists
+also expire after 60 seconds. While the PostgreSQL connection is down, the UI
+keeps polling if a period is configured and otherwise uses request-time
+reads. The listener retries after five seconds and invalidates the cache
+again when it subscribes.
+
+The co-located Portal database and brochure UI connect without TLS. Use the
+internal Portal database service hostname, port, database name, and dedicated
+listener credentials for the target environment.
+
+```text
+postgresql://sdx_brochure_listener:<url-encoded-password>@<portal-postgres-host>:5432/keystonejs?sslmode=disable
+```
+
+If another deployment uses TLS, set `sslmode=verify-full` and use the hostname
+on the server certificate. For a private CA, mount its PEM in the UI pod and
+add `&sslrootcert=/path/to/portal-ca.pem` to the URL.
+
+Permit the UI pods to reach the database through the relevant network policy
+and PostgreSQL client authentication rules. Use a direct connection or a
+session-mode pool. Each UI pod holds one session for `LISTEN`.
+
+### Listener role
+
+Run as a PostgreSQL administrator. Replace `keystonejs` if the database name
+differs. In `psql`, use `\password` to set the password interactively and store
+it in the Secret that supplies the connection URL.
+
+```sql
+CREATE ROLE sdx_brochure_listener LOGIN;
+GRANT CONNECT ON DATABASE keystonejs TO sdx_brochure_listener;
+\password sdx_brochure_listener
+```
+
+The listener needs `CONNECT` and no table grants, schema grants, trigger
+privileges, or membership in the Portal application role. Check any effective
+privileges the login inherits from `PUBLIC` in your database. PostgreSQL
+notifications are visible to sessions connected to that database, so this
+channel carries an empty payload.
+
+### Portal database triggers
+
+Install the triggers using the Portal schema migration or database owner role.
+Confirm the schema and physical table names first. The example uses Keystone's
+quoted list names in `public`.
+
+```sql
+CREATE FUNCTION public.notify_sdx_catalogue_changed()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM pg_catalog.pg_notify('sdx_catalogue_changed', '');
+  RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER sdx_catalogue_organization_changed
+AFTER INSERT OR UPDATE OR DELETE ON public."Organization"
+FOR EACH STATEMENT EXECUTE FUNCTION public.notify_sdx_catalogue_changed();
+
+CREATE TRIGGER sdx_catalogue_subsystem_changed
+AFTER INSERT OR UPDATE OR DELETE ON public."Subsystem"
+FOR EACH STATEMENT EXECUTE FUNCTION public.notify_sdx_catalogue_changed();
+
+CREATE TRIGGER sdx_catalogue_spec_changed
+AFTER INSERT OR UPDATE OR DELETE ON public."OpenAPISpec"
+FOR EACH STATEMENT EXECUTE FUNCTION public.notify_sdx_catalogue_changed();
+```
+
+After enabling the listener in test, warm a catalogue page on both replicas.
+Publish or update a test record through Portal and check that the next read
+after notification shows the update on each replica. Disable the flag to
+return to request-time reads. To remove the migration, drop the three triggers
+before dropping the function.
+
+See the [PostgreSQL LISTEN documentation](https://www.postgresql.org/docs/current/sql-listen.html)
+and [node-postgres TLS options](https://node-postgres.com/features/ssl).
+
 ## Deployment
 
 ```sh
@@ -135,7 +251,7 @@ automatically use the sibling `thanos-query:9090` service for ISA traffic.
 ```sh
 helm upgrade -n b8840c-test --install sdx-brochure \
  --set fullnameOverride=sdx-brochure \
- -f chart.yaml -f .values-test.yaml \
+ -f chart.yaml -f .values-test.yaml -f values-test.yaml \
 bcgov/generic-api
 ```
 

@@ -1,5 +1,4 @@
 import { Buffer } from "node:buffer";
-import { clearJwksCache } from "./verification.ts";
 import {
   type ResponseVerificationInput,
   verifyOrganizationResponse,
@@ -85,7 +84,6 @@ Deno.test("response verification checks both signatures and detects tampering, e
   };
   const config = { jwksUrls: ["https://edge.example/jwks"] };
   try {
-    clearJwksCache();
     const success = await verifyOrganizationResponse(sample.input, config);
     assert(
       success.verified,
@@ -128,7 +126,6 @@ Deno.test("response verification checks both signatures and detects tampering, e
       )).verified,
       "Expired JWT accepted",
     );
-    clearJwksCache();
     seen.length = 0;
     const internal = await sample.signToken({
       jwks_uri: "http://127.0.0.1/private",
@@ -146,7 +143,6 @@ Deno.test("response verification checks both signatures and detects tampering, e
     );
   } finally {
     globalThis.fetch = original;
-    clearJwksCache();
   }
 });
 
@@ -164,7 +160,6 @@ Deno.test("failed certificate chain prevents overall Verified result", async () 
       }),
     );
   try {
-    clearJwksCache();
     const result = await verifyOrganizationResponse(sample.input, {
       jwksUrls: ["https://edge.example/jwks"],
     });
@@ -177,6 +172,5 @@ Deno.test("failed certificate chain prevents overall Verified result", async () 
     );
   } finally {
     globalThis.fetch = original;
-    clearJwksCache();
   }
 });

@@ -90,11 +90,11 @@ export async function verifyOrganizationResponse(
     });
   }
   const [edge, entity] = await Promise.all([
-    verifyEdgeToken(input.edgeToken, "response", allowed),
+    verifyEdgeToken(input.edgeToken, "response", allowed, true),
     verifyEntitySig(input.entitySig, input.edgeToken, {
       dotted: `${environment}.${memberClass}.${memberId}`,
       keysetId: expected,
-    }, "response"),
+    }, "response", true),
   ]);
   checks.push({
     label: "Edge token signature",
