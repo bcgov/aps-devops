@@ -1,0 +1,33 @@
+# Representative overrides for the existing sdx-konghc release.
+cluster:
+  enabled: true
+  tls:
+    enabled: true
+    servicePort: 8005
+    containerPort: 8005
+admin:
+  enabled: true
+  type: ClusterIP
+  http:
+    enabled: true
+  tls:
+    enabled: false
+manager:
+  enabled: true
+  type: ClusterIP
+  http:
+    enabled: true
+  tls:
+    enabled: false
+proxy:
+  enabled: false
+ingressController:
+  enabled: false
+  installCRDs: false
+deployment:
+  serviceAccount:
+    create: false
+env:
+  role: control_plane
+  database: postgres
+  pg_host: patroni-spilo

@@ -117,7 +117,12 @@ jobs:
         if: needs.plan.outputs.has_chart == 'true'
         with:
           name: chart-sdx-edge
-          path: dist
+          path: dist/sdx-edge
+      - uses: actions/download-artifact@v8
+        if: needs.plan.outputs.has_chart == 'true'
+        with:
+          name: chart-sdx-kong-cp
+          path: dist/sdx-kong-cp
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -146,7 +151,7 @@ jobs:
             git log --format='- %s (%h)' "${PREVIOUS:+$PREVIOUS..}$SOURCE_SHA" -- "${PATHS[@]}" >> notes.md
             ASSETS=()
             if [[ "$KIND" == chart ]]; then
-              ASSETS=(dist/*)
+              ASSETS=(dist/"$NAME"/*)
             else
               VERSION=$(jq -r .version <<< "$COMPONENT")
               IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}/$NAME:v$VERSION"

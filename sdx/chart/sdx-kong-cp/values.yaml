@@ -1,0 +1,5 @@
+kong:
+  image:
+    # Both fields are set by the publication workflow.
+    unifiedRepoTag: ""
+    effectiveSemver: ""

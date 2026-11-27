@@ -1,0 +1,10 @@
+apiVersion: v2
+name: sdx-kong-cp
+description: SDX Kong hybrid control plane
+type: application
+version: 1.1.0
+appVersion: "v1.1.0"
+dependencies:
+  - name: kong
+    version: 2.47.0
+    repository: https://charts.konghq.com

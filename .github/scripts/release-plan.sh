@@ -21,17 +21,19 @@ selected=$(mktemp)
 trap 'rm -f "$selected"' EXIT
 shared=()
 while IFS= read -r path; do shared+=("$path"); done < <(jq -r '.shared_paths[]' .github/release/components.json)
-# Resolve the edge dependency before iterating; manifest order is irrelevant.
-edge_paths=()
-while IFS= read -r path; do edge_paths+=("$path"); done < <(jq -r '.components[] | select(.name=="sdx-access-point") | .paths[]' .github/release/components.json)
-edge_changed=false
-if [[ ${#edge_paths[@]} -gt 0 ]] && ! git diff --quiet "$base" "$sha" -- "${edge_paths[@]}" "${shared[@]}"; then edge_changed=true; fi
+# Either chart or the access-point image can trigger publication of the pair.
+sdx_paths=()
+while IFS= read -r path; do sdx_paths+=("$path"); done < <(
+  jq -r '.components[] | select(.name=="sdx-access-point" or .name=="sdx-edge" or .version_from=="sdx-edge") | .paths[]' .github/release/components.json
+)
+sdx_changed=false
+if ! git diff --quiet "$base" "$sha" -- "${sdx_paths[@]}" "${shared[@]}"; then sdx_changed=true; fi
 while IFS= read -r component; do
   name=$(jq -r .name <<< "$component")
   paths=()
   while IFS= read -r path; do paths+=("$path"); done < <(jq -r '.paths[]' <<< "$component")
   if git diff --quiet "$base" "$sha" -- "${paths[@]}" "${shared[@]}"; then
-    if [[ "$name" != sdx-edge || "$edge_changed" != true ]]; then continue; fi
+    if [[ "$name" != sdx-edge || "$sdx_changed" != true ]]; then continue; fi
   fi
   previous=$(git tag --list "$name/v*" --sort=-version:refname | grep -E '/v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p' || true)
   existing=$(git tag --points-at "$sha" --list "$name/v*" | grep -E '/v[0-9]+\.[0-9]+\.[0-9]+$' || true)
@@ -47,19 +49,33 @@ while IFS= read -r component; do
   fi
   jq -cn --argjson component "$component" --arg version "$version" --arg previous "$previous" \
     '$component + {version:$version,tag:( $component.name + "/v" + $version),previous:$previous}' >> "$selected"
-done < <(jq -c '.components[]' .github/release/components.json)
+done < <(jq -c '.components[] | select(.version_from == null)' .github/release/components.json)
+# The wrapper inherits the edge version, including on a retry after tags are reserved.
+chart_version=$(jq -r 'select(.name=="sdx-edge") | .version' "$selected")
+if [[ -n "$chart_version" ]]; then
+  while IFS= read -r component; do
+    name=$(jq -r .name <<< "$component")
+    tag="$name/v$chart_version"
+    existing=$(git tag --points-at "$sha" --list "$name/v*" | grep -E '/v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+    [[ -z "$existing" || "$existing" == "$tag" ]]
+    previous=$(git tag --list "$name/v*" --sort=-version:refname | grep -E '/v[0-9]+\.[0-9]+\.[0-9]+$' | grep -Fxv "$tag" | sed -n '1p' || true)
+    jq -cn --argjson component "$component" --arg version "$chart_version" --arg tag "$tag" --arg previous "$previous" \
+      '$component + {version:$version,tag:$tag,previous:$previous}' >> "$selected"
+  done < <(jq -c '.components[] | select(.version_from=="sdx-edge")' .github/release/components.json)
+fi
 jq -s '.' "$selected" > release-plan.json
 # Stable chart metadata must be committed and reviewed before promotion.
-chart_context=$(jq -r '.[] | select(.kind=="chart") | .context' release-plan.json)
-if [[ -n "$chart_context" ]]; then
-  chart_version=$(jq -r '.[] | select(.kind=="chart") | .version' release-plan.json)
-  actual=$(yq -r '.version' "$chart_context/Chart.yaml")
-  [[ "$actual" == "$chart_version" ]] || { echo "Chart.yaml version must be $chart_version (found $actual)." >&2; exit 1; }
-  edge_version=$(jq -r '.[] | select(.name=="sdx-access-point") | .version' release-plan.json)
-  if [[ -n "$edge_version" ]]; then
-    actual=$(yq -r '.appVersion' "$chart_context/Chart.yaml")
-    [[ "$actual" == "v$edge_version" ]] || { echo "Chart.yaml appVersion must be v$edge_version (found $actual)." >&2; exit 1; }
-  fi
+edge_version=$(jq -r '.[] | select(.name=="sdx-access-point") | .version' release-plan.json)
+if [[ -n "$chart_version" ]]; then
+  edge_context=$(jq -r '.[] | select(.name=="sdx-edge") | .context' release-plan.json)
+  app_version=$(yq -r .appVersion "$edge_context/Chart.yaml")
+  if [[ -n "$edge_version" ]]; then app_version="v$edge_version"; fi
+  while IFS= read -r chart_context; do
+    actual=$(yq -r .version "$chart_context/Chart.yaml")
+    [[ "$actual" == "$chart_version" ]] || { echo "$chart_context/Chart.yaml version must be $chart_version (found $actual)." >&2; exit 1; }
+    actual=$(yq -r .appVersion "$chart_context/Chart.yaml")
+    [[ "$actual" == "$app_version" ]] || { echo "$chart_context/Chart.yaml appVersion must be $app_version (found $actual)." >&2; exit 1; }
+  done < <(jq -r '.[] | select(.kind=="chart") | .context' release-plan.json)
 fi
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
@@ -68,8 +84,8 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     echo "has_edge=$(jq 'any(.[];.name=="sdx-access-point")' release-plan.json)"
     echo "has_chart=$(jq 'any(.[];.kind=="chart")' release-plan.json)"
     echo "has_components=$(jq 'length>0' release-plan.json)"
-    echo "edge_version=$(jq -r '.[]|select(.name=="sdx-access-point")|.version' release-plan.json)"
-    echo "chart_version=$(jq -r '.[]|select(.kind=="chart")|.version' release-plan.json)"
+    echo "edge_version=$edge_version"
+    echo "chart_version=$chart_version"
   } >> "$GITHUB_OUTPUT"
 fi
 jq -r '.[]|.tag' release-plan.json
