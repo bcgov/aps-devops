@@ -20,10 +20,17 @@ else
 fi
 export image version
 yq '.image.unifiedRepoTag = strenv(image) | .image.effectiveSemver = strenv(version)' "$chart/ci/control-plane.yaml" > "$temp/upstream.yaml"
-if [[ -n "$published_image" ]]; then
-  yq '{"kong": .}' "$chart/ci/control-plane.yaml" > "$temp/wrapper.yaml"
-else
-  yq '{"kong": .}' "$temp/upstream.yaml" > "$temp/wrapper.yaml"
+# Apply only environment-specific values to the wrapper, so the comparison
+# also verifies its shared defaults against the standalone configuration.
+yq '{"kong": {
+  "replicaCount": .replicaCount,
+  "image": (.image | pick(["pullPolicy", "pullSecrets"])),
+  "waitImage": (.waitImage | pick(["pullPolicy"])),
+  "containerSecurityContext": .containerSecurityContext,
+  "migrations": .migrations
+}}' "$temp/upstream.yaml" > "$temp/wrapper.yaml"
+if [[ -z "$published_image" ]]; then
+  yq -i '.kong.image.unifiedRepoTag = strenv(image) | .kong.image.effectiveSemver = strenv(version)' "$temp/wrapper.yaml"
 fi
 for mode in install upgrade; do
   upgrade=false
