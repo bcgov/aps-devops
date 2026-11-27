@@ -130,7 +130,8 @@ on request.
 | `SDX_API_BASE` | Catalogue HTTP API for the same Portal environment. All cache refreshes read from this API. |
 
 Each UI pod refreshes independently. During a periodic refresh it can serve
-the previous successful value for a list. If that refresh fails, it keeps
+the previous successful value for a list. Public-body records referenced by
+catalogue organizations and their types share the catalogue refresh policy. If a list refresh fails, it keeps
 that value and retries on the next tick. The OpenAPI detail endpoints and the
 Scopes page keep their request-time reads.
 

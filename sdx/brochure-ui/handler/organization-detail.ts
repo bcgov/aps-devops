@@ -5,6 +5,7 @@ import {
   loadActivity,
   loadOrganizationDetail,
   loadOrganizations,
+  loadPublicBodyDetails,
   loadServices,
   loadSubsystems,
   ORGANIZATION_ACTIVITY_PAGE_SIZE,
@@ -12,13 +13,7 @@ import {
 import { config } from "../lib/config.ts";
 import type { ActivityRecord } from "../types.ts";
 import { OrgDetailPage } from "../pages/OrgDetailPage.tsx";
-import {
-  getPublicBody,
-  getPublicBodyTypes,
-  type PublicBody,
-  type PublicBodyType,
-  resolvePublicBodyType,
-} from "../lib/public-bodies.ts";
+import { type PublicBody, type PublicBodyType } from "../lib/public-bodies.ts";
 import type { SessionUser } from "../lib/auth.ts";
 import { htmlResponse, notFound } from "./http.ts";
 
@@ -53,15 +48,9 @@ export async function handleOrganizationDetail(
   let publicBodyError: string | null = null;
   if (org.publicBodyId) {
     try {
-      const [body, types] = await Promise.all([
-        getPublicBody(org.publicBodyId),
-        getPublicBodyTypes(),
-      ]);
+      const { body, type } = await loadPublicBodyDetails(org.publicBodyId);
       publicBody = body;
-      publicBodyType = resolvePublicBodyType(
-        types,
-        body?.typeId,
-      );
+      publicBodyType = type;
     } catch (e) {
       publicBodyError = `Public body lookup failed: ${(e as Error).message}`;
     }

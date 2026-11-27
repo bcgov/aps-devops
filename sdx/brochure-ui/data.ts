@@ -14,6 +14,12 @@ import {
 import { keysForKeyset } from "./lib/keysets.ts";
 import { listenForCatalogChanges } from "./lib/catalog-listener.ts";
 import { loadJwks } from "./lib/jwks.ts";
+import {
+  getPublicBody,
+  getPublicBodyTypes,
+  type PublicBody,
+  resolvePublicBodyType,
+} from "./lib/public-bodies.ts";
 
 const SDX_API_BASE = Deno.env.get("SDX_API_BASE") ??
   "https://api-gov-bc-ca.dev.api.gov.bc.ca/ds/api/sdx/v1/catalog";
@@ -139,15 +145,15 @@ function catalogCacheEnabled(): boolean {
   return catalogListenerConnected || catalogRefreshPeriodMs > 0;
 }
 
-function catalogLoader<T>(url: string) {
-  let cached: { revision: number; expiresAt: number; data: T[] } | undefined;
-  let pending: { revision: number; result: Promise<T[]> } | undefined;
+function catalogLoader<T>(fetchData: () => Promise<T>) {
+  let cached: { revision: number; expiresAt: number; data: T } | undefined;
+  let pending: { revision: number; result: Promise<T> } | undefined;
 
-  function refresh(): Promise<T[]> {
+  function refresh(): Promise<T> {
     const revision = catalogRevision;
     if (pending?.revision === revision) return pending.result;
 
-    const result = fetchCatalogList<T>(url).then((data) => {
+    const result = fetchData().then((data) => {
       if (revision === catalogRevision) {
         cached = {
           revision,
@@ -163,8 +169,8 @@ function catalogLoader<T>(url: string) {
     return result;
   }
 
-  function load(fresh = false): Promise<T[]> {
-    if (fresh || !catalogCacheEnabled()) return fetchCatalogList<T>(url);
+  function load(fresh = false): Promise<T> {
+    if (fresh || !catalogCacheEnabled()) return fetchData();
 
     if (
       cached?.revision === catalogRevision &&
@@ -178,9 +184,15 @@ function catalogLoader<T>(url: string) {
   return { load, refresh };
 }
 
-const subsystemsCatalog = catalogLoader<Subsystem>(SUBSYSTEMS_API);
-const organizationsCatalog = catalogLoader<Organization>(ORGANIZATIONS_API);
-const servicesCatalog = catalogLoader<Service>(SERVICES_API);
+const subsystemsCatalog = catalogLoader(() =>
+  fetchCatalogList<Subsystem>(SUBSYSTEMS_API)
+);
+const organizationsCatalog = catalogLoader(() =>
+  fetchCatalogList<Organization>(ORGANIZATIONS_API)
+);
+const servicesCatalog = catalogLoader(() =>
+  fetchCatalogList<Service>(SERVICES_API)
+);
 
 export const loadSubsystems = subsystemsCatalog.load;
 export const loadOrganizations = organizationsCatalog.load;
@@ -199,6 +211,62 @@ export async function loadConnectionOrganizations(
   return organizations;
 }
 
+async function fetchPublicBodies(
+  ids: string[],
+): Promise<Map<string, PublicBody | null | Error>> {
+  const bodies = new Map<string, PublicBody | null | Error>();
+  const batchSize = 6;
+  for (let start = 0; start < ids.length; start += batchSize) {
+    await Promise.all(
+      ids.slice(start, start + batchSize).map(async (id) => {
+        try {
+          bodies.set(id, await getPublicBody(id));
+        } catch (error) {
+          bodies.set(
+            id,
+            error instanceof Error ? error : new Error(String(error)),
+          );
+        }
+      }),
+    );
+  }
+  return bodies;
+}
+
+const publicBodiesCatalog = catalogLoader(async () => {
+  const organizations = await loadOrganizations();
+  const ids = [
+    ...new Set(
+      organizations.flatMap((org) =>
+        org.publicBodyId ? [org.publicBodyId] : []
+      ),
+    ),
+  ];
+  const [types, bodies] = await Promise.all([
+    ids.length > 0 ? getPublicBodyTypes() : [],
+    fetchPublicBodies(ids),
+  ]);
+  return { types, bodies };
+});
+
+export async function loadPublicBodyDetails(id: string) {
+  if (!catalogCacheEnabled()) {
+    const [body, types] = await Promise.all([
+      getPublicBody(id),
+      getPublicBodyTypes(),
+    ]);
+    return { body, type: resolvePublicBodyType(types, body?.typeId) };
+  }
+
+  const { types, bodies } = await publicBodiesCatalog.load();
+  // A newly linked ID can appear between organization and registry refreshes.
+  const body = bodies.has(id)
+    ? (bodies.get(id) ?? null)
+    : await getPublicBody(id);
+  if (body instanceof Error) throw body;
+  return { body, type: resolvePublicBodyType(types, body?.typeId) };
+}
+
 function startPeriodicCatalogRefresh(periodMs: number): void {
   let refreshing = false;
   async function refreshCatalog(): Promise<void> {
@@ -206,7 +274,7 @@ function startPeriodicCatalogRefresh(periodMs: number): void {
     refreshing = true;
     const results = await Promise.allSettled([
       subsystemsCatalog.refresh(),
-      organizationsCatalog.refresh(),
+      organizationsCatalog.refresh().then(() => publicBodiesCatalog.refresh()),
       servicesCatalog.refresh(),
     ]);
     refreshing = false;
