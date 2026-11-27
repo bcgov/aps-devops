@@ -79,6 +79,8 @@ jobs:
       - name: Validate and package charts
         run: |
           set -euo pipefail
+          helm repo add kong https://charts.konghq.com
+
           helm dependency build sdx/chart/sdx-kong-cp
           helm lint sdx/chart/sdx-edge sdx/chart/sdx-kong-cp
           helm template check sdx/chart/sdx-edge > /dev/null

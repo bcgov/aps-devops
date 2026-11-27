@@ -37,6 +37,8 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - name: Validate the SDX control-plane wrapper
         run: |
+          helm repo add kong https://charts.konghq.com
+
           helm dependency build sdx/chart/sdx-kong-cp
           helm lint sdx/chart/sdx-kong-cp
           bash sdx/chart/sdx-kong-cp/ci/render.sh
