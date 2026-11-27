@@ -6,6 +6,7 @@ export interface SubsystemAccess {
 export interface Subsystem {
   name: string;
   clientId: string;
+  integrationClientIds?: string[];
   organization: { name: string; title: string; description?: string };
   member: { memberClass: string; memberId: string };
   description?: string;
@@ -86,12 +87,18 @@ export interface EnvironmentConfig {
   id: string;
   /** Human-readable label shown in the environment filter (e.g. "Dev"). */
   label: string;
+  /** Directory of privacy zones for this environment. */
+  privacy_zones_url?: string;
   /**
    * Base URL of the keyset registry for this environment, e.g.
    * `https://…/keysets`. The org and subsystem JWKS used to verify entity
    * signatures are fetched from `<org_keysets_url>/<keysetId>/.well-known/jwks.json`.
    */
   org_keysets_url?: string;
+  /** Trusted root CA PEM used when installing organization signing certificates. */
+  signing_root_ca_pem?: string;
+  /** PEM bundle containing the timestamp signing certificate and its CA chain. */
+  timestamp_authority_pem?: string;
   /** JWKS source URLs published for this environment on the trust registry. */
   jwks_urls?: string[];
 }

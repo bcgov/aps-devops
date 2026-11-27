@@ -9,8 +9,11 @@ function jwkAlgorithmLabel(k: JwkRecord): string {
 }
 
 export function KeysetKeyCard({ k }: { k: JwkRecord }) {
-  const useLabel =
-    k.use === "sig" ? "Signing" : k.use === "enc" ? "Encryption" : k.use;
+  const useLabel = k.use === "sig"
+    ? "Signing"
+    : k.use === "enc"
+    ? "Encryption"
+    : k.use;
   const chain = k.certs ?? [];
   return (
     <div className="bg-white rounded-lg border border-border overflow-hidden">
@@ -44,6 +47,61 @@ export function KeysetKeyCard({ k }: { k: JwkRecord }) {
           </div>
         )}
       </div>
+      {chain.length > 0 && (
+        <div className="px-5 py-4 border-b border-border overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <caption className="text-left font-semibold text-bc-blue mb-3">
+              Certificates
+            </caption>
+            <thead>
+              <tr className="border-b border-border text-ink-secondary">
+                <th scope="col" className="py-2 pr-4">Expiry</th>
+                <th scope="col" className="py-2">Subject</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chain.map((cert, index) => {
+                const expired = Date.parse(cert.notAfter) <= Date.now();
+                return (
+                  <tr
+                    key={`${cert.serial}-${index}`}
+                    className="border-b border-border last:border-b-0"
+                  >
+                    <td className="py-2 pr-4 align-top whitespace-nowrap text-ink">
+                      <span
+                        role="img"
+                        aria-label={expired ? "Expired" : "Not expired"}
+                        className={`mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold ${
+                          expired
+                            ? "border-support-danger-border bg-support-danger-bg text-danger"
+                            : "border-support-success-border bg-support-success-bg text-support-success-border"
+                        }`}
+                      >
+                        <span aria-hidden="true">{expired ? "×" : "✓"}</span>
+                      </span>
+                      <time dateTime={cert.notAfter}>
+                        {cert.notAfter.replace("T", " ").replace(
+                          /\.\d{3}Z$/,
+                          " UTC",
+                        )}
+                      </time>
+                    </td>
+                    <td className="py-2 align-top break-words text-ink">
+                      {cert.subject.split(/\r?\n/).map((part) => part.trim())
+                        .filter(Boolean).join(", ")}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {k.certError && (
+        <p className="px-5 py-4 text-sm text-support-error-border">
+          Could not read one or more certificate summaries: {k.certError}
+        </p>
+      )}
       {k.pem && (
         <div className="px-5 py-4">
           <div className="flex items-center justify-between mb-1">

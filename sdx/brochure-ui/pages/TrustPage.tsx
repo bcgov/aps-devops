@@ -1,6 +1,7 @@
 import { Layout } from "../components/Layout.tsx";
 import { CopyButton } from "../components/custom/CopyButton.tsx";
 import { EnvFilter } from "../components/custom/EnvFilter.tsx";
+import { parsePemCertificates } from "../lib/jwks.ts";
 import { envAttr } from "../lib/environments.ts";
 import type { CertInfo, JwkRecord, JwksData, SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
@@ -61,18 +62,19 @@ function CertCard({
   cert,
   index,
   total,
+  authorityLabel,
 }: {
   cert: CertInfo;
   index: number;
   total: number;
+  authorityLabel?: string;
 }) {
   const badge = VALIDITY_BADGES[cert.validityState];
-  const role =
-    index === 0
+  const role = authorityLabel ?? (index === 0
       ? "Leaf"
       : index === total - 1 && cert.isSelfSigned
         ? "Root"
-        : "Intermediate";
+        : "Intermediate");
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 bg-surface-muted border-b border-border flex flex-wrap items-center gap-2">
@@ -326,13 +328,18 @@ function SourceSection({ source }: { source: JwksData }) {
 
   return (
     <details
-      open
       data-env-item
       data-env={source.environment ?? envAttr(source.url)}
       className="group mb-6 border-2 border-bc-blue rounded-lg overflow-hidden bg-white shadow-sm"
     >
-      <summary className="cursor-pointer list-none bg-bc-blue text-ink-invert hover:bg-bc-blue-pressed transition-colors">
+      <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-bc-blue text-ink-invert hover:bg-bc-blue-pressed transition-colors">
         <div className="px-5 py-4 flex flex-wrap items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="inline-flex leading-none text-ink-invert-secondary text-lg group-open:rotate-90 transition-transform shrink-0"
+          >
+            ›
+          </span>
           <span className="text-xs font-bold uppercase tracking-wider text-bc-gold shrink-0">
             JWKS source
           </span>
@@ -343,12 +350,6 @@ function SourceSection({ source }: { source: JwksData }) {
             {hasError
               ? "load failed"
               : `${source.keys.length} key${source.keys.length !== 1 ? "s" : ""} · ${totalCerts} cert${totalCerts !== 1 ? "s" : ""}`}
-          </span>
-          <span
-            aria-hidden="true"
-            className="text-ink-invert-secondary text-lg group-open:rotate-90 transition-transform shrink-0"
-          >
-            ›
           </span>
         </div>
         <div className="h-1 bg-bc-gold" />
@@ -394,10 +395,14 @@ function SourceSection({ source }: { source: JwksData }) {
 
 export function TrustPage({
   sources,
-  config: _config,
+  config,
   currentPath,
   user,
 }: TrustPageProps) {
+  const certificateSections = [
+    { title: "Certificate Authorities", field: "signing_root_ca_pem", empty: "No signing root certificates configured." },
+    { title: "Timestamp Authorities", field: "timestamp_authority_pem", empty: "No timestamp authority certificates configured." },
+  ] as const;
   const totalKeys = sources.reduce((n, s) => n + s.keys.length, 0);
   const totalCerts = sources.reduce(
     (n, s) => n + s.keys.reduce((m, k) => m + (k.certs?.length ?? 0), 0),
@@ -405,20 +410,14 @@ export function TrustPage({
   );
 
   return (
-    <Layout title="Trust" currentPath={currentPath} user={user}>
+    <Layout title="Trust Services" currentPath={currentPath} user={user}>
       {/* Header */}
       <div className="bg-bc-blue text-ink-invert">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-          <h1 className="text-3xl font-bold mb-3">Trust registry</h1>
+          <h1 className="text-3xl font-bold mb-3">Trust Services</h1>
           <p className="text-ink-invert-secondary max-w-2xl">
-            Public keys and signing certificates published by members of the
-            Secure Data Exchange. Use these to verify signatures on tokens and
-            messages used on SDX.
-          </p>
-          <p className="text-ink-invert-secondary text-sm mt-3">
-            {sources.length} source{sources.length !== 1 ? "s" : ""} ·{" "}
-            {totalKeys} key{totalKeys !== 1 ? "s" : ""} · {totalCerts}{" "}
-            certificate{totalCerts !== 1 ? "s" : ""}
+            Authorized certificate authorities, timestamp authorities, and public keyset registries used to verify
+            Secure Data Exchange participating identities and messages.
           </p>
         </div>
       </div>
@@ -432,7 +431,49 @@ export function TrustPage({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      {certificateSections.map(({ title, field, empty }) => {
+        const authorities = (config.environments ?? []).flatMap((environment) => {
+          const pem = environment[field]?.trim();
+          return pem ? [{ environment, certificates: parsePemCertificates(pem) }] : [];
+        });
+        return (
+          <section key={field} className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <h2 className="mb-4 text-2xl font-bold text-bc-blue">{title}</h2>
+            {authorities.length === 0 ? (
+              <p className="text-ink-secondary">{empty}</p>
+            ) : (
+              <div className="space-y-5">
+                {authorities.map(({ environment, certificates }) => (
+                  <div key={environment.id} data-env-item data-env={environment.id} className="space-y-2">
+                    <h3 className="font-semibold text-bc-blue">{environment.label}</h3>
+                    {certificates.length === 0 && (
+                      <p className="text-danger">The configured certificate could not be read.</p>
+                    )}
+                    {certificates.map((certificate, index) =>
+                      "error" in certificate ? (
+                        <p key={index} className="text-danger">The configured certificate could not be read.</p>
+                      ) : (
+                        <CertCard key={index} cert={certificate} index={index} total={certificates.length}
+                          authorityLabel={field === "signing_root_ca_pem"
+                            ? "Signing CA"
+                            : certificate.isCA ? "Timestamp CA" : "Timestamp signing certificate"} />
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <h2 className="mb-2 text-2xl font-bold text-bc-blue">Public Keyset Registries</h2>
+        <p className="mb-4 text-sm text-ink-secondary">
+          {sources.length} source{sources.length !== 1 ? "s" : ""} ·{" "}
+          {totalKeys} key{totalKeys !== 1 ? "s" : ""} · {totalCerts}{" "}
+          certificate{totalCerts !== 1 ? "s" : ""}
+        </p>
         {sources.length === 0 ? (
           <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
             <p className="text-ink-secondary font-medium">
@@ -444,7 +485,7 @@ export function TrustPage({
             <SourceSection key={source.url} source={source} />
           ))
         )}
-      </div>
+      </section>
     </Layout>
   );
 }

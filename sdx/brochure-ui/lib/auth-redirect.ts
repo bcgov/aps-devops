@@ -34,6 +34,18 @@ export function safeReturnTo(
   return parsed.pathname + parsed.search;
 }
 
+function connectionActionReturnUrl(url: URL): URL {
+  const target = new URL(
+    url.searchParams.get("returnPath") === "/console/common-sso"
+      ? "/console/common-sso"
+      : "/connections",
+    ORIGIN_PROBE,
+  );
+  target.search = url.search;
+  target.searchParams.delete("returnPath");
+  return target;
+}
+
 // The returnTo for a login started by this request.
 export function loginReturnTo(req: Request): string {
   const url = new URL(req.url);
@@ -42,13 +54,20 @@ export function loginReturnTo(req: Request): string {
   }
 
   const isConnectionAction = CONNECTION_ACTION_PATHS.has(url.pathname);
-  const fallback = isConnectionAction ? "/connections" : "/";
+  const actionTarget = connectionActionReturnUrl(url);
+  const fallback = isConnectionAction ? actionTarget.pathname + actionTarget.search : "/";
   let back = fallback;
   const referer = req.headers.get("referer");
   if (referer) {
     try {
       const r = new URL(referer);
-      back = safeReturnTo(r.pathname + r.search, fallback);
+      if (
+        !isConnectionAction ||
+        actionTarget.pathname !== "/console/common-sso" ||
+        (r.origin === url.origin && r.pathname === actionTarget.pathname)
+      ) {
+        back = safeReturnTo(r.pathname + r.search, fallback);
+      }
     } catch {
       // unparseable Referer: use the fallback
     }
@@ -56,9 +75,12 @@ export function loginReturnTo(req: Request): string {
 
   const target = new URL(back, ORIGIN_PROBE);
   if (CONNECTION_ACTION_PATHS.has(target.pathname)) {
-    target.pathname = "/connections";
+    target.pathname = actionTarget.pathname;
   }
-  if (isConnectionAction && target.pathname === "/connections") {
+  if (
+    isConnectionAction &&
+    (target.pathname === "/connections" || target.pathname === "/console/common-sso")
+  ) {
     target.searchParams.set("flash", "error");
     target.searchParams.set("msg", SESSION_EXPIRED_MESSAGE);
   }
@@ -73,8 +95,9 @@ export function redirectStrayConnectionAction(req: Request): Response | null {
   if (req.method === "POST" || !CONNECTION_ACTION_PATHS.has(url.pathname)) {
     return null;
   }
+  const target = connectionActionReturnUrl(url);
   return new Response(null, {
     status: 303,
-    headers: { location: "/connections" + url.search },
+    headers: { location: target.pathname + target.search },
   });
 }

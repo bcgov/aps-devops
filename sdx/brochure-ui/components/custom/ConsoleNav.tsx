@@ -3,11 +3,12 @@ export const CONSOLE_PAGES: {
   label: string;
   href: string;
 }[] = [
-  { label: "Runtime Groups", href: "/runtimes" },
   { label: "Subsystems", href: "/org-subsystems" },
   { label: "Connection Requests", href: "/connections" },
-  { label: "Activity", href: "/org-activity" },
+  { label: "Edge Runtime Groups", href: "/runtimes" },
   { label: "Resource Scopes", href: "/scopes" },
+  { label: "Common SSO Integrations", href: "/console/common-sso" },
+  { label: "Activity", href: "/org-activity" },
   { label: "Traffic", href: "/traffic" },
   { label: "Logs", href: "/logs" },
   { label: "Metrics", href: "/metrics" },
