@@ -1,3 +1,4 @@
+# The checked-in values-test.yaml overrides this for test.
 replicaCount: 1
 
 rollingUpdate:

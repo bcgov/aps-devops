@@ -38,12 +38,9 @@ interface Envelope<T> {
   datetimeRequested?: string;
 }
 
-// The type list is small and rarely changes, so cache it for the process.
-let typesPromise: Promise<PublicBodyType[]> | null = null;
-
-export function clearPublicBodyCache(): void {
-  typesPromise = null;
-}
+// The type list rarely changes. Revalidate on access every five minutes.
+const TYPES_CACHE_TTL_MS = 5 * 60_000;
+let typesCache: { expiresAt: number; promise: Promise<PublicBodyType[]> } | undefined;
 
 async function fetchTypes(): Promise<PublicBodyType[]> {
   const res = await fetch(`${PUBLIC_BODIES_API}/PublicBodies/types`);
@@ -53,13 +50,14 @@ async function fetchTypes(): Promise<PublicBodyType[]> {
 }
 
 export function getPublicBodyTypes(): Promise<PublicBodyType[]> {
-  if (!typesPromise) {
-    typesPromise = fetchTypes().catch((e) => {
-      typesPromise = null; // don't cache failures
-      throw e;
+  if (!typesCache || typesCache.expiresAt <= Date.now()) {
+    const promise = fetchTypes().catch((error) => {
+      if (typesCache?.promise === promise) typesCache = undefined;
+      throw error;
     });
+    typesCache = { expiresAt: Date.now() + TYPES_CACHE_TTL_MS, promise };
   }
-  return typesPromise;
+  return typesCache.promise;
 }
 
 export async function getPublicBody(id: string): Promise<PublicBody | null> {

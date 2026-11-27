@@ -129,7 +129,7 @@ bcgov/generic-api
 ```sh
 helm upgrade -n b8840c-test --install sdx-brochure \
  --set fullnameOverride=sdx-brochure \
- -f chart.yaml -f .values-test.yaml \
+ -f chart.yaml -f .values-test.yaml -f values-test.yaml \
 bcgov/generic-api
 ```
 

@@ -33,10 +33,7 @@ import {
   MetricsQueryNotFoundError,
   runQuery,
 } from "./lib/metrics.ts";
-import {
-  clearJwksCache,
-  verifyActivityEvent,
-} from "./lib/verification.ts";
+import { verifyActivityEvent } from "./lib/verification.ts";
 import {
   authEnabled,
   completeLogin,
@@ -61,7 +58,6 @@ import {
 } from "./lib/connections.ts";
 import { listRuntimeGroups } from "./lib/runtime-groups.ts";
 import {
-  clearPublicBodyCache,
   getPublicBody,
   getPublicBodyTypes,
   resolvePublicBodyType,
@@ -126,8 +122,6 @@ async function loadActivity(
     : [];
 }
 
-// Member Console always reads live data — never the catalog snapshot loaded at
-// startup. Fetched per request.
 async function loadScopes(): Promise<ResourceScope[]> {
   const res = await fetch(SCOPES_API);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -155,16 +149,50 @@ async function fetchSubsystemDetail(
   return null;
 }
 
-let subsystems: Subsystem[] = [];
-let organizations: Organization[] = [];
-let services: Service[] = [];
-let resourceScopes: ResourceScope[] = [];
-const servicesBySubsystem = new Map<string, Service[]>();
-const subsystemsByOrg = new Map<string, Subsystem[]>();
+class CatalogUnavailableError extends Error {}
 
+async function fetchCatalogList<T>(url: string): Promise<T[]> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error("expected a list");
+    return data as T[];
+  } catch (cause) {
+    throw new CatalogUnavailableError(`Failed to load ${url}`, { cause });
+  }
+}
+
+function loadSubsystems(): Promise<Subsystem[]> {
+  return fetchCatalogList(SUBSYSTEMS_API);
+}
+
+function loadOrganizations(): Promise<Organization[]> {
+  return fetchCatalogList(ORGANIZATIONS_API);
+}
+
+function loadServices(): Promise<Service[]> {
+  return fetchCatalogList(SERVICES_API);
+}
+
+function countBy<T>(
+  items: T[],
+  key: (item: T) => string,
+): Record<string, number> {
+  const counts: Record<string, number> = Object.create(null);
+  for (const item of items) {
+    const id = key(item);
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+const TRUST_CACHE_TTL_MS = 60_000;
+let jwksExpiresAt = 0;
 let jwksPromise: Promise<JwksData[]> | null = null;
 function getJwks(): Promise<JwksData[]> {
-  if (!jwksPromise) {
+  if (!jwksPromise || jwksExpiresAt <= Date.now()) {
+    jwksExpiresAt = Date.now() + TRUST_CACHE_TTL_MS;
     jwksPromise = Promise.all(
       JWKS_SOURCES.map(async ({ url, environment }) => {
         const data = await loadJwks(url).catch((e): JwksData => ({
@@ -184,12 +212,8 @@ function getJwks(): Promise<JwksData[]> {
 // (e.g. `sdx.sys.usr.acope.toys`, `sdx.org.usr.janis.dev`).
 const keysetCache = new Map<
   string,
-  Promise<JwksData | null>
+  { expiresAt: number; promise: Promise<JwksData | null> }
 >();
-function clearLocalJwksCache(): void {
-  jwksPromise = null;
-  keysetCache.clear();
-}
 
 // Fetch a keyset by its dotted id from the given registry base URL. Resolves to
 // null when the registry has no such keyset (404); other failures resolve to a
@@ -199,7 +223,7 @@ function getKeyset(
   baseUrl: string,
 ): Promise<JwksData | null> {
   const cached = keysetCache.get(keysetId);
-  if (cached) return cached;
+  if (cached && cached.expiresAt > Date.now()) return cached.promise;
   const url = `${baseUrl}/${encodeURIComponent(keysetId)}/.well-known/jwks.json`;
   const promise = (async (): Promise<JwksData | null> => {
     try {
@@ -215,7 +239,7 @@ function getKeyset(
       };
     }
   })();
-  keysetCache.set(keysetId, promise);
+  keysetCache.set(keysetId, { expiresAt: Date.now() + TRUST_CACHE_TTL_MS, promise });
   return promise;
 }
 
@@ -265,11 +289,13 @@ function getOrgKeysets(
 
 async function fetchOasTags(
   serviceName: string,
+  signal: AbortSignal,
 ): Promise<Map<string, string[]>> {
   const tagsByOpId = new Map<string, string[]>();
   try {
     const res = await fetch(
       `${SERVICES_API}/${encodeURIComponent(serviceName)}/oas-spec`,
+      { signal },
     );
     if (!res.ok) return tagsByOpId;
     const spec = await res.json();
@@ -308,68 +334,26 @@ async function fetchOasTags(
   return tagsByOpId;
 }
 
-async function attachOperationTags(
-  svcs: Service[],
-): Promise<void> {
-  const results = await Promise.all(
-    svcs.map((s) => fetchOasTags(s.name)),
-  );
-  svcs.forEach((svc, i) => {
-    const tagsByOpId = results[i];
-    if (tagsByOpId.size === 0) return;
-    for (const op of svc.operations) {
-      if (op.operationId) {
-        const tags = tagsByOpId.get(op.operationId);
-        if (tags && tags.length > 0) op.tags = tags;
-      }
-    }
-  });
-}
-
-async function loadCatalog(): Promise<void> {
-  try {
-    const [subsRes, orgRes, svcRes, scopesRes] =
-      await Promise.all([
-        fetch(SUBSYSTEMS_API),
-        fetch(ORGANIZATIONS_API),
-        fetch(SERVICES_API),
-        fetch(SCOPES_API),
-      ]);
-    if (subsRes.ok) subsystems = await subsRes.json();
-    if (orgRes.ok) organizations = await orgRes.json();
-    if (svcRes.ok) services = await svcRes.json();
-    if (scopesRes.ok) {
-      const data = await scopesRes.json();
-      resourceScopes = Array.isArray(data)
-        ? (data as ResourceScope[])
-        : [];
-    }
-    await attachOperationTags(services);
-    console.log(
-      `Loaded ${subsystems.length} subsystems, ${organizations.length} organizations, ${services.length} services, ${resourceScopes.length} scopes`,
+async function attachOperationTags(services: Service[]): Promise<void> {
+  // Limit the concurrency and total time spent on optional spec enrichment.
+  const batchSize = 4;
+  const signal = AbortSignal.timeout(3_000);
+  for (let start = 0; start < services.length && !signal.aborted; start += batchSize) {
+    await Promise.all(
+      services.slice(start, start + batchSize).map(async (service) => {
+        if (service.operations.every((op) => !op.operationId || op.tags?.length)) {
+          return;
+        }
+        const tagsByOpId = await fetchOasTags(service.name, signal);
+        for (const operation of service.operations) {
+          if (!operation.operationId || operation.tags?.length) continue;
+          const tags = tagsByOpId.get(operation.operationId);
+          if (tags?.length) operation.tags = tags;
+        }
+      }),
     );
-  } catch (e) {
-    console.error("Failed to fetch API data:", e);
-  }
-
-  servicesBySubsystem.clear();
-  for (const svc of services) {
-    const key = svc.subsystem.clientId;
-    const list = servicesBySubsystem.get(key) ?? [];
-    list.push(svc);
-    servicesBySubsystem.set(key, list);
-  }
-
-  subsystemsByOrg.clear();
-  for (const sub of subsystems) {
-    const key = sub.organization.name;
-    const list = subsystemsByOrg.get(key) ?? [];
-    list.push(sub);
-    subsystemsByOrg.set(key, list);
   }
 }
-
-await loadCatalog();
 
 function htmlResponse(
   element: React.ReactElement,
@@ -507,7 +491,14 @@ async function servePublic(
 
 const PORT = Number(Deno.env.get("PORT") ?? "5500");
 
-Deno.serve({ port: PORT }, async (req: Request) => {
+function handleRequestError(error: unknown): Response {
+  console.error(error);
+  return error instanceof CatalogUnavailableError
+    ? new Response("Catalogue temporarily unavailable", { status: 503 })
+    : new Response("Internal Server Error", { status: 500 });
+}
+
+Deno.serve({ port: PORT, onError: handleRequestError }, async (req: Request) => {
   const url = new URL(req.url);
   const path = url.pathname;
 
@@ -538,13 +529,6 @@ Deno.serve({ port: PORT }, async (req: Request) => {
 
   const user = await getCurrentUser(req);
 
-  if (url.searchParams.get("refresh") === "1") {
-    clearJwksCache();
-    clearLocalJwksCache();
-    clearPublicBodyCache();
-    await loadCatalog();
-  }
-
   if (path === "/onboarding/invite") {
     const integrationId =
       url.searchParams.get("integrationId")?.trim() ?? "";
@@ -558,6 +542,11 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   }
 
   if (path === "/") {
+    const [subsystems, organizations, services] = await Promise.all([
+      loadSubsystems(),
+      loadOrganizations(),
+      loadServices(),
+    ]);
     return htmlResponse(
       React.createElement(HomePage, {
         subsystems,
@@ -589,6 +578,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   }
 
   if (path === "/subsystems") {
+    const [subsystems, services] = await Promise.all([
+      loadSubsystems(),
+      loadServices(),
+    ]);
     const query = url.searchParams.get("q") ?? "";
     const filtered = query.trim()
       ? subsystems.filter(
@@ -604,11 +597,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
               .includes(query.toLowerCase()),
         )
       : subsystems;
-    const serviceCounts: Record<string, number> = {};
-    for (const sub of filtered) {
-      serviceCounts[sub.clientId] =
-        servicesBySubsystem.get(sub.clientId)?.length ?? 0;
-    }
+    const serviceCounts = countBy(
+      services,
+      (service) => service.subsystem.clientId,
+    );
     return htmlResponse(
       React.createElement(SubsystemsPage, {
         subsystems: filtered,
@@ -625,21 +617,31 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     const clientId = decodeURIComponent(
       path.slice("/subsystems/".length),
     );
+    const [subsystems, services] = await Promise.all([
+      loadSubsystems(),
+      loadServices(),
+    ]);
     const subsystem = subsystems.find(
       (s) => s.clientId === clientId,
     );
     if (!subsystem) return notFound();
     // The list endpoint omits `access`; the per-subsystem detail response
     // carries the users and roles that have access to this subsystem.
-    const detail = await fetchSubsystemDetail(clientId);
+    const subsystemServices = services.filter(
+      (service) => service.subsystem.clientId === clientId,
+    );
+    const [detail, subsystemKeys] = await Promise.all([
+      fetchSubsystemDetail(clientId),
+      getSubsystemKeysets(clientId),
+      attachOperationTags(subsystemServices),
+    ]);
     const subsystemDetail: Subsystem = detail
       ? { ...subsystem, ...detail }
       : subsystem;
-    const subsystemKeys = await getSubsystemKeysets(clientId);
     return htmlResponse(
       React.createElement(SubsystemDetailPage, {
         subsystem: subsystemDetail,
-        services: servicesBySubsystem.get(clientId) ?? [],
+        services: subsystemServices,
         subsystemKeys,
         config,
         currentPath: path,
@@ -649,10 +651,14 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   }
 
   if (path === "/organizations") {
-    const subsystemCounts: Record<string, number> = {};
-    for (const [org, subs] of subsystemsByOrg) {
-      subsystemCounts[org] = subs.length;
-    }
+    const [organizations, subsystems] = await Promise.all([
+      loadOrganizations(),
+      loadSubsystems(),
+    ]);
+    const subsystemCounts = countBy(
+      subsystems,
+      (subsystem) => subsystem.organization.name,
+    );
     return htmlResponse(
       React.createElement(OrganizationsPage, {
         organizations,
@@ -754,6 +760,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
   }
 
   if (path === "/traffic") {
+    const [subsystems, services] = await Promise.all([
+      loadSubsystems(),
+      loadServices(),
+    ]);
     return htmlResponse(
       React.createElement(TrafficPage, {
         subsystems,
@@ -792,12 +802,13 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     const clientId = decodeURIComponent(
       path.slice("/api/subsystems/".length),
     );
+    const subsystems = await loadSubsystems();
     const subsystem = subsystems.find(
       (s) => s.clientId === clientId,
     );
     if (!subsystem) {
       console.error(
-        `/api/subsystems/${clientId}: not found in cached catalog (${subsystems.length} subsystems loaded)`,
+        `/api/subsystems/${clientId}: not found in catalogue (${subsystems.length} subsystems loaded)`,
       );
       return new Response(
         `subsystem not found: ${clientId}`,
@@ -937,6 +948,11 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     const orgName = decodeURIComponent(
       path.slice("/organizations/".length),
     );
+    const [organizations, subsystems, services] = await Promise.all([
+      loadOrganizations(),
+      loadSubsystems(),
+      loadServices(),
+    ]);
     const org = organizations.find(
       (o) => o.name === orgName,
     );
@@ -955,13 +971,13 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     } catch (e) {
       console.error(`Failed to fetch organization detail for ${orgName}:`, e);
     }
-    const orgSubsystems =
-      subsystemsByOrg.get(orgName) ?? [];
-    const serviceCounts: Record<string, number> = {};
-    for (const sub of orgSubsystems) {
-      serviceCounts[sub.clientId] =
-        servicesBySubsystem.get(sub.clientId)?.length ?? 0;
-    }
+    const orgSubsystems = subsystems.filter(
+      (subsystem) => subsystem.organization.name === orgName,
+    );
+    const serviceCounts = countBy(
+      services,
+      (service) => service.subsystem.clientId,
+    );
 
     let publicBody: PublicBody | null = null;
     let publicBodyType: PublicBodyType | null = null;
@@ -1099,6 +1115,7 @@ async function handleRuntimes(
   if (gate) return gate;
 
   const orgName = url.searchParams.get("org") ?? "";
+  const organizations = await loadOrganizations();
   const selectedOrg =
     organizations.find((o) => o.name === orgName) ?? null;
 
@@ -1152,10 +1169,16 @@ async function handleOrgSubsystems(
   if (gate) return gate;
 
   const orgName = url.searchParams.get("org") ?? "";
+  const [organizations, subsystems] = await Promise.all([
+    loadOrganizations(),
+    loadSubsystems(),
+  ]);
   const selectedOrg =
     organizations.find((o) => o.name === orgName) ?? null;
   const orgSubsystems = selectedOrg
-    ? (subsystemsByOrg.get(selectedOrg.name) ?? [])
+    ? subsystems.filter(
+      (subsystem) => subsystem.organization.name === selectedOrg.name,
+    )
     : [];
 
   return htmlResponse(
@@ -1180,6 +1203,7 @@ async function handleOrgActivity(
   if (gate) return gate;
 
   const orgName = url.searchParams.get("org") ?? "";
+  const organizations = await loadOrganizations();
   const selectedOrg =
     organizations.find((o) => o.name === orgName) ?? null;
 
@@ -1277,6 +1301,11 @@ async function handleConnections(
       ? { kind: flashKind, message: flashMsg ?? "" }
       : null;
 
+  const [organizations, subsystems, services] = await Promise.all([
+    loadOrganizations(),
+    loadSubsystems(),
+    loadServices(),
+  ]);
   const selectedOrg =
     organizations.find((o) => o.name === orgName) ?? null;
 
@@ -1416,6 +1445,7 @@ async function handleConnectionsApprove(
       clientId,
     );
   }
+  const services = await loadServices();
   const service = services.find(
     (s) => s.name === serviceId,
   );
@@ -1494,6 +1524,7 @@ async function handleConnectionsReject(
       clientId,
     );
   }
+  const services = await loadServices();
   const service = services.find(
     (s) => s.name === serviceId,
   );
