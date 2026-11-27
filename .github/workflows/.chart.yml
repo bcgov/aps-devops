@@ -1,4 +1,4 @@
-name: Reusable edge chart publication
+name: Reusable SDX chart publication
 on:
   workflow_call:
     inputs:
@@ -40,7 +40,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Update Chart.yaml and values.yaml
+      - name: Stamp paired charts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
@@ -54,46 +54,69 @@ jobs:
           fi
           if [[ -z "$DIGEST" ]]; then DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}'); fi
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          CP=sdx/chart/sdx-kong-cp
+          KONG_VERSION=$(sed -nE 's/^ARG KONG_VERSION="?([0-9]+\.[0-9]+\.[0-9]+)"?$/\1/p' sdx/image/Dockerfile)
+          [[ "$KONG_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          export KONG_VERSION CP_IMAGE="$IMAGE@$DIGEST"
+          export SOURCE_SHA IMAGE_TAG="${IMAGE##*:}" VERSION DIGEST
+          SOURCE_SHA=$(git rev-parse HEAD)
+          test "$(yq -r .version "$CHART/Chart.yaml")" = "$(yq -r .version "$CP/Chart.yaml")"
+          test "$(yq -r .appVersion "$CHART/Chart.yaml")" = "$(yq -r .appVersion "$CP/Chart.yaml")"
           if [[ -n "$VERSION" ]]; then
             test "$(yq -r .version "$CHART/Chart.yaml")" = "$VERSION"
-            test "$(yq -r .appVersion "$CHART/Chart.yaml")" = "${IMAGE##*:}"
+            test "$(yq -r .appVersion "$CHART/Chart.yaml")" = "$IMAGE_TAG"
           else
             VERSION="$(yq -r .version "$CHART/Chart.yaml")-dev.$GITHUB_RUN_ID"
-            export VERSION IMAGE_TAG="${IMAGE##*:}"
-            yq -i '.version=strenv(VERSION) | .appVersion=strenv(IMAGE_TAG)' "$CHART/Chart.yaml"
           fi
-          export VERSION IMAGE_TAG="${IMAGE##*:}" DIGEST SOURCE_SHA
-          SOURCE_SHA=$(git rev-parse HEAD)
-          yq -i '.annotations."org.opencontainers.image.revision"=strenv(SOURCE_SHA)' "$CHART/Chart.yaml"
+          for chart in "$CHART" "$CP"; do
+            yq -i '.version=strenv(VERSION) | .appVersion=strenv(IMAGE_TAG) |
+              .annotations."org.opencontainers.image.revision"=strenv(SOURCE_SHA)' "$chart/Chart.yaml"
+          done
           yq -i '.kong.imageTag=strenv(IMAGE_TAG) | .kong.imageDigest=strenv(DIGEST)' "$CHART/values.yaml"
+          yq -i '.kong.image.unifiedRepoTag=strenv(CP_IMAGE) | .kong.image.effectiveSemver=strenv(KONG_VERSION)' "$CP/values.yaml"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "IMAGE_DIGEST=$DIGEST" >> "$GITHUB_ENV"
           echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
-      - name: Validate chart
+      - name: Validate and package charts
         run: |
-          helm lint sdx/chart/sdx-edge
+          set -euo pipefail
+          helm repo add kong https://charts.konghq.com
+
+          helm dependency build sdx/chart/sdx-kong-cp
+          helm lint sdx/chart/sdx-edge sdx/chart/sdx-kong-cp
           helm template check sdx/chart/sdx-edge > /dev/null
           helm template check sdx/chart/sdx-edge --set use_openshift_resources=false > /dev/null
-      - name: Package and publish chart
+          bash sdx/chart/sdx-kong-cp/ci/render.sh
+          for name in sdx-edge sdx-kong-cp; do
+            chart="sdx/chart/$name"
+            mkdir -p "dist/$name"
+            helm package "$chart" --destination "dist/$name"
+            cp "$chart/Chart.yaml" "dist/$name/$name-Chart.yaml"
+            cp "$chart/values.yaml" "dist/$name/$name-values.yaml"
+          done
+      - name: Publish charts
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           printf '%s' "$TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          REF=oci://ghcr.io/bcgov/aps-devops/sdx-edge
-          mkdir -p dist
-          if docker buildx imagetools inspect "${REF#oci://}:$VERSION" --raw > /dev/null 2> registry.err; then
-            test "$(helm show chart "$REF" --version "$VERSION" | yq -r '.annotations."org.opencontainers.image.revision"')" = "$SOURCE_SHA"
-            test "$(helm show values "$REF" --version "$VERSION" | yq -r .kong.imageDigest)" = "$IMAGE_DIGEST"
-            helm pull "$REF" --version "$VERSION" --destination dist
-          else
-            grep -Eiq 'not found|manifest unknown' registry.err || { cat registry.err >&2; exit 1; }
-            helm package sdx/chart/sdx-edge --destination dist
-            helm push "dist/sdx-edge-$VERSION.tgz" oci://ghcr.io/bcgov/aps-devops
-          fi
-          cp sdx/chart/sdx-edge/Chart.yaml dist/sdx-edge-Chart.yaml
-          cp sdx/chart/sdx-edge/values.yaml dist/sdx-edge-values.yaml
+          for name in sdx-edge sdx-kong-cp; do
+            ref="oci://ghcr.io/bcgov/aps-devops/$name"
+            output="dist/$name"
+            if docker buildx imagetools inspect "${ref#oci://}:$VERSION" --raw > /dev/null 2> registry.err; then
+              test "$(helm show chart "$ref" --version "$VERSION" | yq -r '.annotations."org.opencontainers.image.revision"')" = "$SOURCE_SHA"
+              helm show values "$ref" --version "$VERSION" > registry-values.yaml
+              diff -u <(yq -o=json "$output/$name-values.yaml" | jq -S .) <(yq -o=json registry-values.yaml | jq -S .)
+              helm pull "$ref" --version "$VERSION" --destination "$output"
+            else
+              grep -Eiq 'not found|manifest unknown' registry.err || { cat registry.err >&2; exit 1; }
+              helm push "$output/$name-$VERSION.tgz" oci://ghcr.io/bcgov/aps-devops
+            fi
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: chart-sdx-edge
-          path: dist/*
+          path: dist/sdx-edge/*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chart-sdx-kong-cp
+          path: dist/sdx-kong-cp/*

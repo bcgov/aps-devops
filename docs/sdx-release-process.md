@@ -32,21 +32,25 @@ Manual edge runs expose `plugins_ref`. Direct Docker builds can use `--build-arg
 
 Update the default dependency through a reviewed PR after a plugins bundle release. The current default is the audited feature/mtls commit, not a newly published release. Other Git dependencies are pinned too; OS/package downloads are not fully hermetic. The image uses `pep`/`plugin-log`, matching the portal SDX image and infrastructure control plane; review remaining `openid-authzen` consumers before upgrading.
 
-## Edge image -> chart
+## SDX access-point image and charts
 
-Both stable releases and feature/dev/images/manual publications use `.edge.yml`: publish image, then publish chart. The chart job receives the exact image tag/digest. `.chart.yml` uses normal commands:
+Both stable releases and feature/dev/images/manual publications use `.edge.yml`: publish the image, then publish both `sdx-edge` and `sdx-kong-cp` with the same chart version. The chart job receives the exact image tag and digest. `.chart.yml` uses normal commands:
 
-1. Stable promotions require the committed Chart.yaml `version` to equal the planned chart version and `appVersion` to equal the new image tag (including `v`) when the edge image changes. The release policy checks these before merge; publication checks again. Use the release preview to update these fields in the promotion PR. Development builds update version/appVersion only in their temporary package. Both modes add the source annotation and image tag/digest.
+1. Stable promotions require each committed Chart.yaml `version` to equal the planned chart version and `appVersion` to match the paired chart and equal the new image tag (including `v`) when the access-point image changes. The release policy checks these before merge; publication checks again. Use the release preview to update these fields in the promotion PR. Development builds update version/appVersion only in their temporary package. Both modes add the source annotation and image tag/digest. The control-plane chart also sets `kong.image.effectiveSemver` from the Dockerfile’s `KONG_VERSION`.
 2. `helm lint` and `helm template` validate OpenShift/Kubernetes variants.
 3. `helm package` creates the archive; `helm push` publishes it to GHCR OCI.
 
-Branch/manual charts use `<source-chart-version>-dev.<GitHub-run-id>`; stable promotions use the chart's independently incremented version. PR builds skip publication. A chart-only release uses the committed appVersion image tag.
+Branch/manual charts use `<source-chart-version>-dev.<GitHub-run-id>`; stable promotions use the incremented edge chart version for both charts. PR builds skip publication. A chart-only release uses the committed appVersion image tag.
 
-The chart's two Kong containers use the image digest. Updated YAML and the package are workflow artifacts and stable release assets; generated changes are not committed back to trigger another build. On retry, an existing chart version must match the source annotation and image digest; `helm pull` retrieves that existing package instead of overwriting it. There is no custom archive normalization or receipt format.
+The edge Kong containers and the control-plane Kong workloads use the same image digest. Updated YAML and the package are workflow artifacts and stable release assets; generated changes are not committed back to trigger another build. On retry, an existing chart version must match the source annotation and packaged values; `helm pull` retrieves that existing package instead of overwriting it. There is no custom archive normalization or receipt format.
 
-The GHCR `aps-devops/sdx-edge` package must grant `bcgov/aps-devops` **Write** under **Manage Actions access**. Repository `packages: write` alone does not grant access to an existing package. If Helm login succeeds but push fails with `permission_denied: write_package`, check this package setting before retrying the failed job.
+The GHCR `aps-devops/sdx-edge` and `aps-devops/sdx-kong-cp` packages must grant `bcgov/aps-devops` **Write** under **Manage Actions access**. Repository `packages: write` alone does not grant access to an existing package. If Helm login succeeds but push fails with `permission_denied: write_package`, check this package setting before retrying the failed job.
 
 ## Failure, retry and rollout
+
+For plugin schema changes, advance managed edges before the control plane in each Terraform tier. Verify the edges are healthy and connected before advancing the separate control-plane chart pin. Keep the `sdx-konghc` Helm release identity during cutover and nest its environment values under `kong`. Run a server-side dry run and verify the DEV upgrade, migration jobs, CP readiness and existing edge connections before promoting to other tiers.
+
+Keep the image digests referenced by released charts in GHCR, including during package cleanup.
 
 Promote one dev -> main PR at a time and wait for its release workflow. A failed build can leave a reserved Git tag without a release; rerunning the same promotion retains its version. Existing released versions are skipped. Colliding image/chart identities fail. GitHub concurrency is one active/one pending, not a durable queue.
 

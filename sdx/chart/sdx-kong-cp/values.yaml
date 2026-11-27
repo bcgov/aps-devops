@@ -1,0 +1,131 @@
+kong:
+  # Terraform supplies replica count, pull policies, registry secret, security
+  # context and migration flags for each environment.
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
+    type: RollingUpdate
+
+  image:
+    # Set by the publication workflow from the SDX image build.
+    unifiedRepoTag: ""
+    effectiveSemver: ""
+
+  waitImage:
+    registry: docker.io
+    repository: bash
+    tag: "5"
+
+  cluster:
+    enabled: true
+    tls:
+      enabled: true
+      servicePort: 8005
+      containerPort: 8005
+
+  admin:
+    enabled: true
+    type: ClusterIP
+    http:
+      enabled: true
+    tls:
+      enabled: false
+
+  proxy:
+    enabled: false
+
+  manager:
+    enabled: true
+    type: ClusterIP
+    http:
+      enabled: true
+    tls:
+      enabled: false
+
+  portal:
+    enabled: false
+
+  portalapi:
+    enabled: false
+
+  ingressController:
+    enabled: false
+    installCRDs: false
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 200Mi
+    limits:
+      memory: 300Mi
+
+  secretVolumes:
+    - sdx-edge-ca
+    - sdx-kongh-cluster-cert
+
+  env:
+    plugins: "bundled, jwt-keycloak_1010, rate-limiting_902, pre-function_770, post-function_200, post-function_201, oidc, oidc-consumer, kong-spec-expose, jwt-keycloak, kong-upstream-jwt, bcgov-gwa-endpoint, gwa-ip-anonymity, mtls-auth, mtls-acl, pep, plugin-log, response-signer, dpop, token-exchange, trust-jwks, trust-kms, trust-ledger, trust-registry, trust-sign, trust-timestamp, trust-verify-digest, trust-verify-signature"  # same as image
+    # Image sets `data_plane`.
+    # The control plane manages and distributes configuration to edges.
+    role: control_plane
+    cluster_mtls: pki  # same as image
+    # Image sets `/etc/secrets/sdx-edge-client-cert/tls.crt`.
+    # Uses the certificate mounted from the CP cluster secret.
+    client_ssl_cert: /etc/secrets/sdx-kongh-cluster-cert/tls.crt
+    # Image sets `/etc/secrets/sdx-edge-client-cert/tls.key`.
+    # Uses the private key mounted from the CP cluster secret.
+    client_ssl_cert_key: /etc/secrets/sdx-kongh-cluster-cert/tls.key
+    # Image sets `/etc/secrets/sdx-edge-client-cert/tls.crt`.
+    # Uses ca.crt from the CP cluster secret, as configured in Terraform.
+    nginx_proxy_proxy_ssl_certificate: /etc/secrets/sdx-kongh-cluster-cert/ca.crt
+    # Image sets `/etc/secrets/sdx-edge-client-cert/tls.key`.
+    # Uses tls.key from the CP cluster secret instead of the edge client key.
+    nginx_proxy_proxy_ssl_certificate_key: /etc/secrets/sdx-kongh-cluster-cert/tls.key
+    # Image sets `/etc/secrets/sdx-edge-server-cert/tls.crt`.
+    # Uses the CP cluster certificate for SSL listeners.
+    ssl_cert: /etc/secrets/sdx-kongh-cluster-cert/tls.crt
+    # Image sets `/etc/secrets/sdx-edge-server-cert/tls.key`.
+    # Uses the private key for the CP cluster certificate.
+    ssl_cert_key: /etc/secrets/sdx-kongh-cluster-cert/tls.key
+    cluster_ca_cert: /etc/secrets/sdx-edge-ca/ca.crt  # same as image
+    # Image sets `/etc/secrets/sdx-edge-cluster-cert/tls.crt`.
+    # Presents the control-plane certificate to connecting edges.
+    cluster_cert: /etc/secrets/sdx-kongh-cluster-cert/tls.crt
+    # Image sets `/etc/secrets/sdx-edge-cluster-cert/tls.key`.
+    # Uses the private key for the control-plane cluster certificate.
+    cluster_cert_key: /etc/secrets/sdx-kongh-cluster-cert/tls.key
+    # Image sets `/etc/secrets/sdx-public-ca/ca.crt`.
+    # Uses the SDX edge CA as the Lua TLS trust bundle on the CP.
+    lua_ssl_trusted_certificate: /etc/secrets/sdx-edge-ca/ca.crt
+    # Image sets `off`.
+    # Accepts edge configuration-sync connections on port 8005.
+    cluster_listen: "0.0.0.0:8005"
+    # Image sets `off`.
+    # Persists control-plane configuration in Postgres.
+    database: postgres
+    # Unset in the SDX Dockerfile.
+    # Connects to the Patroni primary service.
+    pg_host: patroni-spilo
+    # No pg_ro_host: reads from a lagging Patroni replica send stale config to the DPs.
+    # Unset in the SDX Dockerfile.
+    # Selects the SDX control-plane database.
+    pg_database: sdxkongh
+    # Unset in the SDX Dockerfile.
+    # Reads the database username from the Kubernetes Secret.
+    pg_user:
+      valueFrom:
+        secretKeyRef:
+          name: sdx-kong-pg-credentials
+          key: pg-user
+    # Unset in the SDX Dockerfile.
+    # Reads the database password from the Kubernetes Secret.
+    pg_password:
+      valueFrom:
+        secretKeyRef:
+          name: sdx-kong-pg-credentials
+          key: pg-password
+
+  deployment:
+    serviceAccount:
+      create: false

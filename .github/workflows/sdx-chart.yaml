@@ -30,3 +30,15 @@ jobs:
           helm template release-check sdx/chart/sdx-edge --set use_openshift_resources=false > /dev/null
           helm template release-check sdx/chart/sdx-edge --set-string kong.imageDigest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > digest-render.yaml
           test "$(grep -c 'image:.*sdx-access-point@sha256:aaaaaaaa' digest-render.yaml)" = 2
+      - name: Install yq
+        run: |
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64 -o "$RUNNER_TEMP/yq"
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Validate the SDX control-plane wrapper
+        run: |
+          helm repo add kong https://charts.konghq.com
+
+          helm dependency build sdx/chart/sdx-kong-cp
+          helm lint sdx/chart/sdx-kong-cp
+          bash sdx/chart/sdx-kong-cp/ci/render.sh
