@@ -50,6 +50,7 @@ COPY deno.json deno.lock ./
 COPY main.ts data.ts types.ts verify.ts metrics-queries.yaml ./
 COPY lib ./lib
 COPY pages ./pages
+COPY handler ./handler
 COPY components ./components
 COPY public ./public
 COPY --from=assets /app/public/js ./public/js

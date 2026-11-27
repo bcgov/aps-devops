@@ -12,6 +12,7 @@ import {
   ORG_KEYSETS_URL_BY_ENV,
 } from "./lib/environments.ts";
 import { keysForKeyset } from "./lib/keysets.ts";
+import { listenForCatalogChanges } from "./lib/catalog-listener.ts";
 import { loadJwks } from "./lib/jwks.ts";
 
 const SDX_API_BASE = Deno.env.get("SDX_API_BASE") ??
@@ -124,16 +125,153 @@ async function fetchCatalogList<T>(url: string): Promise<T[]> {
   }
 }
 
-export function loadSubsystems(): Promise<Subsystem[]> {
-  return fetchCatalogList(SUBSYSTEMS_API);
+const CATALOG_CACHE_TTL_MS = 60_000;
+const MAX_REFRESH_PERIOD_SECONDS = 2_147_483;
+let catalogListenerConnected = false;
+let catalogRefreshPeriodMs = 0;
+let catalogRevision = 0;
+
+function invalidateCatalog(): void {
+  catalogRevision++;
 }
 
-export function loadOrganizations(): Promise<Organization[]> {
-  return fetchCatalogList(ORGANIZATIONS_API);
+function catalogCacheEnabled(): boolean {
+  return catalogListenerConnected || catalogRefreshPeriodMs > 0;
 }
 
-export function loadServices(): Promise<Service[]> {
-  return fetchCatalogList(SERVICES_API);
+function catalogLoader<T>(url: string) {
+  let cached: { revision: number; expiresAt: number; data: T[] } | undefined;
+  let pending: { revision: number; result: Promise<T[]> } | undefined;
+
+  function refresh(): Promise<T[]> {
+    const revision = catalogRevision;
+    if (pending?.revision === revision) return pending.result;
+
+    const result = fetchCatalogList<T>(url).then((data) => {
+      if (revision === catalogRevision) {
+        cached = {
+          revision,
+          expiresAt: Date.now() + CATALOG_CACHE_TTL_MS,
+          data,
+        };
+      }
+      return data;
+    }).finally(() => {
+      if (pending?.result === result) pending = undefined;
+    });
+    pending = { revision, result };
+    return result;
+  }
+
+  function load(fresh = false): Promise<T[]> {
+    if (fresh || !catalogCacheEnabled()) return fetchCatalogList<T>(url);
+
+    if (
+      cached?.revision === catalogRevision &&
+      (catalogRefreshPeriodMs > 0 || cached.expiresAt > Date.now())
+    ) {
+      return Promise.resolve(cached.data);
+    }
+    return refresh();
+  }
+
+  return { load, refresh };
+}
+
+const subsystemsCatalog = catalogLoader<Subsystem>(SUBSYSTEMS_API);
+const organizationsCatalog = catalogLoader<Organization>(ORGANIZATIONS_API);
+const servicesCatalog = catalogLoader<Service>(SERVICES_API);
+
+export const loadSubsystems = subsystemsCatalog.load;
+export const loadOrganizations = organizationsCatalog.load;
+export const loadServices = servicesCatalog.load;
+
+export async function loadConnectionOrganizations(
+  orgName: string,
+): Promise<Organization[]> {
+  const organizations = await loadOrganizations();
+  if (
+    catalogCacheEnabled() && orgName &&
+    !organizations.some((org) => org.name === orgName)
+  ) {
+    return loadOrganizations(true);
+  }
+  return organizations;
+}
+
+function startPeriodicCatalogRefresh(periodMs: number): void {
+  let refreshing = false;
+  async function refreshCatalog(): Promise<void> {
+    if (refreshing) return;
+    refreshing = true;
+    const results = await Promise.allSettled([
+      subsystemsCatalog.refresh(),
+      organizationsCatalog.refresh(),
+      servicesCatalog.refresh(),
+    ]);
+    refreshing = false;
+    for (const result of results) {
+      if (result.status === "rejected") {
+        console.warn("Periodic catalogue refresh failed", result.reason);
+      }
+    }
+  }
+
+  void refreshCatalog();
+  setInterval(() => void refreshCatalog(), periodMs);
+}
+
+export function startCatalogRefresh(): void {
+  const period = Deno.env.get("SDX_CATALOG_REFRESH_PERIOD_SECONDS")?.trim() ||
+    "0";
+  const seconds = Number(period);
+  if (
+    !/^\d+$/.test(period) || !Number.isSafeInteger(seconds) ||
+    seconds > MAX_REFRESH_PERIOD_SECONDS
+  ) {
+    throw new Error(
+      `SDX_CATALOG_REFRESH_PERIOD_SECONDS must be an integer between 0 and ${MAX_REFRESH_PERIOD_SECONDS}`,
+    );
+  }
+  catalogRefreshPeriodMs = seconds * 1_000;
+  const listenerEnabled =
+    Deno.env.get("SDX_CATALOG_LISTENER_ENABLED") === "true";
+  if (listenerEnabled) startCatalogListener();
+  if (catalogRefreshPeriodMs > 0) {
+    startPeriodicCatalogRefresh(catalogRefreshPeriodMs);
+  }
+}
+
+function startCatalogListener(): void {
+  const connectionString = Deno.env.get("SDX_CATALOG_DATABASE_URL");
+  if (!connectionString) {
+    throw new Error(
+      "SDX_CATALOG_DATABASE_URL is required when the catalogue listener is enabled",
+    );
+  }
+  try {
+    const url = new URL(connectionString);
+    if (
+      !["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname ||
+      url.pathname.length < 2
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(
+      "SDX_CATALOG_DATABASE_URL must be a PostgreSQL URL with a host and database",
+    );
+  }
+
+  void listenForCatalogChanges(
+    connectionString,
+    (connected) => {
+      catalogListenerConnected = connected;
+      // Subscribing again covers writes missed during a disconnect.
+      if (connected || catalogRefreshPeriodMs === 0) invalidateCatalog();
+    },
+    invalidateCatalog,
+  );
 }
 
 export function countBy<T>(
