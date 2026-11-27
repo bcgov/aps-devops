@@ -47,7 +47,7 @@ COPY deno.json deno.lock ./
 # (mounted over ./config.yaml by the Helm chart). client/ and scripts/ are
 # only needed by the assets stage; the server loads the bundled
 # public/js/client.js instead.
-COPY main.ts types.ts verify.ts metrics-queries.yaml ./
+COPY main.ts data.ts types.ts verify.ts metrics-queries.yaml ./
 COPY lib ./lib
 COPY pages ./pages
 COPY components ./components
