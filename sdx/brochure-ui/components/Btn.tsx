@@ -58,7 +58,15 @@ const SIZE_CLASSES: Record<Size, string> = {
 };
 
 function variantClasses(variant: Variant, danger?: boolean): string {
-  if (danger) return "bg-btn-danger text-white hover:bg-btn-danger-hover";
+  if (danger) {
+    if (variant === "secondary") {
+      return "bg-btn-secondary border border-danger text-danger hover:bg-support-danger-bg";
+    }
+    if (variant === "tertiary") {
+      return "bg-transparent text-danger hover:bg-support-danger-bg";
+    }
+    return "bg-btn-danger text-white hover:bg-btn-danger-hover";
+  }
   if (variant === "secondary") {
     return "bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover";
   }

@@ -1,3 +1,5 @@
+import { CHART_JS_URL } from "../components/custom/TimeSeriesChart.tsx";
+import { OverflowActions } from "../components/OverflowActions.tsx";
 import { ClientSubsystemLink, DetailSection, FieldRow, ProvisionerStatusDetails, ScopeChips } from "../components/ConnectionDetails.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Btn } from "../components/Btn.tsx";
@@ -8,7 +10,6 @@ import {
 import { OrgPicker } from "../components/custom/OrgPicker.tsx";
 import type {
   ConnectionGatewayPattern,
-  ConnectionProvisionerStatus,
   ConnectionRequest,
   Organization,
   Service,
@@ -24,6 +25,7 @@ interface ConnectionsPageProps {
   allSubsystems: Subsystem[];
   services: Service[];
   config: SiteConfig;
+  openClients?: string[];
   currentPath: string;
   user: SessionUser;
   flash?: {
@@ -33,88 +35,133 @@ interface ConnectionsPageProps {
   error?: string | null;
 }
 
-function StatusPill({
-  connection,
-}: {
-  connection: ConnectionRequest;
-}) {
-  if (connection.isApproved && connection.isActive) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
-        Active
-      </span>
-    );
-  }
-  if (connection.isApproved) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-info-bg text-support-info-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-info-border" />
-        Approved
-      </span>
-    );
-  }
+type StatusIconName = "ready" | "info" | "clock";
+
+function StatusIcon({ name }: { name: StatusIconName }) {
+  const paths = {
+    ready: "m5 8 2 2 4-4",
+    info: "M8 7.5v3.5M8 5v.25",
+    clock: "M8 4.5V8l2 1.5",
+  };
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
-      <span className="w-1.5 h-1.5 rounded-full bg-support-warning-border" />
-      Pending
-    </span>
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.25" />
+      <path d={paths[name]} />
+    </svg>
   );
 }
 
-function ProvisionerStatusPill({
-  status,
+function StatusPopover({
+  label,
+  trigger,
+  className,
+  children,
 }: {
-  status: ConnectionProvisionerStatus;
+  label?: string;
+  trigger: React.ReactNode;
+  className: string;
+  children: React.ReactNode;
 }) {
-  if (status.status === "provisioned") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-success-bg text-support-success-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-success-border" />
-        Provisioned
-      </span>
-    );
-  }
-  if (status.status === "deprovisioning") {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-yellow-600" />
-        Removing access configuration
-      </span>
-    );
-  }
-  if (status.status === "deprovisioned") {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-        Access configuration removed
-      </span>
-    );
-  }
-  if (status.status === "failed") {
-    const label = status.operation === "deprovision"
-      ? "Couldn't remove access configuration"
-      : "Provisioning failed";
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-danger-bg text-support-danger-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-support-danger-border" />
-        {label}
-      </span>
-    );
-  }
-  if (status.status === "pending") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
-        <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
-        Provisioning
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-surface-muted text-ink-secondary">
-      <span className="w-1.5 h-1.5 rounded-full bg-border-medium" />
-      {status.status}
-    </span>
+    <details data-status-popover="" className="relative">
+      <summary
+        aria-label={label}
+        className={`inline-flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden ${className}`}
+      >
+        {trigger}
+      </summary>
+      <div className="absolute left-0 z-20 mt-1 w-56 max-w-[80vw] rounded-lg border border-border bg-white p-3 text-xs font-normal text-ink shadow-lg">
+        {children}
+      </div>
+    </details>
+  );
+}
+
+function StatusLegend() {
+  return (
+    <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary">
+      Connection statuses
+      <StatusPopover
+        label="About connection statuses"
+        trigger="?"
+        className="h-5 w-5 justify-center rounded-full border border-border text-bc-blue"
+      >
+        <dl className="space-y-2">
+          <div><dt className="font-semibold">Ready</dt><dd>The client can call the service.</dd></div>
+          <div><dt className="font-semibold">Not ready</dt><dd>Open the badge to see why the client can’t call the service.</dd></div>
+          <div><dt className="font-semibold">Changes pending approval</dt><dd>A proposed change is awaiting review.</dd></div>
+        </dl>
+      </StatusPopover>
+    </div>
+  );
+}
+
+const STATUS_PILL = "rounded-full px-2.5 py-1 text-sm font-semibold";
+
+function ConnectionStatus({
+  connection,
+  hasProposal = false,
+}: {
+  connection: ConnectionRequest;
+  hasProposal?: boolean;
+}) {
+  const provisioner = connection.provisionerStatus;
+  const isProvisioned = provisioner?.status === "provisioned";
+  const isReady = connection.isActive && connection.isApproved && isProvisioned;
+  const reasons: string[] = [];
+
+  if (!connection.isApproved) {
+    reasons.push("Initial request is awaiting approval");
+  } else if (!connection.isActive) {
+    reasons.push("Connection is inactive");
+  }
+
+  if (provisioner?.status === "failed") {
+    reasons.push(provisioner.operation === "deprovision"
+      ? "Couldn't remove access configuration"
+      : "Provisioning failed");
+  } else if (provisioner?.status === "deprovisioning") {
+    reasons.push("Removing access configuration");
+  } else if (connection.isApproved && provisioner?.status === "pending") {
+    reasons.push("Provisioning is in progress");
+  } else if (connection.isApproved && connection.isActive && !isProvisioned) {
+    reasons.push(provisioner?.status === "deprovisioned"
+      ? "Access configuration has been removed"
+      : "Provisioning has not completed");
+  }
+
+  return (
+    <>
+      {isReady ? (
+        <span className={`inline-flex items-center gap-1 bg-support-success-bg text-support-success-border ${STATUS_PILL}`}>
+          <StatusIcon name="ready" /> Ready
+        </span>
+      ) : (
+        <StatusPopover
+          trigger={
+            <>
+              <StatusIcon name="info" /> Not ready
+              <span aria-hidden="true" className="text-xs">▾</span>
+            </>
+          }
+          className={`border border-border bg-surface-muted text-ink hover:bg-gray-100 ${STATUS_PILL}`}
+        >
+          <ul className={reasons.length > 1 ? "list-disc space-y-1 pl-4" : undefined}>
+            {reasons.map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        </StatusPopover>
+      )}
+      {hasProposal && (
+        <StatusPopover
+          trigger={<><StatusIcon name="clock" /> Changes pending approval</>}
+          className={`bg-support-warning-bg text-ink ${STATUS_PILL}`}
+        >
+          {isReady
+            ? "Current access is still available while these changes await approval."
+            : "A proposed change is awaiting approval."}
+        </StatusPopover>
+      )}
+    </>
   );
 }
 
@@ -124,15 +171,99 @@ dialog.sdx-dialog.sdx-dialog-wide { max-width: 760px; }
 dialog.sdx-dialog::backdrop { background: var(--surface-color-overlay-default); }
 `;
 
+const AGREEMENT_TRAFFIC_SCRIPT = await Deno.readTextFile(
+  new URL("../public/agreement-traffic.js", import.meta.url),
+);
+
 const DIALOG_SCRIPT = `
 (function(){
+  function captureOpenClients(params){
+    params.delete('openClient');
+    document.querySelectorAll('details[data-connection-client][open]').forEach(function(group){
+      params.append('openClient', group.dataset.connectionClient);
+    });
+  }
+  document.addEventListener('toggle', function(e){
+    if (!e.target.matches('details[data-connection-client]')) return;
+    var url = new URL(window.location.href);
+    captureOpenClients(url.searchParams);
+    if (url.href !== window.location.href) history.replaceState(history.state, '', url);
+  }, true);
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    if (!form.matches('form[method="post"]')) return;
+    var action = new URL(form.action, window.location.href);
+    if (action.origin !== window.location.origin || !action.pathname.startsWith('/connections/')) return;
+    action.searchParams.set('returnPath', window.location.pathname);
+    captureOpenClients(action.searchParams);
+    var service = form.elements.namedItem("serviceId");
+    if (service && service.value) action.searchParams.set('returnService', service.value);
+    form.action = action.href;
+  }, true);
+  function returnToActionResult(){
+    var flash = document.querySelector('[data-connection-flash]');
+    if (!flash) return;
+    var params = new URL(window.location.href).searchParams;
+    var clientId = params.get('subsystem');
+    var serviceId = params.get('returnService');
+    var group = clientId && Array.from(document.querySelectorAll('details[data-connection-client]'))
+      .find(function(row){ return row.dataset.connectionClient === clientId; });
+    var connection = group && serviceId && Array.from(group.querySelectorAll('[data-connection-service]'))
+      .find(function(row){ return row.dataset.connectionService === serviceId; });
+    if (group) group.open = true;
+    var target = connection || group || document.getElementById('connection-results');
+    if (!target) return;
+    requestAnimationFrame(function(){
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'start' });
+    });
+  }
+  returnToActionResult();
+  var busyRows = Array.from(document.querySelectorAll('[data-provisioning-connection]'));
+  var org = new URL(window.location.href).searchParams.get('org');
+  if (org && busyRows.length) {
+    var watched = busyRows.map(function(row){ return row.dataset.provisioningConnection; });
+    var endpoint = '/api/connections/provisioning?' + new URLSearchParams({org: org});
+    var checks = 0;
+    var timer = setInterval(async function(){
+      checks += 1;
+      if (checks === 5) clearInterval(timer);
+      try {
+        var response = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(1900) });
+        if (!response.ok) return;
+        var payload = await response.json();
+        if (!Array.isArray(payload.busy)) return;
+        var busy = new Set(payload.busy.map(function(key){ return JSON.stringify(key); }));
+        if (!watched.some(function(key){ return busy.has(key); })) {
+          clearInterval(timer);
+          window.location.reload();
+        }
+      } catch {
+        // Leave the current status in place and try again on the next tick.
+      }
+    }, 2000);
+  }
   // Handle the click before the hydrated design-system button handles the press.
   document.addEventListener('click', function(e){
+    document.querySelectorAll('[data-overflow-actions][open], [data-status-popover][open]').forEach(function(menu){
+      if (menu.matches('[data-status-popover]') ? !menu.contains(e.target) :
+        !menu.querySelector('summary').contains(e.target)) menu.open = false;
+    });
+    var agreement = e.target.closest && e.target.closest('[data-agreement-url]');
+    if (agreement) {
+      e.preventDefault();
+      openConnectionAgreement(agreement.getAttribute('data-agreement-url'));
+      return;
+    }
     var o = e.target.closest && e.target.closest('[data-dialog-open]');
     if (o) {
       e.preventDefault();
       var d = document.getElementById(o.getAttribute('data-dialog-open'));
-      if (d) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open',''); }
+      if (d && !d.open) {
+        if (typeof d.showModal === 'function') d.showModal();
+        else d.setAttribute('open','');
+      }
       return;
     }
     var c = e.target.closest && e.target.closest('[data-dialog-close]');
@@ -142,6 +273,13 @@ const DIALOG_SCRIPT = `
       if (dd) { if (typeof dd.close === 'function') dd.close(); else dd.removeAttribute('open'); }
     }
   }, true);
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    var menu = e.target.closest('[data-overflow-actions][open], [data-status-popover][open]');
+    if (!menu) return;
+    menu.open = false;
+    menu.querySelector('summary').focus();
+  });
 })();
 `;
 
@@ -252,101 +390,111 @@ function UpgradesView({
     ConnectionGatewayPattern["upgrades"]
   >;
 }) {
-  const flags: string[] = [];
-  if (upgrades.sign) flags.push("sign");
-  if (upgrades.verify) flags.push("verify");
-  if (upgrades.counter_sign) flags.push("counter_sign");
+  const selected = { ...upgrades };
+  const flags = [
+    UP_SIGN,
+    UP_VERIFY,
+    UP_COUNTER_SIGN,
+    UP_ACL,
+    UP_MTLS_AUTH,
+    UP_MTLS_ACL,
+  ].filter(({ key }) => pickKey(selected, key));
   const token = upgrades.token;
-  const tx = upgrades.token_exchange;
+  const tx = pickKey(selected, UP_TOKEN_EXCHANGE.key) as
+    | typeof upgrades.token_exchange;
+  if (flags.length === 0 && !token && !tx) return null;
+
+  const pillClass =
+    "inline-flex items-center whitespace-nowrap rounded-full border border-border bg-surface-blue-tint px-3 py-1 text-xs font-semibold leading-tight text-bc-blue";
   return (
-    <div className="mt-2 space-y-2">
-      {flags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {flags.map((f) => (
-            <span
-              key={f}
-              className="text-xs bg-surface-blue-tint text-bc-blue border border-border px-1.5 py-0.5 rounded font-mono"
-            >
-              {f}
-            </span>
-          ))}
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold text-ink-secondary">
+        Upgrades:
+      </span>
+      {flags.map(({ key, label }) => (
+        <div key={key} className={pillClass}>
+          {label}
         </div>
-      )}
+      ))}
       {token && (
-        <div className="border border-border rounded p-2 bg-surface-muted">
-          <div className="text-xs font-semibold text-ink-secondary mb-1">
-            token
+        <details className="relative">
+          <summary className={pillClass + " cursor-pointer list-none"}>
+            Token
+          </summary>
+          <div className="absolute z-10 mt-1 w-40 space-y-1 rounded-lg border border-border bg-surface-muted p-2 break-words">
+            <dl className="grid gap-y-0.5">
+              <FieldRow
+                label="allowed_aud"
+                value={token.allowed_aud}
+                mono
+              />
+              <FieldRow
+                label="allowed_iss"
+                value={token.allowed_iss}
+                mono
+              />
+              <FieldRow
+                label="scope"
+                value={token.scope}
+                mono
+              />
+              <FieldRow
+                label="consumer_match"
+                value={fmtBool(token.consumer_match)}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_claim"
+                value={token.consumer_match_claim}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_claim_custom_id"
+                value={fmtBool(
+                  token.consumer_match_claim_custom_id,
+                )}
+                mono
+              />
+              <FieldRow
+                label="consumer_match_ignore_not_found"
+                value={fmtBool(
+                  token.consumer_match_ignore_not_found,
+                )}
+                mono
+              />
+            </dl>
           </div>
-          <dl className="grid grid-cols-[200px,1fr] gap-x-3 gap-y-0.5">
-            <FieldRow
-              label="allowed_aud"
-              value={token.allowed_aud}
-              mono
-            />
-            <FieldRow
-              label="allowed_iss"
-              value={token.allowed_iss}
-              mono
-            />
-            <FieldRow
-              label="scope"
-              value={token.scope}
-              mono
-            />
-            <FieldRow
-              label="consumer_match"
-              value={fmtBool(token.consumer_match)}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_claim"
-              value={token.consumer_match_claim}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_claim_custom_id"
-              value={fmtBool(
-                token.consumer_match_claim_custom_id,
-              )}
-              mono
-            />
-            <FieldRow
-              label="consumer_match_ignore_not_found"
-              value={fmtBool(
-                token.consumer_match_ignore_not_found,
-              )}
-              mono
-            />
-          </dl>
-        </div>
+        </details>
       )}
       {tx && (
-        <div className="border border-border rounded p-2 bg-surface-muted">
-          <div className="text-xs font-semibold text-ink-secondary mb-1">
-            token_exchange
+        <details className="relative">
+          <summary className={pillClass + " cursor-pointer list-none"}>
+            Token exchange
+          </summary>
+          <div className="absolute z-10 mt-1 w-40 space-y-1 rounded-lg border border-border bg-surface-muted p-2 break-words">
+            <dl className="grid gap-y-0.5">
+              <FieldRow
+                label="client_id"
+                value={tx.client_id}
+                mono
+              />
+              <FieldRow
+                label="token_endpoint"
+                value={tx.token_endpoint}
+                mono
+              />
+              <FieldRow
+                label="audience"
+                value={tx.audience}
+                mono
+              />
+            </dl>
+            <div className="mt-1">
+              <span className="text-ink-secondary">scopes</span>
+              <ScopeChips scopes={tx.scopes} />
+            </div>
           </div>
-          <dl className="grid grid-cols-[140px,1fr] gap-x-3 gap-y-0.5">
-            <FieldRow
-              label="client_id"
-              value={tx.client_id}
-              mono
-            />
-            <FieldRow
-              label="token_endpoint"
-              value={tx.token_endpoint}
-              mono
-            />
-            <FieldRow
-              label="audience"
-              value={tx.audience}
-              mono
-            />
-          </dl>
-          <div className="mt-1">
-            <span className="text-ink-secondary">scopes </span>
-            <ScopeChips scopes={tx.scopes} />
-          </div>
-        </div>
+        </details>
       )}
     </div>
   );
@@ -550,6 +698,11 @@ const TOKEN_EXCHANGE_FIELDS: EditFieldSpec[] = [
     type: "set",
     placeholder: "one scope per line",
   },
+  {
+    key: "targetPrivacyZoneScope",
+    label: "Target privacy zone scope",
+    type: "string",
+  },
 ];
 
 const UP_SIGN: UpgradeSpec = {
@@ -723,7 +876,7 @@ function pickKey(
   if (key in obj) return obj[key];
   const snake = camelToSnake(key);
   if (snake in obj) return obj[snake];
-  return undefined;
+  return obj[snake.replaceAll("_", "-")];
 }
 
 function fieldDefaultString(
@@ -935,10 +1088,12 @@ function PatternBlock({
 function EditDialog({
   conn,
   org,
+  actionQuery,
   dialogId,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   dialogId: string;
 }) {
   const clientPatterns = (conn.clientResources
@@ -960,7 +1115,7 @@ function EditDialog({
     >
       <form
         method="post"
-        action="/connections/edit"
+        action={"/connections/edit" + actionQuery}
         className="conn-edit-form"
       >
         <input type="hidden" name="org" value={org} />
@@ -1068,27 +1223,26 @@ function EditDialog({
 function LifecycleForm({
   conn,
   org,
+  actionQuery,
   action,
   label,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   action: "activate" | "deactivate" | "retry";
   label: string;
 }) {
   return (
-    <form method="post" action="/connections/lifecycle" className="inline">
+    <form method="post" action={"/connections/lifecycle" + actionQuery} className="inline">
       <input type="hidden" name="org" value={org} />
       <input type="hidden" name="id" value={conn.id ?? ""} />
       <input type="hidden" name="clientId" value={conn.clientId} />
       <input type="hidden" name="serviceId" value={conn.serviceId} />
       <input type="hidden" name="action" value={action} />
-      <button
-        type="submit"
-        className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-      >
+      <Btn type="submit" size="small">
         {label}
-      </button>
+      </Btn>
     </form>
   );
 }
@@ -1096,10 +1250,12 @@ function LifecycleForm({
 export function ConnectionCard({
   conn,
   org,
+  actionQuery = "",
   canApprove,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery?: string;
   canApprove: boolean;
 }) {
   const proposal = conn.proposedConfiguration;
@@ -1122,6 +1278,12 @@ export function ConnectionCard({
   const hasId = Boolean(conn.id);
   const slug = (conn.clientId + "__" + conn.serviceId)
     .replace(/[^a-zA-Z0-9_-]/g, "_");
+  const agreementQuery = new URLSearchParams({
+    org,
+    clientId: conn.clientId,
+    serviceId: conn.serviceId,
+  });
+  if (conn.id) agreementQuery.set("id", conn.id);
   const reviewId = `review-${slug}`;
   const confirmId = `confirm-${slug}`;
   const abandonId = `abandon-revoke-${slug}`;
@@ -1189,25 +1351,86 @@ export function ConnectionCard({
       lifecycleIntent ||
       (conn.scopes && conn.scopes.length > 0),
   );
+  const retryLabel = revokePending ? "Retry revoke" : "Retry";
+  const retryAction = {
+    label: retryLabel,
+    control: (
+      <LifecycleForm conn={conn} org={org} actionQuery={actionQuery} action="retry" label={retryLabel} />
+    ),
+  };
+  const [primaryAction, ...otherPrimaryActions] = [
+    isProviderPending && {
+      label: hasProposal ? "Review changes" : "Approve / Reject",
+      control: (
+        <Btn size="small" data={{ "dialog-open": reviewId }}>
+          {hasProposal ? "Review changes" : "Approve / Reject"}
+        </Btn>
+      ),
+    },
+    (canRevoke || canCancel) && {
+      label: destructiveAction.label,
+      control: (
+        <Btn size="small" variant="secondary" danger data={{ "dialog-open": confirmId }}>
+          {destructiveAction.label}
+        </Btn>
+      ),
+    },
+    canRetry && provisionerStatus?.status !== "failed" && retryAction,
+  ].filter((action) => action !== false);
+  const additionalActions = [
+    ...otherPrimaryActions,
+    canActivate && !activateRequiresConfirmation && {
+      label: "Activate",
+      control: (
+        <LifecycleForm conn={conn} org={org} actionQuery={actionQuery} action="activate" label="Activate" />
+      ),
+    },
+    canActivate && activateRequiresConfirmation && {
+      label: "Activate",
+      control: (
+        <button
+          type="button"
+          data-dialog-open={abandonId}
+          className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+        >
+          Activate
+        </button>
+      ),
+    },
+    canDeactivate && {
+      label: "Deactivate",
+      control: (
+        <LifecycleForm conn={conn} org={org} actionQuery={actionQuery} action="deactivate" label="Deactivate" />
+      ),
+    },
+    {
+      label: "Customize...",
+      control: (
+        <button
+          type="button"
+          data-dialog-open={editId}
+          className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
+        >
+          Customize...
+        </button>
+      ),
+    },
+    {
+      label: "ISA",
+      control: <Btn size="small" variant="secondary" data={{ "agreement-url": `/api/connections/agreement?${agreementQuery}` }}>ISA</Btn>,
+    },
+  ].filter((action) => action !== false);
   return (
-    <article className="bg-white border border-border rounded-lg">
+    <article data-connection-service={conn.serviceId} className="bg-white border border-border rounded-lg">
       <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <div className="font-mono text-sm text-ink break-all">
-            {conn.serviceId}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="font-mono text-sm text-ink break-all">
+              {conn.serviceId}
+            </div>
+            <ConnectionStatus connection={conn} hasProposal={hasProposal} />
           </div>
-          <div className="flex flex-wrap items-center gap-2 mt-1.5">
-            <StatusPill connection={conn} />
-            {hasProposal && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-support-warning-bg text-ink">
-                Changes pending approval
-              </span>
-            )}
-            {provisionerStatus && (
-              <ProvisionerStatusPill
-                status={provisionerStatus}
-              />
-            )}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <SubmittedByBadge
               policyVersion={conn.policyVersion}
             />
@@ -1221,64 +1444,24 @@ export function ConnectionCard({
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-          <button
-            type="button"
-            data-dialog-open={editId}
-            className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-          >
-            Customize...
-          </button>
-          {isProviderPending && (
-            <button
-              type="button"
-              data-dialog-open={reviewId}
-              className="text-xs font-semibold px-3 py-1 rounded bg-btn-primary text-white hover:bg-btn-primary-hover"
-            >
-              {hasProposal ? "Review changes" : "Approve / Reject"}
-            </button>
-          )}
-          {canRetry && (
-            <LifecycleForm
-              conn={conn}
-              org={org}
-              action="retry"
-              label={revokePending ? "Retry revoke" : "Retry"}
-            />
-          )}
-          {canActivate && !activateRequiresConfirmation && (
-            <LifecycleForm conn={conn} org={org} action="activate" label="Activate" />
-          )}
-          {canActivate && activateRequiresConfirmation && (
-            <button
-              type="button"
-              data-dialog-open={abandonId}
-              className="text-xs font-semibold px-3 py-1 rounded bg-btn-secondary border border-border-dark text-ink hover:bg-btn-secondary-hover"
-            >
-              Activate
-            </button>
-          )}
-          {canDeactivate && (
-            <LifecycleForm conn={conn} org={org} action="deactivate" label="Deactivate" />
-          )}
-          {(canRevoke || canCancel) && (
-            <button
-              type="button"
-              data-dialog-open={confirmId}
-              className="text-xs font-semibold px-3 py-1 rounded border border-danger text-danger hover:bg-support-danger-bg"
-            >
-              {destructiveAction.label}
-            </button>
-          )}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          {canRetry && provisionerStatus?.status === "failed" &&
+            retryAction.control}
+          {primaryAction?.control}
           {busy && conn.isApproved && (
-            <button
-              type="button"
-              disabled
-              className="text-xs font-semibold px-3 py-1 rounded border border-gray-300 text-gray-400 cursor-not-allowed"
+            <span
+              role="status"
+              data-provisioning-connection={JSON.stringify([conn.id ?? "", conn.clientId, conn.serviceId])}
+              className="inline-flex items-center gap-2 text-sm text-ink-secondary"
             >
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 rounded-full border-2 border-bc-blue border-r-transparent motion-safe:animate-spin"
+              />
               Lifecycle action in progress
-            </button>
+            </span>
           )}
+          <OverflowActions id={`actions-${editId}`} actions={additionalActions} />
         </div>
       </div>
 
@@ -1417,11 +1600,12 @@ export function ConnectionCard({
         </details>
       )}
 
-      <EditDialog conn={conn} org={org} dialogId={editId} />
+      <EditDialog conn={conn} org={org} actionQuery={actionQuery} dialogId={editId} />
       {isProviderPending && (
         <ReviewDialog
           conn={conn}
           org={org}
+          actionQuery={actionQuery}
           dialogId={reviewId}
         />
       )}
@@ -1429,6 +1613,7 @@ export function ConnectionCard({
         <ConfirmDialog
           conn={conn}
           org={org}
+          actionQuery={actionQuery}
           dialogId={confirmId}
           action={destructiveAction}
         />
@@ -1437,6 +1622,7 @@ export function ConnectionCard({
         <ConfirmDialog
           conn={conn}
           org={org}
+          actionQuery={actionQuery}
           dialogId={abandonId}
           action={{
             path: "/connections/lifecycle",
@@ -1457,11 +1643,13 @@ export function ConnectionCard({
 function ConfirmDialog({
   conn,
   org,
+  actionQuery,
   dialogId,
   action,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   dialogId: string;
   action: {
     path: string;
@@ -1503,7 +1691,7 @@ function ConfirmDialog({
         </Btn>
         <form
           method="post"
-          action={action.path}
+          action={action.path + actionQuery}
           className="inline"
         >
           <input type="hidden" name="org" value={org} />
@@ -1538,10 +1726,12 @@ function ConfirmDialog({
 function ReviewDialog({
   conn,
   org,
+  actionQuery,
   dialogId,
 }: {
   conn: ConnectionRequest;
   org: string;
+  actionQuery: string;
   dialogId: string;
 }) {
   const proposal = conn.proposedConfiguration;
@@ -1592,7 +1782,7 @@ function ReviewDialog({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill connection={conn} />
+          <ConnectionStatus connection={conn} />
           {conn.environment && (
             <MetaBadge label={conn.environment} />
           )}
@@ -1667,7 +1857,7 @@ function ReviewDialog({
         <div className="flex gap-2">
           <form
             method="post"
-            action="/connections/reject"
+            action={"/connections/reject" + actionQuery}
             className="inline"
           >
             {hidden}
@@ -1677,7 +1867,7 @@ function ReviewDialog({
           </form>
           <form
             method="post"
-            action="/connections/approve"
+            action={"/connections/approve" + actionQuery}
             className="inline"
           >
             {hidden}
@@ -1698,36 +1888,81 @@ interface ClientGroup {
 function ClientGroupSection({
   group,
   org,
-  ownedServiceIds,
+  actionQuery,
+  ownsService,
+  showActionRequired,
+  open,
 }: {
   group: ClientGroup;
   org: string;
-  ownedServiceIds: Set<string>;
+  actionQuery: string;
+  ownsService: (connection: ConnectionRequest) => boolean;
+  showActionRequired: boolean;
+  open: boolean;
 }) {
   const { clientId, subsystem, items } = group;
+  const serviceCount = new Set(items.map(({ serviceId }) => serviceId)).size;
+  const readyCount = items.filter((connection) =>
+    connection.isApproved && connection.isActive &&
+    connection.provisionerStatus?.status === "provisioned"
+  ).length;
+  const changesPendingApproval = items.some(({ proposedConfiguration }) =>
+    proposedConfiguration && Object.keys(proposedConfiguration).length > 0
+  );
   return (
-    <section className="bg-white border border-border rounded-lg overflow-hidden">
-      <header className="bg-surface-muted border-b border-border px-4 py-3">
-        <h3 className="font-semibold text-bc-blue break-all">
+    <details
+      open={open}
+      data-connection-client={clientId}
+      className="group rounded-lg border border-border bg-white"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg bg-surface-muted px-4 py-3 group-open:rounded-b-none [&::-webkit-details-marker]:hidden">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          aria-hidden="true"
+          className="shrink-0 text-bc-blue transition-transform group-open:rotate-90"
+        >
+          <path d="m6 3 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="min-w-0 flex-1">
+          <span className="block break-all font-semibold text-bc-blue">{clientId}</span>
+          {subsystem?.description && (
+            <span className="block break-words text-xs text-ink-secondary">
+              {subsystem.description}
+            </span>
+          )}
+        </span>
+        <span className="shrink-0 text-right text-xs text-ink-secondary">
+          <span className="block text-sm font-semibold text-ink">
+            {serviceCount} {serviceCount === 1 ? "service" : "services"}
+          </span>
+          <span className="block">{readyCount} of {items.length} ready</span>
+          {(changesPendingApproval || (showActionRequired && readyCount < items.length)) && (
+            <span className="mt-1 inline-block rounded-full bg-support-warning-bg px-2 py-0.5 font-semibold text-ink">
+              {changesPendingApproval ? "Changes pending approval" : "Action required"}
+            </span>
+          )}
+        </span>
+      </summary>
+      <div className="space-y-3 border-t border-border p-4">
+        <div className="text-sm text-link">
           <ClientSubsystemLink clientId={clientId} />
-        </h3>
-        {subsystem?.name && (
-          <p className="text-xs text-ink-secondary">
-            {subsystem.name}
-          </p>
-        )}
-      </header>
-      <div className="p-4 space-y-3">
+        </div>
         {items.map((conn) => (
           <ConnectionCard
             key={`${conn.clientId}:${conn.serviceId}`}
             conn={conn}
             org={org}
-            canApprove={ownedServiceIds.has(conn.serviceId)}
+            actionQuery={actionQuery}
+            canApprove={ownsService(conn)}
           />
         ))}
       </div>
-    </section>
+    </details>
   );
 }
 
@@ -1739,31 +1974,52 @@ export function ConnectionsPage({
   services,
   config,
   currentPath,
+  openClients = [],
   user,
   flash,
   error,
 }: ConnectionsPageProps) {
-  const ownedServiceIds = new Set<string>(
-    selectedOrg
-      ? services
-          .filter(
-            (s) =>
-              s.subsystem.organization.name ===
-              selectedOrg.name,
-          )
-          .map((s) => s.name)
-      : [],
+  const r1RequestUrl = config.connections?.r1RequestUrl ||
+    (config.defaultEnvironment === "apsdev"
+      ? "https://sso-requests-sandbox.apps.gold.devops.gov.bc.ca/"
+      : undefined);
+
+  const subByClientId = new Map(allSubsystems.map((s) => [s.clientId.trim().toUpperCase(), s]));
+  const isServiceView = currentPath === "/console/common-sso";
+  const actionQuery = isServiceView && selectedOrg
+    ? `?${new URLSearchParams({ returnPath: currentPath, org: selectedOrg.name })}`
+    : "";
+
+  function findSubsystem(clientId?: string): Subsystem | undefined {
+    return clientId ? subByClientId.get(clientId.trim().toUpperCase()) : undefined;
+  }
+
+  function ownsService(connection: ConnectionRequest): boolean {
+    if (!selectedOrg) return false;
+    const provider = findSubsystem(connection.serviceResources?.subsystemId);
+    if (provider) return provider.organization.name === selectedOrg.name;
+    const service = services.find((item) =>
+      item.name === connection.serviceId && item.environment === connection.environment
+    ) ?? services.find((item) => item.name === connection.serviceId);
+    if (service) return service.subsystem.organization.name === selectedOrg.name;
+    return findSubsystem(connection.requesterDetails?.service?.clientId)
+      ?.organization.name === selectedOrg.name;
+  }
+
+  // A connection can match both views when this organization owns both parties.
+  const visibleConnections = connections.filter((connection) =>
+    isServiceView
+      ? Boolean(selectedOrg &&
+        (findSubsystem(connection.clientId) ??
+          findSubsystem(connection.requesterDetails?.client?.clientId))
+          ?.organization.name === selectedOrg.name)
+      : ownsService(connection)
   );
-  const r1RequestUrl = config.connections?.r1RequestUrl;
 
-  // Group every connection by its client (always), regardless of whether the
-  // client subsystem belongs to the selected organization.
-  const subByClientId = new Map<string, Subsystem>();
-  for (const s of allSubsystems)
-    subByClientId.set(s.clientId, s);
-
+  // Keep the list grouped by client after applying the organization role.
+  const expandedClients = new Set(openClients);
   const byClient = new Map<string, ConnectionRequest[]>();
-  for (const c of connections) {
+  for (const c of visibleConnections) {
     const list = byClient.get(c.clientId) ?? [];
     list.push(c);
     byClient.set(c.clientId, list);
@@ -1771,7 +2027,7 @@ export function ConnectionsPage({
   const groups: ClientGroup[] = [...byClient.entries()]
     .map(([clientId, items]) => ({
       clientId,
-      subsystem: subByClientId.get(clientId) ?? null,
+      subsystem: findSubsystem(clientId) ?? null,
       items: items
         .slice()
         .sort((a, b) =>
@@ -1785,35 +2041,13 @@ export function ConnectionsPage({
     { label: "Member Console", href: "/console" },
     { label: "Connection Requests" },
   ];
-  if (selectedOrg)
-    breadcrumbItems.push({ label: selectedOrg.title });
+  if (selectedOrg) breadcrumbItems.push({ label: selectedOrg.title });
 
-  return (
-    <Layout
-      title="Connection Requests"
-      currentPath={currentPath}
-      user={user}
-    >
+  const content = (
+    <>
       <style
         dangerouslySetInnerHTML={{ __html: DIALOG_STYLE }}
       />
-
-      <Breadcrumb items={breadcrumbItems} />
-
-      {/* Header */}
-      <div className="bg-bc-blue text-ink-invert">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-5xl font-bold mb-2">
-            Connection Requests
-          </h1>
-          <p className="text-ink-invert-secondary">
-            Connection requests for an organization member,
-            grouped by subsystem — each subsystem appears
-            where it is the client or the service provider.
-          </p>
-        </div>
-      </div>
-      <div className="h-1 bg-bc-gold" />
 
       {/* Picker */}
       <div className="bg-white border-b border-border">
@@ -1821,7 +2055,7 @@ export function ConnectionsPage({
           <OrgPicker
             organizations={organizations}
             selectedOrg={selectedOrg}
-            action="/connections"
+            action={currentPath}
             submitLabel="Load connections"
             autoSubmit
           />
@@ -1832,6 +2066,7 @@ export function ConnectionsPage({
         {flash && (
           <div
             role="status"
+            data-connection-flash=""
             className={[
               "mb-4 rounded-md border-l-4 px-4 py-3 text-sm text-ink",
               flash.kind === "success"
@@ -1860,7 +2095,7 @@ export function ConnectionsPage({
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div id="connection-results" className="flex flex-wrap items-end justify-between gap-3 mb-5">
               <div>
                 <h2 className="text-2xl font-bold text-bc-blue">
                   {selectedOrg.title}
@@ -1870,41 +2105,45 @@ export function ConnectionsPage({
                   {selectedOrg.member.memberId}
                 </p>
                 <p className="text-ink-secondary text-sm mt-1">
-                  {connections.length} connection
-                  {connections.length === 1 ? "" : "s"}{" "}
+                  {visibleConnections.length} connection
+                  {visibleConnections.length === 1 ? "" : "s"}{" "}
                   across {groups.length} client
                   {groups.length === 1 ? "" : "s"}.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {r1RequestUrl && (
-                  <Btn
-                    href={r1RequestUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="primary"
-                    ariaLabel="Request a connection through Common SSO (opens in a new tab)"
-                  >
-                    Request Connection through Common SSO
-                  </Btn>
-                )}
-              </div>
+              {isServiceView && r1RequestUrl && (
+                <Btn
+                  href={r1RequestUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="primary"
+                  ariaLabel="Request a connection through Common SSO (opens in a new tab)"
+                >
+                  Request Connection through Common SSO
+                </Btn>
+              )}
             </div>
 
-            {connections.length === 0 ? (
+            {visibleConnections.length === 0 ? (
               <div className="text-center py-16 bg-surface-muted rounded-lg border border-border">
                 <p className="text-ink-secondary">
-                  No connections yet for this organization.
+                  {isServiceView
+                    ? "No service connections for this organization’s clients."
+                    : "No clients connect to services provided by this organization."}
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
+                <StatusLegend />
                 {groups.map((group) => (
                   <ClientGroupSection
                     key={group.clientId}
                     group={group}
                     org={selectedOrg.name}
-                    ownedServiceIds={ownedServiceIds}
+                    actionQuery={actionQuery}
+                    ownsService={ownsService}
+                    showActionRequired={!isServiceView}
+                    open={expandedClients.has(group.clientId)}
                   />
                 ))}
               </div>
@@ -1914,12 +2153,48 @@ export function ConnectionsPage({
         )}
       </div>
 
+      <dialog
+        id="connection-agreement"
+        aria-labelledby="connection-agreement-title"
+        className="sdx-dialog sdx-dialog-wide"
+        data-chart-src={CHART_JS_URL}
+      >
+        <header className="border-b border-border px-5 py-4">
+          <h2 id="connection-agreement-title" className="text-lg font-bold text-bc-blue">
+            Information Sharing Agreement
+          </h2>
+          <p data-agreement-subtitle className="mt-1 break-words text-sm text-ink-secondary" hidden />
+        </header>
+        <div data-agreement-content />
+        <footer className="flex justify-end border-t border-border px-5 py-3">
+          <Btn variant="secondary" data={{ "dialog-close": "" }}>Close</Btn>
+        </footer>
+      </dialog>
+
       <script
-        dangerouslySetInnerHTML={{ __html: DIALOG_SCRIPT }}
+        dangerouslySetInnerHTML={{ __html: AGREEMENT_TRAFFIC_SCRIPT + DIALOG_SCRIPT }}
       />
       <script
         dangerouslySetInnerHTML={{ __html: EDIT_SCRIPT }}
       />
+    </>
+  );
+
+  if (isServiceView) return content;
+
+  return (
+    <Layout title="Connection Requests" currentPath={currentPath} user={user}>
+      <Breadcrumb items={breadcrumbItems} />
+      <div className="bg-bc-blue text-ink-invert">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <h1 className="text-5xl font-bold mb-2">Connection Requests</h1>
+          <p className="text-ink-invert-secondary">
+            Review and manage client access requests to your organization’s services.
+          </p>
+        </div>
+      </div>
+      <div className="h-1 bg-bc-gold" />
+      {content}
     </Layout>
   );
 }

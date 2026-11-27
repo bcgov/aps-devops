@@ -1,6 +1,6 @@
 import { Layout } from "../components/Layout.tsx";
 import { Breadcrumb } from "../components/custom/Breadcrumb.tsx";
-import { TimeSeriesChart } from "../components/custom/TimeSeriesChart.tsx";
+import { CHART_JS_URL, TimeSeriesChart } from "../components/custom/TimeSeriesChart.tsx";
 import type { MetricSeries } from "../components/custom/TimeSeriesChart.tsx";
 import type { SiteConfig } from "../types.ts";
 import type { SessionUser } from "../lib/auth.ts";
@@ -126,7 +126,7 @@ export function MetricsPage({
       </div>
 
       {/* Chart.js must load before the chart init script below */}
-      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" />
+      <script src={CHART_JS_URL} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <TimeSeriesChart

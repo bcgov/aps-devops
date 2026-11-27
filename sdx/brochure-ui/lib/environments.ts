@@ -24,8 +24,8 @@ const ENV_IDS_LOWER = new Map<string, EnvId>(
 // Environment shown when the visitor has made no explicit choice — e.g. an
 // anonymous, not-logged-in user with nothing stored in localStorage. Falls back
 // to the first configured environment.
-export const DEFAULT_ENV: EnvId =
-  config.defaultEnvironment ?? ENVIRONMENTS[0]?.id ?? "";
+export const DEFAULT_ENV: EnvId = config.defaultEnvironment ??
+  ENVIRONMENTS[0]?.id ?? "";
 
 // JWKS source URLs to publish on the trust registry, keyed by environment id.
 export const JWKS_URLS_BY_ENV: Record<EnvId, string[]> = Object.fromEntries(
@@ -52,15 +52,17 @@ export const ORG_KEYSETS_URL_BY_ENV: Record<EnvId, string> = Object.fromEntries(
  */
 export function orgKeysetsUrlForEnv(env?: string | null): string | undefined {
   if (env) {
-    const direct =
-      ORG_KEYSETS_URL_BY_ENV[env] ?? ORG_KEYSETS_URL_BY_ENV[env.toLowerCase()];
+    const direct = ORG_KEYSETS_URL_BY_ENV[env] ??
+      ORG_KEYSETS_URL_BY_ENV[env.toLowerCase()];
     if (direct) return direct;
     const norm = normalizeEnv(env);
-    if (norm && ORG_KEYSETS_URL_BY_ENV[norm]) return ORG_KEYSETS_URL_BY_ENV[norm];
+    if (norm && ORG_KEYSETS_URL_BY_ENV[norm]) {
+      return ORG_KEYSETS_URL_BY_ENV[norm];
+    }
   }
   return (
     ORG_KEYSETS_URL_BY_ENV[DEFAULT_ENV] ??
-    Object.values(ORG_KEYSETS_URL_BY_ENV)[0]
+      Object.values(ORG_KEYSETS_URL_BY_ENV)[0]
   );
 }
 
@@ -97,6 +99,61 @@ export function normalizeEnv(
   if (v.includes("dev")) return "dev";
   if (v.includes("lab")) return "lab";
   return null;
+}
+
+/** Resolve the configured directory or use the BC identity host for the environment. */
+export function privacyZonesUrlForEnv(environment?: string): string {
+  const id = (environment || DEFAULT_ENV).trim().toLowerCase();
+  const configured =
+    config.environments?.find((env) => env.id.toLowerCase() === id)
+      ?.privacy_zones_url ??
+      config.environments?.find((env) =>
+        env.id === (/^non[-_ ]?prod/.test(id) ? "test" : normalizeEnv(id))
+      )
+        ?.privacy_zones_url;
+  if (configured) return configured;
+
+  const host = id === "apsdev"
+    ? "idsit.gov.bc.ca"
+    : /^(prod(?:uction)?|apsprod|apsprd|prd)$/.test(id)
+    ? "id.gov.bc.ca"
+    : "idtest.gov.bc.ca";
+  return `https://${host}/oauth2/privacy-zones`;
+}
+
+export function connectionPrivacyZonesUrl(
+  serviceId: string,
+  environment?: string,
+): string {
+  const serviceEnvironment = serviceId.match(
+    /^(apsdev|apsprd|apsprod|prod|production|test|apstst|dev|lab|sbx)\./i,
+  )?.[1];
+  return privacyZonesUrlForEnv(environment || serviceEnvironment);
+}
+
+export async function loadPrivacyZoneNames(
+  url: string,
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  try {
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) return names;
+    const records: unknown = await response.json();
+    if (!Array.isArray(records)) return names;
+    for (const record of records) {
+      const uri = record?.privacy_zone_uri ?? record?.uri;
+      const name = record?.privacy_zone_name ?? record?.name;
+      if (typeof uri === "string" && typeof name === "string" && name.trim()) {
+        names.set(uri, name);
+      }
+    }
+  } catch {
+    // The stored zone URI remains available if the directory cannot be reached.
+  }
+  return names;
 }
 
 /**

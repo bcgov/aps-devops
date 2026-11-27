@@ -24,5 +24,8 @@ env:
   PROMETHEUS_URL:
     value: "http://thanos-prom-prometheus-server"
 
+  ISA_PROMETHEUS_URL:
+    value: "http://thanos-query:9090"
+
   PUBLIC_BODIES_API:
     value: "https://public-bodies.dev.api.gov.bc.ca/v1"

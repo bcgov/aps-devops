@@ -11,6 +11,7 @@ import {
   JWKS_URLS_BY_ENV,
   ORG_KEYSETS_URL_BY_ENV,
 } from "./lib/environments.ts";
+import { keysForKeyset } from "./lib/keysets.ts";
 import { loadJwks } from "./lib/jwks.ts";
 
 const SDX_API_BASE = Deno.env.get("SDX_API_BASE") ??
@@ -39,6 +40,7 @@ const SERVICES_API = `${SDX_API_BASE}/services`;
 const SCOPES_API = `${SDX_API_BASE}/scopes`;
 const ACTIVITY_API = `${SDX_API_BASE}/activity`;
 export const ACTIVITY_PAGE_SIZE = 20;
+export const ORGANIZATION_ACTIVITY_PAGE_SIZE = 5;
 
 export async function loadActivity(
   first = 20,
@@ -71,16 +73,41 @@ export async function loadScopes(): Promise<ResourceScope[]> {
 // to the summary already in hand.
 export async function fetchSubsystemDetail(
   clientId: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown> | null> {
   try {
     const detailRes = await fetch(
       `${SUBSYSTEMS_API}/${encodeURIComponent(clientId)}?includeAccess=true`,
+      { signal },
     );
     if (detailRes.ok) return await detailRes.json();
   } catch (e) {
     console.error(`Failed to fetch subsystem detail for ${clientId}:`, e);
   }
   return null;
+}
+
+export function createSubsystemDetailLoader(subsystems: Subsystem[]) {
+  const partyDetails = new Map<string, Promise<Subsystem | undefined>>();
+  function loadParty(partyId?: string): Promise<Subsystem | undefined> {
+    if (!partyId) return Promise.resolve(undefined);
+    const existing = partyDetails.get(partyId);
+    if (existing) return existing;
+    const pending = (async () => {
+      const summary = subsystems.find((item) => item.clientId === partyId);
+      if (!summary || summary.access !== undefined) return summary;
+      const detail = await fetchSubsystemDetail(
+        partyId,
+        AbortSignal.timeout(5000),
+      );
+      return Array.isArray(detail?.access)
+        ? { ...summary, access: detail.access }
+        : summary;
+    })();
+    partyDetails.set(partyId, pending);
+    return pending;
+  }
+  return loadParty;
 }
 
 export class CatalogUnavailableError extends Error {}
@@ -198,7 +225,21 @@ async function getKeysetsByEnvironment(
   const results = await Promise.all(
     ENVIRONMENTS.map(async (env): Promise<EnvKeyset | null> => {
       const baseUrl = ORG_KEYSETS_URL_BY_ENV[env.id];
-      if (!baseUrl) return null;
+      if (!baseUrl) {
+        // Deployments may configure only aggregate Trust registry sources.
+        // Those already contain the published org/subsystem keys.
+        const sources = await getJwks();
+        const matches = sources.flatMap((source) => {
+          const keys = keysForKeyset(source.keys, prefix, env.id);
+          return keys.length ? [{ source: source.url, keys }] : [];
+        });
+        if (!matches.length) return null;
+        return {
+          environment: env.id,
+          source: matches[0].source,
+          keys: matches[0].keys,
+        };
+      }
       const data = await getKeyset(`${prefix}.${env.id}`, baseUrl);
       if (!data || data.error || data.keys.length === 0) {
         return null;

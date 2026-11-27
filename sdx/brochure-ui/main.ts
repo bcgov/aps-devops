@@ -1,10 +1,17 @@
+import { ConnectionAgreement } from "./components/ConnectionAgreement.tsx";
+import { verifyOrganizationResponse } from "./lib/response-verification.ts";
+import { certificatePayload, certificatesWithoutRuntime, fetchSigningKeyset, planCertificateInstall } from "./lib/org-signing-keyset.ts";
+import { registerOrgCertificate, requestOrgCsr } from "./lib/org-signing.ts";
+import { connectionPrivacyZonesUrl, loadPrivacyZoneNames, orgKeysetsUrlForEnv } from "./lib/environments.ts";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   ACTIVITY_PAGE_SIZE,
   CatalogUnavailableError,
+  ORGANIZATION_ACTIVITY_PAGE_SIZE,
   attachOperationTags,
   countBy,
+  createSubsystemDetailLoader,
   fetchSubsystemDetail,
   getJwks,
   getOrgKeysets,
@@ -34,6 +41,7 @@ import { SubsystemDetailPage } from "./pages/SubsystemDetailPage.tsx";
 import { ActivityConsolePage } from "./pages/ActivityConsolePage.tsx";
 import { LogsPage } from "./pages/LogsPage.tsx";
 import { MetricsPage } from "./pages/MetricsPage.tsx";
+import { CommonSsoPage } from "./pages/CommonSsoPage.tsx";
 import { ConsolePage } from "./pages/ConsolePage.tsx";
 import { ScopesPage } from "./pages/ScopesPage.tsx";
 import { RuntimesPage } from "./pages/RuntimesPage.tsx";
@@ -44,6 +52,7 @@ import { ConnectionsPage } from "./pages/ConnectionsPage.tsx";
 import { OnboardingInvitePage } from "./pages/OnboardingInvitePage.tsx";
 import { VerificationBadge } from "./components/custom/VerificationBadge.tsx";
 import {
+  connectionTraffic,
   MetricsQueryNotFoundError,
   runQuery,
 } from "./lib/metrics.ts";
@@ -52,6 +61,7 @@ import {
   authEnabled,
   completeLogin,
   getCurrentUser,
+  hasSameRequestOrigin,
   logout,
   startLogin,
 } from "./lib/auth.ts";
@@ -65,6 +75,7 @@ import {
   getClientDetail,
   listConnections,
   listOrgActivity,
+  listSubmissionActivity,
   runConnectionLifecycle,
   SdxApiError,
   setConnectionApproval,
@@ -250,6 +261,27 @@ Deno.serve({ port: PORT, onError: handleRequestError }, async (req: Request) => 
   }
   if (path === "/auth/logout") {
     return await logout(req);
+  }
+
+  if (path === "/api/trust/verify-response") {
+    if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+    if (!hasSameRequestOrigin(req)) return new Response("Invalid origin", { status: 403 });
+    try {
+      const form = await req.formData();
+      const organizations = await loadOrganizations();
+      const org = organizations.find((entry) => entry.name === String(form.get("org")));
+      const environment = String(form.get("environment") ?? "");
+      const env = config.environments?.find((entry) => entry.id === environment);
+      if (!org || !env) throw new Error("Select an organization and configured environment");
+      const field = (name: string) => String(form.get(name) ?? "").trim();
+      const result = await verifyOrganizationResponse({
+        environment, memberClass:org.member.memberClass, memberId:org.member.memberId,
+        edgeToken:field("edgeToken"), entitySig:field("entitySig"),
+      }, { jwksUrls:env.jwks_urls ?? [], registryBase:env.org_keysets_url });
+      return Response.json(result, {headers:{"cache-control":"no-store"}});
+    } catch (error) {
+      return Response.json({verified:false,checks:[{label:"Verification",passed:false,message:(error as Error).message}]}, {headers:{"cache-control":"no-store"}});
+    }
   }
 
   const user = await getCurrentUser(req);
@@ -513,6 +545,10 @@ Deno.serve({ port: PORT, onError: handleRequestError }, async (req: Request) => 
     );
   }
 
+  if (path === "/runtimes/signing") {
+    return await handleRuntimes(req, url, user);
+  }
+
   if (path === "/runtimes") {
     return await handleRuntimes(req, url, user);
   }
@@ -712,7 +748,7 @@ Deno.serve({ port: PORT, onError: handleRequestError }, async (req: Request) => 
     let activityError: string | null = null;
     try {
       activity = await loadActivity(
-        ACTIVITY_PAGE_SIZE,
+        ORGANIZATION_ACTIVITY_PAGE_SIZE,
         0,
         org.name,
       );
@@ -734,7 +770,7 @@ Deno.serve({ port: PORT, onError: handleRequestError }, async (req: Request) => 
         publicBodyType,
         publicBodyError,
         activity,
-        activityPageSize: ACTIVITY_PAGE_SIZE,
+        activityPageSize: ORGANIZATION_ACTIVITY_PAGE_SIZE,
         activityError,
         orgKeys,
         config,
@@ -744,7 +780,58 @@ Deno.serve({ port: PORT, onError: handleRequestError }, async (req: Request) => 
     );
   }
 
-  if (path === "/connections") {
+  if (path === "/api/connections/agreement" && req.method === "GET") {
+    return await handleConnectionAgreement(url, user);
+  }
+
+  if (path === "/api/connections/provisioning" && req.method === "GET") {
+    const headers = { "cache-control": "no-store" };
+    if (!user?.accessToken) return Response.json(null, { status: 401, headers });
+    const org = url.searchParams.get("org");
+    if (!org) return Response.json(null, { status: 400, headers });
+    try {
+      const connections = await listConnections(org, {
+        accessToken: user.accessToken,
+        signal: req.signal,
+      });
+      const busy = connections.filter(({ provisionerStatus }) =>
+        provisionerStatus?.status === "pending" ||
+        provisionerStatus?.status === "deprovisioning"
+      ).map(({ id, clientId, serviceId }) => [id ?? "", clientId, serviceId]);
+      return Response.json({ busy }, { headers });
+    } catch {
+      return Response.json(null, { status: 502, headers });
+    }
+  }
+
+  if (path === "/api/connections/traffic" && req.method === "GET") {
+    const headers = { "cache-control": "no-store" };
+    if (!user?.accessToken) {
+      return Response.json({ error: "Sign in to view connection traffic." }, { status: 401, headers });
+    }
+    const org = url.searchParams.get("org");
+    const clientId = url.searchParams.get("clientId");
+    const serviceId = url.searchParams.get("serviceId");
+    if (!org || !clientId || !serviceId) {
+      return Response.json({ error: "Missing connection identifiers." }, { status: 400, headers });
+    }
+    try {
+      const connections = await listConnections(org, { accessToken: user.accessToken });
+      if (!connections.some((conn) =>
+        conn.isApproved && conn.clientId === clientId && conn.serviceId === serviceId
+      )) {
+        return Response.json({ error: "Traffic is available for approved connections." }, { status: 404, headers });
+      }
+      return Response.json(await connectionTraffic(), { headers });
+    } catch (error) {
+      const status = error instanceof SdxApiError && [401, 403, 404].includes(error.status)
+        ? error.status
+        : 502;
+      return Response.json({ error: "Connection traffic is unavailable." }, { status, headers });
+    }
+  }
+
+  if (path === "/connections" || path === "/console/common-sso") {
     return await handleConnections(req, url, user);
   }
   const strayAction = redirectStrayConnectionAction(req);
@@ -803,6 +890,7 @@ function redirect(location: string): Response {
 }
 
 function connectionsRedirect(
+  req: Request,
   org: string,
   flash: { kind: "success" | "error"; message: string },
   subsystem?: string,
@@ -812,8 +900,37 @@ function connectionsRedirect(
     flash: flash.kind,
     msg: flash.message,
   });
-  if (subsystem) params.set("subsystem", subsystem);
-  return redirect(`/connections?${params}`);
+  const actionUrl = new URL(req.url);
+  let state = actionUrl.searchParams;
+  let returnPath = state.get("returnPath");
+  if (!returnPath) {
+    const referrer = req.headers.get("referer");
+    if (referrer && URL.canParse(referrer)) {
+      const source = new URL(referrer);
+      if (
+        source.origin === actionUrl.origin &&
+        (source.pathname === "/connections" || source.pathname === "/console/common-sso") &&
+        source.searchParams.get("org") === org
+      ) {
+        state = source.searchParams;
+        returnPath = source.pathname;
+      }
+    }
+  }
+  const destination = returnPath === "/console/common-sso" || state.get("role") === "services"
+    ? "/console/common-sso"
+    : "/connections";
+  const openClients = new Set(state.getAll("openClient"));
+  if (subsystem) openClients.add(subsystem);
+  for (const clientId of openClients) {
+    params.append("openClient", clientId);
+  }
+  if (subsystem) {
+    params.set("subsystem", subsystem);
+    const serviceId = actionUrl.searchParams.get("returnService");
+    if (serviceId) params.set("returnService", serviceId);
+  }
+  return new Response(null, { status: 303, headers: { location: `${destination}?${params}` } });
 }
 
 async function handleRuntimes(
@@ -821,13 +938,24 @@ async function handleRuntimes(
   url: URL,
   user: Awaited<ReturnType<typeof getCurrentUser>>,
 ): Promise<Response> {
+  if (url.pathname === "/runtimes/signing" && !user && req.headers.get("accept")?.includes("application/json")) {
+    return Response.json({ error: "Your session has expired. Reload the page and sign in again." }, { status: 401 });
+  }
   const gate = requireAuth(req, user);
   if (gate) return gate;
 
-  const orgName = url.searchParams.get("org") ?? "";
+  const isSigning = url.pathname === "/runtimes/signing";
+  if (isSigning && req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (isSigning && !hasSameRequestOrigin(req)) {
+    const error = "Invalid request origin. Open the Member Console directly and try again.";
+    return req.headers.get("accept")?.includes("application/json")
+      ? Response.json({ error }, { status: 403 })
+      : new Response(error, { status: 403 });
+  }
+  const form = isSigning ? await req.formData() : null;
+  const orgName = String(form?.get("org") ?? url.searchParams.get("org") ?? "");
   const organizations = await loadOrganizations();
-  const selectedOrg =
-    organizations.find((o) => o.name === orgName) ?? null;
+  const selectedOrg = organizations.find((o) => o.name === orgName) ?? null;
 
   let ownedGroups: Awaited<
     ReturnType<typeof listRuntimeGroups>
@@ -849,11 +977,70 @@ async function handleRuntimes(
     } catch (e) {
       ownedGroups = [];
       availableGroups = [];
-      error =
-        e instanceof SdxApiError
-          ? `Failed to load runtime groups (${e.status}): ${e.body}`
-          : (e as Error).message;
+      error = e instanceof SdxApiError
+        ? `Failed to load runtime groups (${e.status}): ${e.body}`
+        : (e as Error).message;
     }
+  }
+
+  const keysetUrl = (environment: string) => {
+    const base = orgKeysetsUrlForEnv(environment);
+    if (!base || !selectedOrg) throw new Error("Organization signing registry is not configured");
+    const member = selectedOrg.member;
+    const id = `sdx.org.${member.memberClass}.${member.memberId}.${environment}`.toLowerCase();
+    return `${base.replace(/\/$/, "")}/${encodeURIComponent(id)}/.well-known/jwks.json`;
+  };
+  let signingResult: { group: string; environment: string; csr?: string; message?: string; confirmation?: string; review?: string } | undefined;
+  if (isSigning) {
+    try {
+      const group = String(form!.get("group") ?? "");
+      const environment = String(form!.get("environment") ?? "");
+      if (!selectedOrg || !availableGroups.some((g) => g.name === group && g.environment === environment)) throw new Error("Select an available runtime group");
+      const operation = String(form!.get("operation"));
+      const opts = { accessToken: user!.accessToken };
+      signingResult = { group, environment };
+      if (operation === "csr") {
+        signingResult.csr = await requestOrgCsr(orgName, group, environment, opts);
+      } else if (operation === "review" || operation === "install" || operation === "remove") {
+        const certificate = String(form!.get("certificate") ?? "").trim();
+        const caCerts = config.environments?.find((env) => env.id === environment)?.signing_root_ca_pem?.trim() ?? "";
+        const current = await fetchSigningKeyset(keysetUrl(environment), selectedOrg.member, environment);
+        if (operation === "remove") {
+          if (form!.get("confirm") !== "on") throw new Error("Confirm removal for this runtime group and environment");
+          if (!current.certificates.some((entry) => entry.runtime === group.toLowerCase())) throw new Error("No certificate is registered for this runtime group");
+          const retained = certificatesWithoutRuntime(current, group);
+          if (retained.length && !caCerts) throw new Error(`Signing root CA is not configured for ${environment}. Contact your administrator.`);
+          await registerOrgCertificate(orgName, environment, retained.length ? certificatePayload(retained, caCerts) : [], caCerts, retained.length === 0, opts);
+          signingResult.message = "Organization signing removed for this runtime group and environment.";
+        } else {
+          if (!caCerts) throw new Error(`Signing root CA is not configured for ${environment}. Contact your administrator.`);
+          const plan = planCertificateInstall(current, selectedOrg.member, environment, group, certificate, caCerts);
+          if (operation === "review") {
+            signingResult.confirmation = plan.confirmation;
+            signingResult.review = plan.message;
+          } else {
+            if (form!.get("confirmed") !== "on" || form!.get("confirmation") !== plan.confirmation) throw new Error("The key set or certificate has changed. Review the installation again before confirming.");
+            await registerOrgCertificate(orgName, environment, plan.certificatePem, caCerts, false, opts);
+            signingResult.message = "Registration succeeded.";
+          }
+        }
+      } else throw new Error("Unknown signing operation");
+    } catch (e) { error = (e as Error).message; }
+  }
+  if (isSigning && req.headers.get("accept")?.includes("application/json")) {
+    return Response.json(error ? { error } : signingResult, { status: error ? 400 : 200 });
+  }
+  const signing: Record<string, boolean | null> = {};
+  if (selectedOrg) {
+    await Promise.all([...new Set(availableGroups.map((g) => g.environment).filter((e): e is string => !!e))].map(async (environment) => {
+      const groups = availableGroups.filter((g) => g.environment === environment);
+      try {
+        const current = await fetchSigningKeyset(keysetUrl(environment), selectedOrg.member, environment);
+        for (const group of groups) signing[`${group.name}:${environment}`] = current.certificates.some((entry) => entry.runtime === group.name.toLowerCase());
+      } catch {
+        for (const group of groups) signing[`${group.name}:${environment}`] = null;
+      }
+    }));
   }
 
   return htmlResponse(
@@ -862,6 +1049,8 @@ async function handleRuntimes(
       selectedOrg,
       ownedGroups,
       availableGroups,
+      signing,
+      signingResult,
       error,
       config,
       currentPath: "/runtimes",
@@ -1004,6 +1193,10 @@ async function handleConnections(
   if (gate) return gate;
 
   const orgName = url.searchParams.get("org") ?? "";
+  if (url.pathname === "/connections" && url.searchParams.get("role") === "services") {
+    url.searchParams.delete("role");
+    return redirect(`/console/common-sso${url.search}`);
+  }
   const flashKind = url.searchParams.get("flash");
   const flashMsg = url.searchParams.get("msg");
   const flash =
@@ -1016,8 +1209,15 @@ async function handleConnections(
     loadSubsystems(),
     loadServices(),
   ]);
+  const integrationOrganizations = new Set(
+    subsystems.filter((subsystem) => subsystem.integrationClientIds?.length)
+      .map((subsystem) => subsystem.organization.name),
+  );
+  const availableOrganizations = url.pathname === "/console/common-sso"
+    ? organizations.filter((org) => integrationOrganizations.has(org.name))
+    : organizations;
   const selectedOrg =
-    organizations.find((o) => o.name === orgName) ?? null;
+    availableOrganizations.find((org) => org.name === orgName) ?? null;
 
   let connections: Awaited<
     ReturnType<typeof listConnections>
@@ -1039,20 +1239,108 @@ async function handleConnections(
     }
   }
 
-  return htmlResponse(
-    React.createElement(ConnectionsPage, {
-      organizations,
-      selectedOrg,
-      connections,
-      allSubsystems: subsystems,
-      services,
-      config,
-      currentPath: "/connections",
-      user: user!,
-      flash,
-      error,
-    }),
-  );
+  const connectionList = React.createElement(ConnectionsPage, {
+    organizations: availableOrganizations,
+    selectedOrg,
+    connections,
+    allSubsystems: subsystems,
+    services,
+    config,
+    openClients: url.searchParams.getAll("openClient"),
+    currentPath: url.pathname,
+    user: user!,
+    flash,
+    error,
+  });
+
+  if (url.pathname === "/connections") return htmlResponse(connectionList);
+
+  let activity: ActivityRecord[] = [];
+  let submissionsError: string | undefined;
+  if (!user!.accessToken) {
+    submissionsError = "Sign in again to load your submissions.";
+  } else {
+    try {
+      activity = await listSubmissionActivity(user!.accessToken);
+    } catch (cause) {
+      submissionsError = cause instanceof SdxApiError && cause.status === 401
+        ? "Sign in again to load your submissions."
+        : "Your submissions could not be loaded.";
+    }
+  }
+  const response = htmlResponse(React.createElement(CommonSsoPage, {
+    currentPath: url.pathname,
+    user: user!,
+    activity,
+    error: submissionsError,
+    children: connectionList,
+  }));
+  response.headers.set("cache-control", "no-store");
+  return response;
+}
+
+async function handleConnectionAgreement(
+  url: URL,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+): Promise<Response> {
+  const headers = { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" };
+  if (!user?.accessToken) return new Response("Sign in to view this agreement.", { status: 401, headers });
+
+  const org = url.searchParams.get("org");
+  const clientId = url.searchParams.get("clientId");
+  const serviceId = url.searchParams.get("serviceId");
+  const id = url.searchParams.get("id");
+  if (!org || !clientId || !serviceId) {
+    return new Response("Missing connection identifiers.", { status: 400, headers });
+  }
+
+  try {
+    const connections = await listConnections(org, {
+      accessToken: user.accessToken,
+      signal: AbortSignal.timeout(10_000),
+    });
+    const connection = connections.find((conn) =>
+      conn.clientId === clientId && conn.serviceId === serviceId &&
+      (!id || conn.id === id)
+    );
+    if (!connection) return new Response("Connection request unavailable.", { status: 404, headers });
+
+    const [services, subsystems, resourceScopes] = await Promise.all([
+      loadServices(),
+      loadSubsystems(),
+      loadScopes(),
+    ]);
+    const service = services.find((item) =>
+      item.name === serviceId && item.environment === connection.environment
+    ) ?? services.find((item) => item.name === serviceId);
+    const providerId = service?.subsystem.clientId ?? connection.serviceResources?.subsystemId;
+    const loadParty = createSubsystemDetailLoader(subsystems);
+
+    const zonesUrl = connectionPrivacyZonesUrl(serviceId, connection.environment ?? service?.environment);
+    const [client, provider, privacyZoneNames] = await Promise.all([
+      loadParty(clientId),
+      loadParty(providerId),
+      connection.requesterDetails?.client?.privacyZone || connection.requesterDetails?.service?.privacyZone
+        ? loadPrivacyZoneNames(zonesUrl)
+        : undefined,
+    ]);
+
+    const html = renderToStaticMarkup(React.createElement(ConnectionAgreement, {
+      id: "connection-agreement",
+      org,
+      connection,
+      catalog: { client, provider, service, privacyZoneNames,
+        scopes: new Map(resourceScopes.map((scope) => [scope.name, scope])) },
+    }));
+    return new Response(html, {
+      headers: { ...headers, "content-type": "text/html; charset=utf-8" },
+    });
+  } catch (error) {
+    const status = error instanceof SdxApiError && [401, 403, 404].includes(error.status)
+      ? error.status
+      : 502;
+    return new Response("Could not load this agreement.", { status, headers });
+  }
 }
 
 async function handleConnectionsEdit(
@@ -1075,6 +1363,7 @@ async function handleConnectionsEdit(
 
   if (!org || !clientId || !serviceId) {
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: "Missing required fields" },
       clientId,
@@ -1092,6 +1381,7 @@ async function handleConnectionsEdit(
     payload = parsed;
   } catch (e) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1113,6 +1403,7 @@ async function handleConnectionsEdit(
       { accessToken: user!.accessToken },
     );
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1126,6 +1417,7 @@ async function handleConnectionsEdit(
         ? `Save failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1150,6 +1442,7 @@ async function handleConnectionsApprove(
   const serviceId = String(form.get("serviceId") ?? "");
   if (!org || !clientId || !serviceId) {
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: "Missing required fields" },
       clientId,
@@ -1164,6 +1457,7 @@ async function handleConnectionsApprove(
     service.subsystem.organization.name !== org
   ) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1185,6 +1479,7 @@ async function handleConnectionsApprove(
       { accessToken: user!.accessToken },
     );
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1200,6 +1495,7 @@ async function handleConnectionsApprove(
         ? `Approve failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1225,6 +1521,7 @@ async function handleConnectionsReject(
   const serviceId = String(form.get("serviceId") ?? "");
   if (!org || !id || !clientId || !serviceId) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1243,6 +1540,7 @@ async function handleConnectionsReject(
     service.subsystem.organization.name !== org
   ) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1267,6 +1565,7 @@ async function handleConnectionsReject(
       });
     }
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1282,6 +1581,7 @@ async function handleConnectionsReject(
         ? `Reject failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1308,6 +1608,7 @@ async function deleteConnectionAction(
   const serviceId = String(form.get("serviceId") ?? "");
   if (!org || !id) {
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "error",
@@ -1326,6 +1627,7 @@ async function deleteConnectionAction(
       ...(verb === "Revoked" ? { action: "revoke" as const } : {}),
     });
     return connectionsRedirect(
+      req,
       org,
       {
         kind: "success",
@@ -1339,6 +1641,7 @@ async function deleteConnectionAction(
         ? `${verb === "Revoked" ? "Revoke" : "Cancel"} failed (${e.status}): ${e.body}`
         : (e as Error).message;
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: msg },
       clientId,
@@ -1366,6 +1669,7 @@ async function lifecycleConnectionAction(
     | "retry";
   if (!org || !id || !["activate", "deactivate", "retry"].includes(action)) {
     return connectionsRedirect(
+      req,
       org,
       { kind: "error", message: "Missing organization, connection id, or lifecycle action." },
       clientId,
@@ -1388,6 +1692,7 @@ async function lifecycleConnectionAction(
       ? "Deactivated"
       : "Retried";
     return connectionsRedirect(
+      req,
       org,
       { kind: "success", message: `${past} ${clientId} → ${serviceId}` },
       clientId,
@@ -1396,7 +1701,7 @@ async function lifecycleConnectionAction(
     const msg = e instanceof SdxApiError
       ? `${action[0].toUpperCase()}${action.slice(1)} failed (${e.status}): ${e.body}`
       : (e as Error).message;
-    return connectionsRedirect(org, { kind: "error", message: msg }, clientId);
+    return connectionsRedirect(req, org, { kind: "error", message: msg }, clientId);
   }
 }
 

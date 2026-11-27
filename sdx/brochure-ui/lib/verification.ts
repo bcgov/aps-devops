@@ -53,9 +53,9 @@ const JWKS_CACHE_TTL_MS = 60_000;
 const jwksCache = new Map<string, { expiresAt: number; jwks: Jwks }>();
 const jwksInflight = new Map<string, Promise<Jwks>>();
 
-function fetchJwks(url: string): Promise<Jwks> {
+function fetchJwks(url: string, refresh = false): Promise<Jwks> {
   const cached = jwksCache.get(url);
-  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.jwks);
+  if (!refresh && cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.jwks);
   const inflight = jwksInflight.get(url);
   if (inflight) return inflight;
 
@@ -235,8 +235,8 @@ async function verifyJwtAgainstJwks(
       const ok = await crypto.subtle.verify(
         params.verifyAlg,
         key,
-        parsed.signature,
-        parsed.signingInput,
+        parsed.signature as BufferSource,
+        parsed.signingInput as BufferSource,
       );
       if (ok) return { ok: true, alg, kid: parsed.header.kid, jwk };
     } catch {
@@ -704,6 +704,8 @@ async function applyCertChainCheck(
 export async function verifyEdgeToken(
   token: string,
   source: HeaderSource,
+  allowedJwksUrls?: readonly string[],
+  refreshJwks = false,
 ): Promise<VerificationResult> {
   let parsed: JwtParts;
   try {
@@ -719,9 +721,12 @@ export async function verifyEdgeToken(
       message: "token has no jwks_uri claim",
     };
   }
+  if (allowedJwksUrls && !allowedJwksUrls.includes(jwksUrl)) {
+    return { status: "invalid", source, message: "Edge token JWKS URL is not a configured trust source for this environment" };
+  }
   let jwks: Jwks;
   try {
-    jwks = await fetchJwks(jwksUrl);
+    jwks = await fetchJwks(jwksUrl, refreshJwks);
   } catch (e) {
     return {
       status: "error",
@@ -936,6 +941,7 @@ export async function verifyEntitySig(
   edgeToken: string,
   entity: { dotted: string; keysetId: string },
   source: HeaderSource,
+  refreshJwks = false,
 ): Promise<VerificationResult> {
   let entitySig: Uint8Array;
   try {
@@ -968,7 +974,7 @@ export async function verifyEntitySig(
   }
   let jwks: Jwks;
   try {
-    jwks = await fetchJwks(url);
+    jwks = await fetchJwks(url, refreshJwks);
   } catch (e) {
     return {
       status: "error",

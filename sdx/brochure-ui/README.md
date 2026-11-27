@@ -124,6 +124,12 @@ helm upgrade --install sdx-brochure \
 bcgov/generic-api
 ```
 
+The ISA traffic chart needs a metrics source with at least 30 days of history.
+`ISA_PROMETHEUS_URL` points it at Thanos Query in the Helm deployment, while
+`PROMETHEUS_URL` serves the live Metrics page. Existing deployments that point
+`PROMETHEUS_URL` at the in-cluster `thanos-prom-prometheus-server` service
+automatically use the sibling `thanos-query:9090` service for ISA traffic.
+
 ### Test
 
 ```sh
@@ -141,3 +147,46 @@ helm upgrade -n b8840c-prod --install sdx-brochure \
  -f chart.yaml -f .values-prod.yaml \
 bcgov/generic-api
 ```
+
+Organization signing setup is available on each available runtime group. Setup
+(or Renew) opens a dialog with Create a CSR and Install Certificate tabs. The
+CSR can be copied and sent to the APS team; installation only requires pasting
+the signed certificate and any intermediate certificates.
+
+Configure `environments[].signing_root_ca_pem` in `config.yaml` with the trusted
+root CA PEM for that exact runtime-group environment ID. The server supplies it
+to the member API; the browser cannot override it. Installation reports a
+configuration error if no root CA is configured. See
+`samples/signing-environments.yaml` for certificates from the organization
+signing guide, and merge them into the appropriate environment entries for your
+deployment. Restart brochure-ui after changing configuration.
+
+Before installing a certificate, brochure-ui retrieves the organization key set
+for the environment and shows the registered edge runtimes. The user must
+confirm the addition or replacement. It matches runtime certificates using the
+organization/environment DNS SAN, replaces that runtime’s certificate, retains
+the other certificate chains, and publishes the complete set. The server reads
+the registry again on confirmation and requires another review if it changed.
+Unrecognized certificates or registry errors stop the update rather than
+assuming an empty set. Removal also retains certificates for other runtimes.
+The upstream API has no conditional-write support, so concurrent updates after
+the final registry read still require coordination.
+
+Organization trust key sets offer **Verify Response** for consumers checking a provider’s response. Paste
+`X-Edge-Token` and `X-Entity-Sig`, then select
+**Check**. The dialog reuses Traffic’s signature and certificate-chain verifier
+and displays each check plus Verified or Failed verification. The selected key
+set fixes the organization and environment. Edge JWT `jwks_uri` values must
+match that environment’s configured `jwks_urls`, or an edge key-set endpoint
+under its configured `org_keysets_url`. Response header values are not logged.
+
+
+### Privacy Zone directories
+
+Set `privacy_zones_url` on each environment in `config.yaml` to override the JSON directory used to resolve privacy zone names in the Information Sharing Agreement.
+
+| Environment | Default directory |
+| --- | --- |
+| Production | https://id.gov.bc.ca/oauth2/privacy-zones |
+| Test and other non-production environments | https://idtest.gov.bc.ca/oauth2/privacy-zones |
+| `apsdev` | https://idsit.gov.bc.ca/oauth2/privacy-zones |
